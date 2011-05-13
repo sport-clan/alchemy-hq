@@ -1,0 +1,17 @@
+#!/usr/bin/ruby
+
+USER_AT_HOST, COMMAND = ARGV
+
+def shell_quote(str)
+	return str.map { |a| shell_quote a }.join(" ") if str.is_a?(Array)
+	return str if str =~ /^[-a-zA-Z0-9_\/:.=@]+$/
+	return "'" + str.gsub("'", "'\\\\''") + "'" unless str =~ /'/
+	return "\"" + str.gsub("\\", "\\\\\\\\").gsub("\"", "\\\\\"").gsub("`", "\\\\`").gsub("$", "\\\\$") + "\""
+end
+
+ssh_args = %W[ ssh ]
+ssh_args += %W[ -i #{ENV["GIT_SSH_IDENTITY"]} ] if ENV["GIT_SSH_IDENTITY"]
+ssh_args += %W[ #{USER_AT_HOST} ]
+ssh_args += %W[ #{COMMAND} ]
+
+exec shell_quote ssh_args

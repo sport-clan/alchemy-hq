@@ -1,0 +1,13 @@
+#!/usr/bin/ruby
+
+# work out where mandar files are
+script_path = $0
+script_path = File.readlink(script_path) while File.symlink?(script_path)
+CONFIG = File.expand_path("#{File.dirname(script_path)}/../..")
+$LOAD_PATH.unshift "#{CONFIG}/mandar/ruby"
+
+# load libraries
+require "mandar"
+
+# start daemon
+Mandar::Grapher::Daemon.start ARGV

@@ -1,0 +1,492 @@
+datatypes xs = "http://www.w3.org/2001/XMLSchema-datatypes"
+
+grammar {
+
+	start = element concrete {
+		( task | local )*
+	}
+
+	task = element task {
+		attribute name { text },
+		attribute before { text }?,
+		attribute after { text }?,
+		command*
+	}
+
+	local = element local {
+		attribute name { text },
+		attribute before { text }?,
+		attribute after { text }?,
+		command*
+	}
+
+	any = element * { attribute * { text }*, (any | text)* }
+	whatever = attribute * { text }*, (any | text)*
+
+	file-attributes = (
+		attribute name { text },
+		attribute user { text },
+		attribute group { text },
+		attribute mode { text },
+		attribute marker { text }?
+	)
+
+	strict-token = xs:string { pattern = "[a-z0-9]+(-[a-z0-9]+)*" }
+	relaxed-token = xs:string { pattern = "[a-z0-9]+([\-_][a-z0-9]+)*" }
+
+	file-path = xs:string { pattern = "/?[^/]+(/[^/]+)*" }
+	file-mode = xs:string { pattern = "\d{4}" }
+
+	# ---------------------------------------- commands
+
+	command |= element auto-clean {
+		attribute glob { text },
+		attribute flag { strict-token }?
+	}
+
+	command |= element apt {
+		attribute packages { text }
+	}
+
+	command |= element apt-remove {
+		attribute package { text }
+	}
+
+	command |= element apt-install {
+		attribute package { text }
+	}
+
+	command |= element auto-flag {
+		attribute name { text },
+		command*
+	}
+
+	command |= element chdir {
+		attribute dir { text }
+	}
+
+	command |= element clear-flag {
+		attribute name { text },
+		command*
+	}
+
+	command |= element debconf {
+		attribute package { text },
+		attribute question { text },
+		attribute type { text },
+		attribute value { text }
+	}
+
+	command |= element delete {
+		attribute name { text }
+	}
+
+	command |= element detail {
+		attribute message { text }
+	}
+
+	command |= element dir {
+		attribute name { text },
+		attribute user { text },
+		attribute group { text },
+		attribute mode { text }
+	}
+
+	command |= element ec2-security-group {
+		attribute account { text },
+		attribute name { text },
+		attribute description { text },
+		element allow {
+			attribute protocol { text },
+			attribute port { text },
+			attribute source { text }
+		}*
+	}
+
+	command |= element gem {
+		attribute sources { text }
+	}
+
+	command |= element gem {
+		attribute packages { text }
+	}
+
+	command |= element install {
+		attribute src { text },
+		attribute dst { text },
+		attribute user { text },
+		attribute group { text },
+		attribute mode { text }
+	}
+
+	command |= element keep {
+		attribute name { text }
+	}
+
+	command |= element link {
+		attribute src { text },
+		attribute dst { text },
+		attribute target-missing { "delete" }?
+	}
+
+	command |= element notice {
+		attribute message { text }
+	}
+
+	command |= element pecl {
+		attribute package { text }
+	}
+
+	command |= element reload {
+		attribute service { text },
+		attribute check-status { "yes" | "no" }?
+	}
+
+	command |= element restart {
+		attribute service { text },
+		attribute check-status { "yes" | "no" }?
+	}
+
+	command |= element rrd-database {
+		attribute name { file-path } &
+		attribute user { strict-token } &
+		attribute group { strict-token } &
+		attribute mode { file-mode } &
+		attribute step { xs:positiveInteger } &
+		element data-source {
+			attribute name { relaxed-token },
+			attribute type { "gauge" },
+			attribute heartbeat { xs:positiveInteger }
+		}* &
+		element archive {
+			attribute name { relaxed-token },
+			attribute function { "average" },
+			attribute factor { xs:float { minInclusive = "0" maxExclusive = "1" } },
+			attribute steps { xs:positiveInteger },
+			attribute rows { xs:positiveInteger }
+		}*
+	}
+
+	command |= element runlevel-update {
+		attribute service { text },
+		attribute levels { text }
+	}
+
+	command |= element set-flag {
+		attribute name { text },
+		attribute value { text }?,
+		command*
+	}
+
+	command |= element shell {
+		attribute cmd { text }?,
+		element env {
+			attribute name { text },
+			attribute value { text }
+		}*,
+		element arg {
+			attribute name { text } |
+			attribute value { text } |
+			(
+				attribute name { text },
+				attribute value { text }
+			)
+		}*
+	}
+
+	command |= element shell-if {
+		attribute cmd { text },
+		command*
+	}
+
+	command |= element start {
+		attribute service { text },
+		attribute no-status { "yes" }?
+	}
+
+	command |= element statoverride {
+		attribute name { text },
+		attribute user { text },
+		attribute group { text },
+		attribute mode { text }
+	}
+
+	command |= element stop {
+		attribute service { text }
+	}
+
+	command |= element tmpdir {
+		command*
+	}
+
+	command |= element update-rcd {
+		attribute name { text }
+	}
+
+	command |= element warning {
+		attribute message { text }
+	}
+
+	# ---------------------------------------- file formats
+
+	# -------------------- apache
+
+	command |= element file {
+		attribute format { "apache-conf" },
+		file-attributes,
+		apache-prop*
+	}
+
+	apache-prop = (
+		element section {
+			attribute name { text },
+			attribute value { text },
+			apache-prop*
+		} |
+		element prop {
+			attribute name { text },
+			attribute value { text }
+		}
+	)
+
+	# -------------------- bind
+
+	command |= element file {
+		attribute format { "bind-conf" },
+		file-attributes,
+		bind-prop*
+	}
+
+	bind-prop = element prop {
+		(
+			(
+				attribute name { text }
+			) | (
+				attribute value { text }
+			) | (
+				attribute name { text },
+				attribute value { text }
+			)
+		),
+		bind-prop*
+	}*
+
+	command |= element file {
+		attribute format { "bind-zone" },
+		file-attributes,
+		(
+			element directive {
+				attribute name { text },
+				attribute value { text }
+			} |
+			element record {
+				attribute name { text },
+				attribute class { text },
+				attribute type { text },
+				attribute value { text }
+			}
+		)*
+	}
+
+	# -------------------- java
+
+	command |= element file {
+		attribute format { "java-properties" },
+		file-attributes,
+		element prop {
+			attribute name { text },
+			attribute value { text }
+		}*
+	}
+
+	# -------------------- logrotate
+
+	command |= element file {
+		attribute format { "logrotate-conf" },
+		file-attributes,
+		element section {
+			attribute name { text },
+			(
+				element prop {
+					attribute name { text },
+					attribute value { text }?
+				} |
+				element script {
+					attribute name { text },
+					element line {
+						attribute value { text }
+					}*
+				}
+			)*
+		}*
+	}
+
+	# -------------------- mysql
+
+	command |= element file {
+		attribute format { "mysql-cnf" },
+		file-attributes,
+		element section {
+			attribute name { text },
+			element prop {
+				attribute name { text },
+				attribute value { text }?
+			}*
+		}*
+	}
+
+	# -------------------- nagios
+
+	command |= element file {
+		attribute format { "nagios-config" },
+		file-attributes,
+		element prop {
+			attribute name { text },
+			attribute value { text }
+		}*
+	}
+
+	command |= element file {
+		attribute format { "nagios-objects" },
+		file-attributes,
+		element define {
+			attribute name { text },
+			element prop {
+				attribute name { text },
+				attribute value { text }
+			}*
+		}*
+	}
+
+	# -------------------- php
+
+	command |= element file {
+		attribute format { "php" },
+		file-attributes,
+		php-statement*
+	}
+
+	php-statement |= element bool-var {
+		attribute name { text },
+		attribute value { text }
+	}
+
+	php-statement |= element const-var {
+		attribute name { text },
+		attribute value { text }
+	}
+
+	php-statement |= element define {
+		attribute name { text },
+		attribute value { text }
+	}
+
+	php-statement |= element string-var {
+		attribute name { text },
+		attribute value { text }
+	}
+
+	command |= element file {
+		attribute format { "php-ini" },
+		file-attributes,
+		(
+			element comment {
+				attribute value { text }
+			} |
+			element section {
+				attribute name { text }
+			} |
+			element prop {
+				attribute name { text },
+				attribute value { text }
+			}
+		)*
+	}
+
+	# -------------------- postfix
+
+	command |= element file {
+		attribute format { "postfix-aliases" },
+		file-attributes,
+		element alias {
+			attribute source { text },
+			attribute dest { text }
+		}*
+	}
+
+	command |= element file {
+		attribute format { "postfix-hash" },
+		file-attributes,
+		element entry {
+			attribute key { text },
+			attribute value { text }
+		}*
+	}
+
+	command |= element file {
+		attribute format { "postfix-main" },
+		file-attributes,
+		element prop {
+			attribute name { text },
+			attribute value { text }
+		}*
+	}
+
+	command |= element file {
+		attribute format { "postfix-master" },
+		file-attributes,
+		element service {
+			attribute name { text },
+			attribute type { text },
+			attribute private { text }?,
+			attribute unpriv { text }?,
+			attribute chroot { text }?,
+			attribute wakeup { text }?,
+			attribute maxproc { text }?,
+			attribute cmd { text }
+		}*
+	}
+
+	# -------------------- ssh
+
+	command |= element file {
+		attribute format { "ssh-config" },
+		file-attributes,
+		(
+			element prop {
+				attribute name { text },
+				attribute value { text }
+			} |
+			element section {
+				attribute name { text },
+				attribute value { text },
+				element prop {
+					attribute name { text },
+					attribute value { text }
+				}*
+			}
+		)*
+	}
+
+	# -------------------- text
+
+	command |= element file {
+		attribute format { "text" } &
+		file-attributes &
+		element warn {
+			attribute prefix { text }
+		}? &
+		element line {
+			attribute value { text }
+		}*
+	}
+
+	# -------------------- xml
+
+	command |= element file {
+		attribute format { "xml" },
+		file-attributes,
+		any
+	}
+
+}

@@ -1,0 +1,54 @@
+#!/usr/bin/ruby
+
+script_path = $0
+script_path = File.readlink(script_path) while File.symlink?(script_path)
+CONFIG = File.expand_path("#{File.dirname(script_path)}/../..")
+$LOAD_PATH.unshift "#{CONFIG}/mandar/ruby"
+
+require "getoptlong"
+require "pp"
+require "mandar"
+require "xml"
+
+$opts, $args = Mandar::Tools::Getopt.process ARGV, [
+	{ :name => :config, :required => true },
+	{ :name => :account, :required => true, :regex => /[a-z][a-z0-9]*(?:-[a-z0-9]+)*/ },
+	{ :name => :region, :required => true, :regex => /[a-z][a-z0-9]*(?:-[a-z0-9]+)*/ },
+	{ :name => :critical, :required => true, :regex => /[1-9][0-9]*/, :convert => :to_i },
+	{ :name => :warning, :required => true, :regex => /[1-9][0-9]*/, :convert => :to_i },
+]
+
+# load config
+$config = XML::Document.file $opts[:config]
+
+# find aws account
+aws_account_elem = $config.find_first("aws-account[@name='#{$opts[:account]}']")
+aws_account_elem or raise "AWS account not found: #{$opts[:account]}"
+account = Mandar::AWS::Account.new
+account.name = aws_account_elem.attributes["name"]
+account.access_key_id = aws_account_elem.attributes["access-key-id"]
+account.secret_access_key = aws_account_elem.attributes["secret-access-key"]
+
+# create aws client
+aws_client = Mandar::AWS::Client.new account, "ec2.#{$opts[:region]}.amazonaws.com", "2010-08-31"
+aws_client.default_prefix = "a"
+
+# retrieve info
+resp = aws_client.describe_snapshots :owner => "self"
+count = resp.find("a:snapshotSet / a:item").size
+
+case
+
+when count >= $opts[:critical]
+	puts "CRIT: #{count} snapshots"
+	exit 2
+
+when count >= $opts[:warning]
+	puts "WARN: #{count} snapshots"
+	exit 1
+
+else count < $opts[:critical]
+	puts "OK: #{count} snapshots"
+	exit 0
+
+end

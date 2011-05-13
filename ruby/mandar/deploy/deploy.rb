@@ -1,0 +1,2 @@
+module Mandar::Deploy
+end

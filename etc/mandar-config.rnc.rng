@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<grammar xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+  <start>
+    <element name="mandar-config">
+      <optional>
+        <attribute name="threads">
+          <data type="positiveInteger"/>
+        </attribute>
+      </optional>
+      <attribute name="admin-group"/>
+      <attribute name="ssh-key-name"/>
+      <zeroOrMore>
+        <ref name="top"/>
+      </zeroOrMore>
+    </element>
+  </start>
+  <define name="top" combine="choice">
+    <element name="grapher-config">
+      <attribute name="rrd-database"/>
+    </element>
+  </define>
+  <define name="top" combine="choice">
+    <element name="profile">
+      <attribute name="name"/>
+      <attribute name="database-host"/>
+      <attribute name="database-port"/>
+      <attribute name="database-name"/>
+      <attribute name="database-user"/>
+      <attribute name="database-pass"/>
+    </element>
+  </define>
+  <define name="top" combine="choice">
+    <element name="deploy-production">
+      <attribute name="name"/>
+      <attribute name="mandar-deployment"/>
+      <attribute name="console-deployment"/>
+    </element>
+  </define>
+</grammar>

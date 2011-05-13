@@ -1,0 +1,72 @@
+#!/usr/bin/ruby1.9.1
+
+script_path = $0
+script_path = File.readlink(script_path) while File.symlink?(script_path)
+CONFIG = File.expand_path("#{File.dirname(script_path)}/../..")
+$LOAD_PATH.unshift "#{CONFIG}/mandar/ruby"
+
+require "date"
+require "httpclient"
+require "mandar"
+require "pp"
+require "uri"
+require "xml"
+
+include Mandar::Tools::Escape
+
+parser = XML::Parser.file ARGV[0]
+config_elem = parser.parse.root
+
+# create mandar client
+mandar_elem = config_elem.find_first("mandar-config")
+mandar_url = mandar_elem.attributes["url"]
+mandar_username = mandar_elem.attributes["username"]
+mandar_password = mandar_elem.attributes["password"]
+mandar = Mandar::Tools::MandarClient.new mandar_url, mandar_username, mandar_password
+
+http = HTTPClient.new
+
+changes = false
+
+config_elem.find("http-pull").each do |pull_elem|
+	pull_name = pull_elem.attributes["name"]
+	pull_url = pull_elem.attributes["url"]
+	pull_xpath = pull_elem.attributes["xpath"]
+	puts "doing #{pull_name}"
+
+	uri = URI.parse pull_url
+	http.set_auth pull_url, uri.user, uri.password if uri.user
+	resp_str = http.get_content pull_url
+	resp_doc = XML::Document.string resp_str, :options => XML::Parser::Options::NOBLANKS
+
+	value = ""
+	resp_doc.find(pull_xpath).each { |node| value += node.to_s(:indent => true) + "\n" }
+
+	record = mandar.stager_get "http-pull-data", pull_name
+	if record && record["data"] != value
+		puts "updating #{pull_name}"
+		record["data"] = value
+		mandar.stager_update "http-pull-data", pull_name, record
+		changes = true
+	elsif ! record
+		puts "creating #{pull_name}"
+		mandar.stager_create "http-pull-data", {
+			"name" => pull_name,
+			"data" => value,
+		}
+		changes = true
+	end
+
+end
+
+if changes
+
+	puts "deploy changes..."
+	mandar.deploy
+
+	puts "commit changes"
+	mandar.commit
+
+else
+	puts "no changes"
+end

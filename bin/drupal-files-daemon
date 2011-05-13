@@ -1,0 +1,69 @@
+#!/usr/bin/ruby1.8
+
+# work out where mandar files are
+script_path = $0
+script_path = File.readlink(script_path) while File.symlink?(script_path)
+MANDAR = File.expand_path("#{File.dirname(script_path)}/..")
+$LOAD_PATH.unshift "#{MANDAR}/ruby"
+
+# load libraries
+require "mandar"
+require "pp"
+require "xml"
+
+opts, remain = Mandar::Tools::Getopt.process ARGV, [
+	{ :name => :pid_path, :default => "/var/run/drupal-files-daemon.pid" },
+	{ :name => :log_path, :default => "/var/log/drupal-files-daemon.log" },
+]
+
+Mandar::Tools::Daemon.start opts do
+
+	# find relevant sites and other members
+	Mandar::Tools::Daemon.log "Reading config from /zattikka/etc/drupal-files-daemon-config.xml"
+	HOST = File.read("/etc/mandar-hostname").chop
+	CONFIG = XML::Document.file("/zattikka/etc/drupal-files-daemon-config.xml").root
+	SITES = CONFIG.find("drupal-site[count(host) > 1]").map do |site_elem| {
+		:name => site_elem.attributes["name"],
+		:user => site_elem.attributes["user"],
+		:members => site_elem.find("host[@name != '#{HOST}']").map { |host_elem| host_elem.attributes["name"] }
+	} end
+	SITES.each do |site|
+		Mandar::Tools::Daemon.log "Got site #{site[:name]} with members: #{site[:members].join(", ")}"
+	end
+
+	# detach from parent
+	Mandar::Tools::Daemon.log "Going to background"
+	Mandar::Tools::Daemon.detach
+
+	# create threads
+	threads = SITES.map do |site|
+		Thread.new do
+			while true
+				remote = site[:members][rand(site[:members].size)]
+				path = "/zattikka/drupal-sites/#{site[:name]}/files"
+				local_root = path
+				remote_root = "ssh://#{remote}.private/#{path}"
+					Mandar::Tools::Daemon.log "Synchronise with #{remote}"
+				cmd = %W[
+					sudo -H -u #{site[:user]}
+					unison
+					-batch
+					-terse
+					-prefer #{HOST < remote ? local_root : remote_root}
+					#{local_root} #{remote_root}
+				].join " "
+				Mandar::Tools::Daemon.log "Executing: #{cmd}"
+				system cmd
+				time = 5 + rand(10)
+				Mandar::Tools::Daemon.log "(sleeping for #{time} seconds)"
+				sleep time
+			end
+		end
+	end
+
+	# wait forever
+	while true
+		sleep 60
+	end
+
+end

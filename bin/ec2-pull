@@ -1,0 +1,152 @@
+#!/usr/bin/ruby
+
+script_path = $0
+script_path = File.readlink(script_path) while File.symlink?(script_path)
+CONFIG = File.expand_path("#{File.dirname(script_path)}/../..")
+$LOAD_PATH.unshift "#{CONFIG}/mandar/ruby"
+
+require "date"
+require "pp"
+require "mandar"
+require "net/http"
+require "uri"
+require "xml"
+
+include Mandar::Tools::Escape
+
+parser = XML::Parser.file ARGV[0]
+config_elem = parser.parse.root
+
+# create mandar client
+mandar_elem = config_elem.find_first("mandar-config")
+mandar_url = mandar_elem.attributes["url"]
+mandar_username = mandar_elem.attributes["username"]
+mandar_password = mandar_elem.attributes["password"]
+mandar = Mandar::Tools::MandarClient.new mandar_url, mandar_username, mandar_password
+
+begin
+	mandar.stager_cancel
+rescue
+end
+
+config_elem.find("ec2-pull-type").each do |type_elem|
+	type_name = type_elem.attributes["name"]
+	type_api_version = type_elem.attributes["api-version"]
+	type_api_method = type_elem.attributes["api-method"]
+	type_xpath = type_elem.attributes["xpath"]
+	puts "doing type #{type_name}"
+
+	aws_objects = {}
+	config_elem.find("aws-account").each do |account_elem|
+		account_name = account_elem.attributes["name"]
+		puts "doing account #{account_name}"
+
+		# create aws account
+		account = Mandar::AWS::Account.new
+		account.name = account_elem.attributes["name"]
+		account.access_key_id = account_elem.attributes["access-key-id"]
+		account.secret_access_key = account_elem.attributes["secret-access-key"]
+
+		# create aws client
+		aws_client = Mandar::AWS::Client.new(account, "ec2.amazonaws.com", type_api_version)
+		aws_client.default_prefix = "a"
+
+		# fetch complete list of instances
+		puts "calling #{type_api_method}..."
+		aws_response = aws_client.send(type_api_method)
+
+		# transform it to json
+		aws_response.find(type_xpath).each do |aws_elem|
+			aws_object = { "account" => account_name }
+			aws_id = nil
+			type_elem.find("field").each do |field_elem|
+				field_name = field_elem.attributes["name"]
+				field_type = field_elem.attributes["type"]
+				field_xpath = field_elem.attributes["xpath"]
+				field_id = field_elem.attributes["id"] == "yes"
+				begin
+					value = case field_type
+					when "text"
+						aws_elem.find("string(#{field_xpath})")
+					when "timestamp"
+						string = aws_elem.find("string(#{field_xpath})")
+						string.empty? ? nil : Time.parse(string).to_i
+					else
+						raise "Unknown field type #{field_type}"
+					end
+					aws_object[field_name] = value
+					if field_id
+						raise "Multiple ids" if aws_id
+						aws_id = value
+					end
+				rescue
+					raise "error evaluating field #{field_name}, xpath: #{field_xpath}"
+				end
+			end
+			raise "No id" unless aws_id
+			aws_objects[aws_id] = aws_object
+		end
+	end
+
+	# fetch list of instances from mandar
+	puts "fetching #{type_name} from mandar..."
+	mandar_ids = mandar.stager_get(type_name)
+	mandar_objects = {}
+	mandar_ids.each do |mandar_id|
+		mandar_objects[mandar_id] = mandar.stager_get(type_name, mandar_id)
+	end
+
+	changes = false
+
+	# add missing objects
+	add_ids = aws_objects.keys - mandar_objects.keys
+	add_ids.each do |add_id|
+		aws_object = aws_objects[add_id]
+		puts "new #{type_name} #{add_id}"
+		mandar.stager_create type_name, aws_object
+		changes = true
+	end
+
+	# update changed objects
+	update_ids = aws_objects.keys & mandar_objects.keys
+	update_ids.each do |update_id|
+		mandar_object = mandar_objects[update_id].clone
+		aws_object = aws_objects[update_id].clone
+		field_changes = false
+		type_elem.find("field").each do |field_elem|
+			field_name = field_elem.attributes["name"]
+			mandar_value = mandar_object[field_name]
+			aws_value = aws_object[field_name]
+			next if mandar_value == aws_value
+			mandar_object[field_name] = aws_value
+			puts "update #{update_id} #{field_name} from #{mandar_value} to #{aws_value}"
+			field_changes = true
+		end
+		if field_changes
+			mandar.stager_update type_name, update_id, mandar_object
+			changes = true
+		end
+	end
+
+	# delete removed objects
+	delete_ids = mandar_objects.keys - aws_objects.keys
+	delete_ids.each do |delete_id|
+		mandar_object = mandar_objects[delete_id]
+		puts "delete #{delete_id}"
+		mandar.stager_delete type_name, delete_id, mandar_object
+		changes = true
+	end
+
+	if changes
+
+		puts "deploy changes..."
+		mandar.deploy
+
+		puts "commit changes"
+		mandar.commit
+	
+	else
+		puts "no changes"
+	end
+
+end

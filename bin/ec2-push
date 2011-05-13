@@ -1,0 +1,130 @@
+#!/usr/bin/ruby
+
+script_path = $0
+script_path = File.readlink(script_path) while File.symlink?(script_path)
+CONFIG = File.expand_path("#{File.dirname(script_path)}/../..")
+$LOAD_PATH.unshift "#{CONFIG}/mandar/ruby"
+
+require "date"
+require "pp"
+require "mandar"
+require "net/http"
+require "uri"
+require "xml"
+
+parser = XML::Parser.file ARGV[0]
+config_elem = parser.parse.root
+
+def xp str
+	return "'" + str.gsub("'", "''") + "'"
+end
+
+class MandarClient
+
+	def initialize url, username, password, prefix = "", suffix = ""
+		@url = URI.parse url
+		@username = username
+		@password = password
+		@prefix = prefix
+		@suffix = suffix
+	end
+
+	def http
+		return @http if @http
+		@http = Net::HTTP.start @url.host, @url.port
+		return @http
+	end
+
+	def http_request(method, path, request_string = "")
+		request = Net::HTTPGenericRequest.new(method, true, true, @url.path + path)
+		request.basic_auth @username, @password
+		request.body = request_string
+		request["Content-Type"] = "application/json"
+		response = http.request(request)
+		return response.body
+	end
+
+	def call(method, path, request = nil)
+		request_string = request ? JSON.generate(request) : nil
+		response_string = http_request(method, path, request_string)
+		response = JSON.parse(response_string)
+		return response
+	end
+
+	def data type, id = nil
+		type = @prefix + type + @suffix
+		return call "GET", id ? "/stager/data/#{type}" : "/stager/data/#{type}/#{id}"
+	end
+
+	def types
+		return call "GET", "/stager/data"
+	end
+end
+
+config_elem.find("account").each do |account_elem|
+	account_name = account_elem.attributes["name"]
+	puts "doing account #{account_name}"
+
+	# create aws account
+	account = Mandar::AWS::Account.new
+	account.name = account_elem.attributes["name"]
+	account.access_key_id = account_elem.attributes["access-key-id"]
+	account.secret_access_key = account_elem.attributes["secret-access-key"]
+
+	# create aws client
+	aws_client = Mandar::AWS::Client.new(account, "ec2.amazonaws.com", "2011-02-28")
+	aws_client.default_prefix = "a"
+
+	# fetch complete list of instances
+	puts "fetching instances for #{account_name}..."
+	instances_response = aws_client.describe_instances
+
+	# check for actions
+	config_elem.find("instance [@account = #{xp account_name}]").each do |instance_config|
+		state_config = instance_config.attributes["state"]
+
+		instance_status = instances_response.find_first("
+			a:reservationSet /
+			a:item /
+			a:instancesSet /
+			a:item [
+				a:tagSet /
+				a:item [
+					a:key = 'Name' and
+					a:value = #{xp instance_config.attributes["name"]}
+				]
+			]
+		")
+		state_status = instance_status.find("string (a:instanceState / a:name)")
+		instance_id_status = instance_status.find("string (a:instanceId)")
+
+		if state_status == "running" and state_config == "stopped"
+
+			puts "stopping instance #{instance_config.attributes["name"]}"
+			ret = aws_client.stop_instances :instance_id => [ instance_id_status ]
+
+		end
+	end
+
+	# get data from mandar
+	mandar_elem = config_elem.find_first("mandar")
+	mandar_url = mandar_elem.attributes["url"]
+	mandar_username = mandar_elem.attributes["username"]
+	mandar_password = mandar_elem.attributes["password"]
+	mandar_prefix = mandar_elem.attributes["prefix"]
+	mandar_suffix = mandar_elem.attributes["suffix"]
+	mandar = MandarClient.new mandar_url, mandar_username, mandar_password, mandar_prefix, mandar_suffix
+	mandar_remote = { :instances => {} }
+	mandar.data("instance").each do |instance_remote|
+		mandar_remote[:instances][instance_remote["name"]] = {
+		}
+	end
+	pp mandar_remote
+
+	# construct local data
+	mandar_local = { :instances => {} }
+	instances_response.find("a:reservationSet/a:item/a:instancesSet/a:item").each do |instance_status|
+		pp instance_status
+	end
+
+end

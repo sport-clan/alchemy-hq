@@ -1,0 +1,116 @@
+#!/usr/bin/ruby
+
+script_path = $0
+script_path = File.readlink(script_path) while File.symlink?(script_path)
+CONFIG = File.expand_path("#{File.dirname(script_path)}/../..")
+$LOAD_PATH.unshift "#{CONFIG}/mandar/ruby"
+
+require "date"
+require "pp"
+require "mandar"
+require "xml"
+
+parser = XML::Parser.file ARGV[0]
+config_elem = parser.parse.root
+
+policies = { "default" => :high }
+hosts = { }
+config_elem.find("volume").each do |volume_elem|
+	host = volume_elem.attributes["host"]
+	volume_id = volume_elem.attributes["volume-id"]
+	policy = volume_elem.attributes["policy"]
+	policies[volume_id] = policy.to_sym
+	hosts[volume_id] = host
+	volume_elem.find("old-volume-id").each do |old_volume_id_elem|
+		old_volume_id = old_volume_id_elem.attributes["value"]
+		policies[old_volume_id] = policy.to_sym
+		hosts[old_volume_id] = host
+	end
+end
+
+def debug(msg)
+	return unless $stdin.tty?
+	$stdout.print msg
+	$stdout.flush
+end
+
+errors = 0
+
+# iterate aws accounts
+
+config_elem.find("aws-account").each do |aws_account_elem|
+	aws_account_name = aws_account_elem.attributes["name"]
+	access_key_id = aws_account_elem.attributes["access-key-id"]
+	secret_access_key = aws_account_elem.attributes["secret-access-key"]
+
+	# iterate region
+	config_elem.find("ec2-region").each do |ec2_region_elem|
+		ec2_region_name = ec2_region_elem.attributes["name"]
+		ec2_region_endpoint = ec2_region_elem.attributes["endpoint"]
+
+		# create aws account
+		account = Mandar::AWS::Account.new
+		account.name = aws_account_elem.attributes["name"]
+		account.access_key_id = aws_account_elem.attributes["access-key-id"]
+		account.secret_access_key = aws_account_elem.attributes["secret-access-key"]
+
+		# create aws client
+		aws_client = Mandar::AWS::Client.new(account, ec2_region_endpoint, "2010-08-31")
+		aws_client.default_prefix = "a"
+
+		# fetch complete list of snapshots
+		debug "fetching snapshots for #{aws_account_name} at #{ec2_region_name}..."
+		snaps_response = aws_client.describe_snapshots :owner => "self", \
+			:filter => { :name => "status", :value => "completed" }
+		debug " done\n"
+
+		# convert xml into more usable format
+		items_by_volume_id = {}
+		snaps_response.find("a:snapshotSet / a:item").each do |item_elem|
+			volume_id = item_elem.find_first("a:volumeId").content
+			items_for_volume_id = items_by_volume_id[volume_id] ||= []
+			items_for_volume_id << {
+				:id => item_elem.find_first("a:snapshotId").content,
+				:timestamp => DateTime.parse(item_elem.find_first("a:startTime").content),
+			}
+		end
+
+		# iterate volume ids
+		items_by_volume_id.each do |volume_id, items_for_volume_id|
+
+			# determine rule for the volume
+			rule_name = policies[volume_id] || policies["default"]
+			host_name = hosts[volume_id] || "unknown"
+			rule = Mandar::Tools::Backup::RULES[rule_name]
+			debug "---------- processing #{volume_id} as #{rule_name} (#{host_name})\n"
+
+			# apply the rule
+			keepers = Mandar::Tools::Backup.choose_keepers items_for_volume_id, rule
+
+			# delete appropriate snapshots
+			items_for_volume_id.each do |item|
+				time_str = item[:timestamp].strftime "%Y-%m-%d %H:%M:%S"
+				if keepers.has_key? item[:id]
+					debug "keep   #{item[:id]} #{time_str} #{keepers[item[:id]].join(" ")}\n"
+				else
+					debug "delete #{item[:id]} #{time_str}\n"
+					success = false
+					3.times do
+						begin
+							aws_client.delete_snapshot :snapshot_id => item[:id]
+							success = true
+							break
+						rescue => e
+							$stderr.puts e.message
+							$stderr.puts e.backtrace
+							sleep 5
+						end
+					end
+					errors += 1 unless success
+				end
+			end
+
+		end
+	end
+end
+exit errors

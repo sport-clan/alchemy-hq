@@ -1,0 +1,21 @@
+#!/bin/bash
+### BEGIN INIT INFO
+# Provides:          iptables
+# Required-Start:
+# Required-Stop:
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Rules for iptables
+# Description:       Sets up iptables according to an XML config file
+### END INIT INFO
+
+# static config
+NAME=iptables
+CONFIG=/etc/iptables-config.xml
+
+# read defaults
+[ -r /etc/default/$NAME ] && . /etc/default/$NAME
+
+# invoke ruby
+SCRIPT="require 'xml'; require 'mandar'; Mandar::Support::IPTables::activate_file '$CONFIG'"
+exec ruby -I /mandar/ruby -rubygems -e "$SCRIPT"

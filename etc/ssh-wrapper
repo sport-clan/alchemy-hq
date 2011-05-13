@@ -1,0 +1,55 @@
+#!/usr/bin/ruby
+
+path = ARGV.shift
+socket_path = "#{path}.sock"
+pid_path = "#{path}.pid"
+
+rd, wr = IO.pipe
+
+fork do
+	rd.close
+
+	# close input/output streams
+	$stdin.close
+	$stdout.close
+	$stderr.close
+
+	# exit if ssh dies
+	Signal.trap "CHLD" do
+		exit
+	end
+	# run ssh as subprocess
+	ssh_pid = fork { wr.close; exec *ARGV }
+
+	# write pid file
+	File.open(pid_path, "w") { |f| f.puts $$ }
+
+	# wait for socket
+	while ! File.exists? socket_path
+		sleep 1
+	end
+	wr.close
+
+	# clean up on exit
+	at_exit do
+		begin
+			Process.kill 15, ssh_pid
+		rescue => e
+		end
+		begin
+			File.unlink pid_path
+		rescue => e
+		end
+	end
+
+	# exit if pid file gets mangled
+	begin
+		while (mtime ||= nil) == (mtime = File.mtime(pid_path)) || File.read(pid_path).chomp == $$.to_s
+			sleep 1
+		end
+	rescue Errno::ENOENT
+	end
+end
+
+wr.close
+rd.gets

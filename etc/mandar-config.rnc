@@ -1,0 +1,30 @@
+datatypes xs = "http://www.w3.org/2001/XMLSchema-datatypes"
+
+grammar {
+
+	start = element mandar-config {
+		attribute threads { xs:positiveInteger }?,
+		attribute admin-group { text },
+		attribute ssh-key-name { text },
+		top*
+	}
+
+	top |= element grapher-config {
+		attribute rrd-database { text }
+	}
+
+	top |= element profile {
+		attribute name { text },
+		attribute database-host { text },
+		attribute database-port { text },
+		attribute database-name { text },
+		attribute database-user { text },
+		attribute database-pass { text }
+	}
+
+	top |= element deploy-production {
+		attribute name { text },
+		attribute mandar-deployment { text },
+		attribute console-deployment { text }
+	}
+}

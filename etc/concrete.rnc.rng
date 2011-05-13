@@ -1,0 +1,774 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<grammar xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+  <start>
+    <element name="concrete">
+      <zeroOrMore>
+        <choice>
+          <ref name="task"/>
+          <ref name="local"/>
+        </choice>
+      </zeroOrMore>
+    </element>
+  </start>
+  <define name="task">
+    <element name="task">
+      <attribute name="name"/>
+      <optional>
+        <attribute name="before"/>
+      </optional>
+      <optional>
+        <attribute name="after"/>
+      </optional>
+      <zeroOrMore>
+        <ref name="command"/>
+      </zeroOrMore>
+    </element>
+  </define>
+  <define name="local">
+    <element name="local">
+      <attribute name="name"/>
+      <optional>
+        <attribute name="before"/>
+      </optional>
+      <optional>
+        <attribute name="after"/>
+      </optional>
+      <zeroOrMore>
+        <ref name="command"/>
+      </zeroOrMore>
+    </element>
+  </define>
+  <define name="any">
+    <element>
+      <anyName/>
+      <zeroOrMore>
+        <attribute>
+          <anyName/>
+        </attribute>
+      </zeroOrMore>
+      <zeroOrMore>
+        <choice>
+          <ref name="any"/>
+          <text/>
+        </choice>
+      </zeroOrMore>
+    </element>
+  </define>
+  <define name="whatever">
+    <zeroOrMore>
+      <attribute>
+        <anyName/>
+      </attribute>
+    </zeroOrMore>
+    <zeroOrMore>
+      <choice>
+        <ref name="any"/>
+        <text/>
+      </choice>
+    </zeroOrMore>
+  </define>
+  <define name="file-attributes">
+    <attribute name="name"/>
+    <attribute name="user"/>
+    <attribute name="group"/>
+    <attribute name="mode"/>
+    <optional>
+      <attribute name="marker"/>
+    </optional>
+  </define>
+  <define name="strict-token">
+    <data type="string">
+      <param name="pattern">[a-z0-9]+(-[a-z0-9]+)*</param>
+    </data>
+  </define>
+  <define name="relaxed-token">
+    <data type="string">
+      <param name="pattern">[a-z0-9]+([\-_][a-z0-9]+)*</param>
+    </data>
+  </define>
+  <define name="file-path">
+    <data type="string">
+      <param name="pattern">/?[^/]+(/[^/]+)*</param>
+    </data>
+  </define>
+  <define name="file-mode">
+    <data type="string">
+      <param name="pattern">\d{4}</param>
+    </data>
+  </define>
+  <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - commands -->
+  <define name="command" combine="choice">
+    <element name="auto-clean">
+      <attribute name="glob"/>
+      <optional>
+        <attribute name="flag">
+          <ref name="strict-token"/>
+        </attribute>
+      </optional>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="apt">
+      <attribute name="packages"/>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="apt-remove">
+      <attribute name="package"/>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="apt-install">
+      <attribute name="package"/>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="auto-flag">
+      <attribute name="name"/>
+      <zeroOrMore>
+        <ref name="command"/>
+      </zeroOrMore>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="chdir">
+      <attribute name="dir"/>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="clear-flag">
+      <attribute name="name"/>
+      <zeroOrMore>
+        <ref name="command"/>
+      </zeroOrMore>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="debconf">
+      <attribute name="package"/>
+      <attribute name="question"/>
+      <attribute name="type"/>
+      <attribute name="value"/>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="delete">
+      <attribute name="name"/>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="detail">
+      <attribute name="message"/>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="dir">
+      <attribute name="name"/>
+      <attribute name="user"/>
+      <attribute name="group"/>
+      <attribute name="mode"/>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="ec2-security-group">
+      <attribute name="account"/>
+      <attribute name="name"/>
+      <attribute name="description"/>
+      <zeroOrMore>
+        <element name="allow">
+          <attribute name="protocol"/>
+          <attribute name="port"/>
+          <attribute name="source"/>
+        </element>
+      </zeroOrMore>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="gem">
+      <attribute name="sources"/>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="gem">
+      <attribute name="packages"/>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="install">
+      <attribute name="src"/>
+      <attribute name="dst"/>
+      <attribute name="user"/>
+      <attribute name="group"/>
+      <attribute name="mode"/>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="keep">
+      <attribute name="name"/>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="link">
+      <attribute name="src"/>
+      <attribute name="dst"/>
+      <optional>
+        <attribute name="target-missing">
+          <value>delete</value>
+        </attribute>
+      </optional>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="notice">
+      <attribute name="message"/>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="pecl">
+      <attribute name="package"/>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="reload">
+      <attribute name="service"/>
+      <optional>
+        <attribute name="check-status">
+          <choice>
+            <value>yes</value>
+            <value>no</value>
+          </choice>
+        </attribute>
+      </optional>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="restart">
+      <attribute name="service"/>
+      <optional>
+        <attribute name="check-status">
+          <choice>
+            <value>yes</value>
+            <value>no</value>
+          </choice>
+        </attribute>
+      </optional>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="rrd-database">
+      <interleave>
+        <attribute name="name">
+          <ref name="file-path"/>
+        </attribute>
+        <attribute name="user">
+          <ref name="strict-token"/>
+        </attribute>
+        <attribute name="group">
+          <ref name="strict-token"/>
+        </attribute>
+        <attribute name="mode">
+          <ref name="file-mode"/>
+        </attribute>
+        <attribute name="step">
+          <data type="positiveInteger"/>
+        </attribute>
+        <zeroOrMore>
+          <element name="data-source">
+            <attribute name="name">
+              <ref name="relaxed-token"/>
+            </attribute>
+            <attribute name="type">
+              <value>gauge</value>
+            </attribute>
+            <attribute name="heartbeat">
+              <data type="positiveInteger"/>
+            </attribute>
+          </element>
+        </zeroOrMore>
+        <zeroOrMore>
+          <element name="archive">
+            <attribute name="name">
+              <ref name="relaxed-token"/>
+            </attribute>
+            <attribute name="function">
+              <value>average</value>
+            </attribute>
+            <attribute name="factor">
+              <data type="float">
+                <param name="minInclusive">0</param>
+                <param name="maxExclusive">1</param>
+              </data>
+            </attribute>
+            <attribute name="steps">
+              <data type="positiveInteger"/>
+            </attribute>
+            <attribute name="rows">
+              <data type="positiveInteger"/>
+            </attribute>
+          </element>
+        </zeroOrMore>
+      </interleave>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="runlevel-update">
+      <attribute name="service"/>
+      <attribute name="levels"/>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="set-flag">
+      <attribute name="name"/>
+      <optional>
+        <attribute name="value"/>
+      </optional>
+      <zeroOrMore>
+        <ref name="command"/>
+      </zeroOrMore>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="shell">
+      <optional>
+        <attribute name="cmd"/>
+      </optional>
+      <zeroOrMore>
+        <element name="env">
+          <attribute name="name"/>
+          <attribute name="value"/>
+        </element>
+      </zeroOrMore>
+      <zeroOrMore>
+        <element name="arg">
+          <choice>
+            <attribute name="name"/>
+            <attribute name="value"/>
+            <group>
+              <attribute name="name"/>
+              <attribute name="value"/>
+            </group>
+          </choice>
+        </element>
+      </zeroOrMore>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="shell-if">
+      <attribute name="cmd"/>
+      <zeroOrMore>
+        <ref name="command"/>
+      </zeroOrMore>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="start">
+      <attribute name="service"/>
+      <optional>
+        <attribute name="no-status">
+          <value>yes</value>
+        </attribute>
+      </optional>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="statoverride">
+      <attribute name="name"/>
+      <attribute name="user"/>
+      <attribute name="group"/>
+      <attribute name="mode"/>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="stop">
+      <attribute name="service"/>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="tmpdir">
+      <zeroOrMore>
+        <ref name="command"/>
+      </zeroOrMore>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="update-rcd">
+      <attribute name="name"/>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="warning">
+      <attribute name="message"/>
+    </element>
+  </define>
+  <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - file formats -->
+  <!-- - - - - - - - - - - - - - - - - - - - - apache -->
+  <define name="command" combine="choice">
+    <element name="file">
+      <attribute name="format">
+        <value>apache-conf</value>
+      </attribute>
+      <ref name="file-attributes"/>
+      <zeroOrMore>
+        <ref name="apache-prop"/>
+      </zeroOrMore>
+    </element>
+  </define>
+  <define name="apache-prop">
+    <choice>
+      <element name="section">
+        <attribute name="name"/>
+        <attribute name="value"/>
+        <zeroOrMore>
+          <ref name="apache-prop"/>
+        </zeroOrMore>
+      </element>
+      <element name="prop">
+        <attribute name="name"/>
+        <attribute name="value"/>
+      </element>
+    </choice>
+  </define>
+  <!-- - - - - - - - - - - - - - - - - - - - - bind -->
+  <define name="command" combine="choice">
+    <element name="file">
+      <attribute name="format">
+        <value>bind-conf</value>
+      </attribute>
+      <ref name="file-attributes"/>
+      <zeroOrMore>
+        <ref name="bind-prop"/>
+      </zeroOrMore>
+    </element>
+  </define>
+  <define name="bind-prop">
+    <zeroOrMore>
+      <element name="prop">
+        <choice>
+          <attribute name="name"/>
+          <attribute name="value"/>
+          <group>
+            <attribute name="name"/>
+            <attribute name="value"/>
+          </group>
+        </choice>
+        <zeroOrMore>
+          <ref name="bind-prop"/>
+        </zeroOrMore>
+      </element>
+    </zeroOrMore>
+  </define>
+  <define name="command" combine="choice">
+    <element name="file">
+      <attribute name="format">
+        <value>bind-zone</value>
+      </attribute>
+      <ref name="file-attributes"/>
+      <zeroOrMore>
+        <choice>
+          <element name="directive">
+            <attribute name="name"/>
+            <attribute name="value"/>
+          </element>
+          <element name="record">
+            <attribute name="name"/>
+            <attribute name="class"/>
+            <attribute name="type"/>
+            <attribute name="value"/>
+          </element>
+        </choice>
+      </zeroOrMore>
+    </element>
+  </define>
+  <!-- - - - - - - - - - - - - - - - - - - - - java -->
+  <define name="command" combine="choice">
+    <element name="file">
+      <attribute name="format">
+        <value>java-properties</value>
+      </attribute>
+      <ref name="file-attributes"/>
+      <zeroOrMore>
+        <element name="prop">
+          <attribute name="name"/>
+          <attribute name="value"/>
+        </element>
+      </zeroOrMore>
+    </element>
+  </define>
+  <!-- - - - - - - - - - - - - - - - - - - - - logrotate -->
+  <define name="command" combine="choice">
+    <element name="file">
+      <attribute name="format">
+        <value>logrotate-conf</value>
+      </attribute>
+      <ref name="file-attributes"/>
+      <zeroOrMore>
+        <element name="section">
+          <attribute name="name"/>
+          <zeroOrMore>
+            <choice>
+              <element name="prop">
+                <attribute name="name"/>
+                <optional>
+                  <attribute name="value"/>
+                </optional>
+              </element>
+              <element name="script">
+                <attribute name="name"/>
+                <zeroOrMore>
+                  <element name="line">
+                    <attribute name="value"/>
+                  </element>
+                </zeroOrMore>
+              </element>
+            </choice>
+          </zeroOrMore>
+        </element>
+      </zeroOrMore>
+    </element>
+  </define>
+  <!-- - - - - - - - - - - - - - - - - - - - - mysql -->
+  <define name="command" combine="choice">
+    <element name="file">
+      <attribute name="format">
+        <value>mysql-cnf</value>
+      </attribute>
+      <ref name="file-attributes"/>
+      <zeroOrMore>
+        <element name="section">
+          <attribute name="name"/>
+          <zeroOrMore>
+            <element name="prop">
+              <attribute name="name"/>
+              <optional>
+                <attribute name="value"/>
+              </optional>
+            </element>
+          </zeroOrMore>
+        </element>
+      </zeroOrMore>
+    </element>
+  </define>
+  <!-- - - - - - - - - - - - - - - - - - - - - nagios -->
+  <define name="command" combine="choice">
+    <element name="file">
+      <attribute name="format">
+        <value>nagios-config</value>
+      </attribute>
+      <ref name="file-attributes"/>
+      <zeroOrMore>
+        <element name="prop">
+          <attribute name="name"/>
+          <attribute name="value"/>
+        </element>
+      </zeroOrMore>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="file">
+      <attribute name="format">
+        <value>nagios-objects</value>
+      </attribute>
+      <ref name="file-attributes"/>
+      <zeroOrMore>
+        <element name="define">
+          <attribute name="name"/>
+          <zeroOrMore>
+            <element name="prop">
+              <attribute name="name"/>
+              <attribute name="value"/>
+            </element>
+          </zeroOrMore>
+        </element>
+      </zeroOrMore>
+    </element>
+  </define>
+  <!-- - - - - - - - - - - - - - - - - - - - - php -->
+  <define name="command" combine="choice">
+    <element name="file">
+      <attribute name="format">
+        <value>php</value>
+      </attribute>
+      <ref name="file-attributes"/>
+      <zeroOrMore>
+        <ref name="php-statement"/>
+      </zeroOrMore>
+    </element>
+  </define>
+  <define name="php-statement" combine="choice">
+    <element name="bool-var">
+      <attribute name="name"/>
+      <attribute name="value"/>
+    </element>
+  </define>
+  <define name="php-statement" combine="choice">
+    <element name="const-var">
+      <attribute name="name"/>
+      <attribute name="value"/>
+    </element>
+  </define>
+  <define name="php-statement" combine="choice">
+    <element name="define">
+      <attribute name="name"/>
+      <attribute name="value"/>
+    </element>
+  </define>
+  <define name="php-statement" combine="choice">
+    <element name="string-var">
+      <attribute name="name"/>
+      <attribute name="value"/>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="file">
+      <attribute name="format">
+        <value>php-ini</value>
+      </attribute>
+      <ref name="file-attributes"/>
+      <zeroOrMore>
+        <choice>
+          <element name="comment">
+            <attribute name="value"/>
+          </element>
+          <element name="section">
+            <attribute name="name"/>
+          </element>
+          <element name="prop">
+            <attribute name="name"/>
+            <attribute name="value"/>
+          </element>
+        </choice>
+      </zeroOrMore>
+    </element>
+  </define>
+  <!-- - - - - - - - - - - - - - - - - - - - - postfix -->
+  <define name="command" combine="choice">
+    <element name="file">
+      <attribute name="format">
+        <value>postfix-aliases</value>
+      </attribute>
+      <ref name="file-attributes"/>
+      <zeroOrMore>
+        <element name="alias">
+          <attribute name="source"/>
+          <attribute name="dest"/>
+        </element>
+      </zeroOrMore>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="file">
+      <attribute name="format">
+        <value>postfix-hash</value>
+      </attribute>
+      <ref name="file-attributes"/>
+      <zeroOrMore>
+        <element name="entry">
+          <attribute name="key"/>
+          <attribute name="value"/>
+        </element>
+      </zeroOrMore>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="file">
+      <attribute name="format">
+        <value>postfix-main</value>
+      </attribute>
+      <ref name="file-attributes"/>
+      <zeroOrMore>
+        <element name="prop">
+          <attribute name="name"/>
+          <attribute name="value"/>
+        </element>
+      </zeroOrMore>
+    </element>
+  </define>
+  <define name="command" combine="choice">
+    <element name="file">
+      <attribute name="format">
+        <value>postfix-master</value>
+      </attribute>
+      <ref name="file-attributes"/>
+      <zeroOrMore>
+        <element name="service">
+          <attribute name="name"/>
+          <attribute name="type"/>
+          <optional>
+            <attribute name="private"/>
+          </optional>
+          <optional>
+            <attribute name="unpriv"/>
+          </optional>
+          <optional>
+            <attribute name="chroot"/>
+          </optional>
+          <optional>
+            <attribute name="wakeup"/>
+          </optional>
+          <optional>
+            <attribute name="maxproc"/>
+          </optional>
+          <attribute name="cmd"/>
+        </element>
+      </zeroOrMore>
+    </element>
+  </define>
+  <!-- - - - - - - - - - - - - - - - - - - - - ssh -->
+  <define name="command" combine="choice">
+    <element name="file">
+      <attribute name="format">
+        <value>ssh-config</value>
+      </attribute>
+      <ref name="file-attributes"/>
+      <zeroOrMore>
+        <choice>
+          <element name="prop">
+            <attribute name="name"/>
+            <attribute name="value"/>
+          </element>
+          <element name="section">
+            <attribute name="name"/>
+            <attribute name="value"/>
+            <zeroOrMore>
+              <element name="prop">
+                <attribute name="name"/>
+                <attribute name="value"/>
+              </element>
+            </zeroOrMore>
+          </element>
+        </choice>
+      </zeroOrMore>
+    </element>
+  </define>
+  <!-- - - - - - - - - - - - - - - - - - - - - text -->
+  <define name="command" combine="choice">
+    <element name="file">
+      <interleave>
+        <attribute name="format">
+          <value>text</value>
+        </attribute>
+        <ref name="file-attributes"/>
+        <optional>
+          <element name="warn">
+            <attribute name="prefix"/>
+          </element>
+        </optional>
+        <zeroOrMore>
+          <element name="line">
+            <attribute name="value"/>
+          </element>
+        </zeroOrMore>
+      </interleave>
+    </element>
+  </define>
+  <!-- - - - - - - - - - - - - - - - - - - - - xml -->
+  <define name="command" combine="choice">
+    <element name="file">
+      <attribute name="format">
+        <value>xml</value>
+      </attribute>
+      <ref name="file-attributes"/>
+      <ref name="any"/>
+    </element>
+  </define>
+</grammar>

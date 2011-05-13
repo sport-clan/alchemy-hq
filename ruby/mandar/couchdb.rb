@@ -1,0 +1,1 @@
+require "mandar/couchdb/couchdb"

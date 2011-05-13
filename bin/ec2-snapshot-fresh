@@ -1,0 +1,88 @@
+#!/usr/bin/ruby
+
+script_path = $0
+script_path = File.readlink(script_path) while File.symlink?(script_path)
+CONFIG = File.expand_path("#{File.dirname(script_path)}/../..")
+$LOAD_PATH.unshift "#{CONFIG}/mandar/ruby"
+
+require "getoptlong"
+require "pp"
+require "mandar"
+require "xml"
+
+include Mandar::Tools::Escape
+
+$opts, $args = Mandar::Tools::Getopt.process ARGV, [
+	{ :name => :config, :required => :true },
+	{ :name => :host, :required => true, :regex => /[a-z][a-z0-9]*(?:-[a-z0-9]+)*/ },
+	{ :name => :critical, :required => true, :regex => /[1-9][0-9]*/, :convert => :to_i },
+	{ :name => :warning, :required => true, :regex => /[1-9][0-9]*/, :convert => :to_i },
+]
+
+# load config
+$config = XML::Document.file $opts[:config]
+
+# find host
+host_elem = $config.find_first("volume [@host = #{xp $opts[:host]}]")
+account = host_elem.attributes["aws-account"]
+zone = host_elem.attributes["availability-zone"]
+
+# get volume ids
+volume_ids = [ host_elem.attributes["volume-id"] ] + \
+	host_elem.find("old-volume-id").to_a.map { |elem| elem.attributes["value"] }
+
+# find zone
+zone_elem = $config.find_first("ec2-availability-zone [@name = #{xp zone}]")
+region = zone_elem.attributes["region"]
+
+# find aws account
+aws_account_elem = $config.find_first("aws-account[@name = #{xp account}]")
+aws_account_elem or raise "AWS account not found: #{account}"
+account = Mandar::AWS::Account.new
+account.name = aws_account_elem.attributes["name"]
+account.access_key_id = aws_account_elem.attributes["access-key-id"]
+account.secret_access_key = aws_account_elem.attributes["secret-access-key"]
+
+# create aws client
+endpoint = "ec2.#{region}.amazonaws.com"
+aws_client = Mandar::AWS::Client.new account, endpoint, "2010-08-31"
+aws_client.default_prefix = "a"
+
+# retrieve info
+resp = aws_client.describe_snapshots :filter => { :name => "volume-id", :value => volume_ids }
+
+# analyse response
+latest = nil
+latest_volume_id = nil
+latest_snapshot_id = nil
+resp.find("a:snapshotSet / a:item").each do |item_elem|
+	next unless item_elem.find_first("a:status").content == "completed"
+	item_time = Time.parse(item_elem.find_first("a:startTime").content)
+	next unless ! latest || latest < item_time
+	latest = item_time
+	latest_volume_id = item_elem.find "string (a:volumeId)"
+	latest_snapshot_id = item_elem.find "string (a:snapshotId)"
+end
+
+now = Time.now
+diff = latest ? (now - latest).to_i / 60 : nil
+
+case
+
+when diff == nil
+	puts "CRITICAL: no snapshot"
+	exit 2
+
+when diff >= $opts[:critical]
+	puts "CRITICAL: #{latest_volume_id}, #{latest_snapshot_id}, #{diff} minutes"
+	exit 2
+
+when diff >= $opts[:warning]
+	puts "WARNING: #{latest_volume_id}, #{latest_snapshot_id}, #{diff} minutes"
+	exit 1
+
+else
+	puts "OK: #{latest_volume_id}, #{latest_snapshot_id}, #{diff} minutes"
+	exit 0
+
+end

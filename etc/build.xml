@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project name="mandar" default="compile" basedir="..">
+
+	<property file="etc/build.properties"/>
+	<property file="etc/default.properties"/>
+
+	<taskdef resource="net/sf/antcontrib/antlib.xml"/>
+
+	<path id="libs">
+		<pathelement location=".lib/commons-io-1.4.jar"/>
+		<pathelement location=".lib/commons-logging-1.1.1.jar"/>
+		<pathelement location=".lib/httpclient-4.0.1.jar"/>
+		<pathelement location=".lib/httpcore-4.0.1.jar"/>
+		<pathelement location=".lib/json-simple-1.1.jar"/>
+		<pathelement location=".lib/lombok-0.9.2.jar"/>
+		<pathelement location=".lib/saxon-he-9.3.jar"/>
+		<pathelement location=".lib/xerces-2.9.0.jar"/>
+		<pathelement location=".lib/xom-1.2.5.jar"/>
+	</path>
+
+	<path id="compile.classpath">
+		<path refid="libs"/>
+	</path>
+
+	<path id="java.classpath">
+		<path refid="libs"/>
+		<path location=".classes"/>
+	</path>
+
+	<uptodate property="libs.flag" srcfile="etc/build.xml" targetfile=".lib/flag"/>
+	<!--<uptodate property="libs.flag" srcfile="etc/build.properties" targetfile=".lib/flag"/>
+	<uptodate property="libs.flag" srcfile="etc/default.properties" targetfile=".lib/flag"/>-->
+	<target name="fetch-libs" unless="libs.flag">
+		<foreach target="-fetch-lib" param="lib">
+			<path refid="libs"/>
+		</foreach>
+		<touch file=".lib/flag"/>
+	</target>
+	<target name="-fetch-lib">
+		<mkdir dir=".lib"/>
+		<basename file="${lib}" property="lib-basename"/>
+		<get src="${lib-dist-url}/${lib-basename}" dest="${lib}"
+			usetimestamp="true"/>
+	</target>
+
+	<target name="compile" depends="fetch-libs">
+		<mkdir dir=".classes"/>
+		<javac srcdir="java" destdir=".classes" debug="true" includeantruntime="false">
+			<classpath refid="compile.classpath"/>
+		</javac>
+		<copy todir=".classes">
+			<fileset dir="java" excludes="**/*.java"/>
+		</copy>
+	</target>
+
+	<target name="run-daemon" depends="compile">
+		<java classname="mandar.Daemon"
+			classpathref="java.classpath"
+			fork="true"
+			spawn="true">
+			<arg file=".."/>
+		</java>
+	</target>
+
+	<target name="run-config" depends="compile">
+		<mkdir dir="work/configs"/>
+		<mkdir dir="work/services"/>
+		<java classname="mandar.ConfigProcessor"
+			classpathref="java.classpath"
+			failonerror="true">
+			<arg file=".."/>
+		</java>
+	</target>
+
+	<target name="clean">
+		<delete dir="work"/>
+		<delete dir=".classes"/>
+	</target>
+
+	<target name="clean-all" depends="clean">
+		<delete dir=".lib"/>
+	</target>
+
+</project>

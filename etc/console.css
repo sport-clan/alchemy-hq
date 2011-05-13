@@ -1,0 +1,270 @@
+/*
+DEFINE main-dark #5c3566
+DEFINE main-medium #75507b
+DEFINE main-light #ad7fa8
+DEFINE darkgrey-dark #2e3436
+DEFINE darkgrey-medium #555753
+DEFINE darkgrey-light #888a85
+DEFINE lightgrey-dark #babdb6
+DEFINE lightgrey-medium #d3d7cf
+DEFINE lightgrey-light #eeeeec
+*/
+
+/* -------------------- general stuff */
+
+* {
+	font-family: inherit;
+	font-size: inherit;
+}
+
+html {
+	font-family: verdana, sans-serif;
+}
+
+a {
+	text-decoration: none;
+	color: black;
+}
+
+a:hover {
+	text-decoration: underline;
+	color: main-dark;
+}
+
+/* -------------------- forms */
+
+.fields {
+	width: 100%;
+	background: transparent;
+}
+
+.field .field-label {
+	vertical-align: middle;
+	white-space: nowrap;
+	text-align: center;
+	background: lightgrey-medium;
+}
+.field .field-label label {
+	display: block;
+}
+
+.field .field-value {
+	background: lightgrey-light;
+}
+
+.field-value input[type=text],
+.field-value textarea {
+	background: white;
+}
+
+.fields td {
+	border-top: 0.2em solid white;
+}
+
+.spacer-row td {
+	background: white;
+	border: 0;
+	height: 1px;
+	padding: 0;
+	border-spacing: 0;
+}
+
+input[type=text],
+input[type=email],
+textarea {
+	border: 0.1em solid lightgrey-dark;
+	background: lightgrey-light;
+}
+
+input[type=text]:disabled,
+input[type=email]:disabled,
+textarea:disabled {
+	background: lightgrey-medium;
+}
+
+div.content section input[type=text],
+div.content section input[type=email],
+div.content section textarea {
+	background: white;
+}
+
+div.input-hack {
+	padding-right: 1em;
+}
+
+div.input-hack input[type=text],
+div.input-hack input[type=email],
+div.input-hack textarea {
+	width: 100%;
+	padding: 0.2em 0.4em;
+}
+
+/* -------------------- page layout */
+
+body {
+	margin: 0;
+	padding: 0;
+}
+
+header {
+	padding: 1px 1em 1px 1em;
+}
+
+div.main {
+	display: table;
+	width: 100%;
+}
+
+div.sidebar {
+	display: table-cell;
+	width: 20%;
+}
+
+div.content {
+	display: table-cell;
+	width: 80%;
+}
+
+/* -------------------- header */
+
+header {
+	background: main-dark;
+	color: white;
+}
+
+header h1 {
+	margin: 0.4em 0;
+	font-size: 140%;
+	font-family: "trebuchet ms";
+}
+
+header nav {
+	background: main-medium;
+	margin: 0 -1em -1px -1em;
+	padding: 0.3em 1em;
+}
+
+header nav a {
+	color: white;
+	text-decoration: none;
+	padding: 0 0.4em;
+}
+
+header nav a:first-child {
+	margin-left: -0.4em;
+}
+
+header nav a:hover {
+	color: white;
+	background: main-dark;
+	outline: 0.2em solid main-dark;
+	text-decoration: underline;
+}
+
+/* -------------------- content */
+
+div.content {
+	padding: 1px 1em 1em 1em;
+}
+
+div.content h1 {
+	font-size: 150%;
+}
+
+div.content nav {
+	margin: 1em -1em 0 -1em;
+	background: lightgrey-light;
+	padding: 0.5em 1em 0.5em 1em;
+	margin-top: -1px;
+}
+
+div.content nav a {
+	color: black;
+	text-decoration: none;
+	margin-right: 1em;
+}
+
+div.content nav a:hover {
+	color: main-dark;
+	text-decoration: underline;
+}
+
+/*div.content section {
+	background: lightgrey-light;
+	margin-top: 1em;
+	padding: 1px 1em 1em 1em;
+}*/
+
+/* -------------------- sidebar */
+
+div.sidebar {
+	border-left: 2px solid lightgrey-medium;
+}
+
+/* -------------------- tables */
+
+table {
+	margin-top: 1em;
+	border-spacing: 0;
+}
+
+table th, table td {
+	vertical-align: top;
+	text-align: left;
+	padding: 0.2em 0.5em;
+}
+
+table th {
+	background: main-medium;
+	color: white;
+	font-weight: normal;
+}
+
+table td {
+	background: lightgrey-light;
+}
+
+div.content section table td {
+	background: white;
+}
+
+/* -------------------- misc */
+
+section.data-types .list-div {
+	-webkit-column-count: 3;
+}
+
+/* -------------------- log output */
+
+.mandar-log-item {
+	margin: 2px 0px;
+	background: #eee;
+}
+.mandar-log-hostname {
+	display: inline;
+}
+.mandar-log-plain {
+	display: inline;
+	font-family: "monospace", monospace;
+	white-space: pre;
+}
+.mandar-log-item-trace { color: #909; }
+.mandar-log-item-debug { color: #099; }
+.mandar-log-item-detail { color: #000; }
+.mandar-log-item-notice { color: #090; }
+.mandar-log-item-warning { color: #990; }
+.mandar-log-item-error { color: #900; }
+.mandar-log-hostname { color: #009; }
+
+.mandar-log-item-trace { display: none; }
+.mandar-log-item-debug { display: none; }
+
+.mandar-diff * {
+	font-family: "monospace", monospace;
+	white-space: pre;
+}
+.mandar-diff-plus-plus-plus { color: #c0c; }
+.mandar-diff-minus-minus-minus { color: #c0c; }
+.mandar-diff-at-at { color: #c0c; }
+.mandar-diff-plus { color: #33e; }
+.mandar-diff-minus { color: #e00; }
