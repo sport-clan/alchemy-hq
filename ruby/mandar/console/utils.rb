@@ -22,6 +22,11 @@ module Mandar::Console::Utils
 	end
 
 	def url path
+		ret = "#{config.attributes["url-prefix"]}#{path}"
+		return ret.empty? ? "/" : ret
+	end
+
+	def path path
 		ret = "#{config.attributes["path-prefix"]}#{path}"
 		return ret.empty? ? "/" : ret
 	end
@@ -195,8 +200,8 @@ module Mandar::Console::Utils
 		element_open :head
 
 		element_whole :title, {}, "#{content[:_title]} - Admin console"
-		element_whole :link, { rel: "stylesheet", href: url("/console.css") }
-		element_whole :link, { rel: "stylesheet", href: url("/forms.css") }
+		element_whole :link, { rel: "stylesheet", href: path("/console.css") }
+		element_whole :link, { rel: "stylesheet", href: path("/forms.css") }
 
 		element_close :head
 		element_open :body
