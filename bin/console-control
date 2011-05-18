@@ -1,6 +1,7 @@
 #!/usr/bin/ruby1.9.1
 
 require "etc"
+require "fileutils"
 
 load ENV["CONSOLE_DEFAULT"] || "/etc/default/#{File.basename $0}"
 
@@ -30,6 +31,14 @@ def stop
 	while File.directory? "/proc/#{pid}"
 		sleep 0.1
 	end
+end
+
+# ensure pid dir exists
+PID_DIR = File.dirname PID_FILE
+unless File.directory? PID_DIR
+	FileUtils.mkdir_p PID_DIR
+	FileUtils.chown USER, USER, PID_DIR
+	FileUtils.chmod 0755, PID_DIR
 end
 
 # set user
