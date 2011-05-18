@@ -13,14 +13,14 @@ require "resolv"
 require "set"
 
 $opts, $args = Mandar::Tools::Getopt.process ARGV, [
-	{ :name => :warning, :required => true, :convert => :to_f },
-	{ :name => :critical, :required => true, :convert => :to_f },
+	{ :name => :warning, :default => 10, :regex => /[0-9]+(\.[0-9]+)?/, :convert => :to_f },
+	{ :name => :critical, :default => 10, :regex => /[0-9]+(\.[0-9]+)?/, :convert => :to_f },
+	{ :name => :timeout, :default => 10, :regex => /[0-9]+(\.[0-9]+)?/, :convert => :to_f },
 	{ :name => :hostname, :required => true },
 	{ :name => :ssl, :boolean => true },
 	{ :name => :header, :multi => true },
 	{ :name => :path, :default => "/" },
 	{ :name => :regex },
-	{ :name => :timeout, :default => 10, :regex => /[0-9]+/, :convert => :to_f },
 	{ :name => :username },
 	{ :name => :password },
 	{ :name => :expect_header, :multi => true },
