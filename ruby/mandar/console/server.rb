@@ -68,9 +68,20 @@ class Mandar::Console::Server
 		proc_handler = MyProcHandler.new do |req, resp|
 
 			WEBrick::HTTPAuth.basic_auth req, resp, "Config console" do |user, pass|
-				# accept any user/password, this is handled by apache normally
-				req.attributes[:user] = user
-				! user.to_s.empty? ? true : false
+				role = config.find_first "role[@name=#{xp user}]"
+				puts "supplied: #{pass}"
+				expect = role.attributes["password-crypt"]
+				salt = expect.split("$")[2]
+				puts "expect: #{expect}"
+				puts "salt: #{salt}"
+				crypt = pass.crypt "$6$#{salt}$"
+				puts "got: #{crypt}"
+				if crypt == expect
+					req.attributes[:user] = user
+					true
+				else
+					false
+				end
 			end
 
 			req_ctx = {}
