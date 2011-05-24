@@ -27,7 +27,7 @@ if count > $opts[:critical]
 	messages << "#{count} files (critical is #{$opts[:critical]})"
 	critical = true
 elsif count > $opts[:warning]
-	messages << "#{count} files (warning is #{$opts[:critical]})"
+	messages << "#{count} files (warning is #{$opts[:warning]})"
 	warning = true
 else
 	messages << "#{count} files"
