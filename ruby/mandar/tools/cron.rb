@@ -4,7 +4,11 @@ module Mandar::Tools::Cron
 
 		is_tty = $stderr.tty?
 
-		unless log
+		if log
+			log = String.new log
+			log.gsub! /@ts(@|\b)/, Time.now.utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+			log.gsub! /@pid(@|\b)/, $$.to_s
+		else
 			require "tempfile"
 			temp = Tempfile.new "mandar-cron"
 			log = temp.path
