@@ -90,7 +90,7 @@ module Mandar::Tools::Getopt
 
 			# perform conversions
 			specs.values.each do |spec|
-				next unless ret.include? spec[:key]
+				next unless ret[spec[:key]].is_a? String
 				next unless spec[:convert].is_a? Symbol
 				ret[spec[:key]] = ret[spec[:key]].send spec[:convert]
 			end

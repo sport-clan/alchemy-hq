@@ -80,12 +80,40 @@ class GetoptTest < Test::Unit::TestCase
 		go_error args, spec, "option '--arg-0' is invalid: abcd"
 	end
 
-	# ---------------------------------------- required with conversion
+	# ---------------------------------------- conversions
 
-	def test_required_conversion_symbol
+	def test_required_conversion_integer_present
 		args = [ "--arg-0", "123" ]
 		spec = [ { name: :arg_0, required: true, regex: /[0-9]+/, convert: :to_i } ]
 		expect = { :arg_0 => 123 }
+		go expect, args, spec
+	end
+
+	def test_optional_conversion_no_default_present
+		args = [ "--arg-0", "123" ]
+		spec = [ { name: :arg_0, regex: /[0-9]+/, convert: :to_i } ]
+		expect = { :arg_0 => 123 }
+		go expect, args, spec
+	end
+
+	def test_optional_conversion_no_default_absent
+		args = [ ]
+		spec = [ { name: :arg_0, regex: /[0-9]+/, convert: :to_i } ]
+		expect = { :arg_0 => nil }
+		go expect, args, spec
+	end
+
+	def test_optional_conversion_with_default_present
+		args = [ "--arg-0", "123" ]
+		spec = [ { name: :arg_0, default: 10, regex: /[0-9]+/, convert: :to_i } ]
+		expect = { :arg_0 => 123 }
+		go expect, args, spec
+	end
+
+	def test_optional_conversion_with_default_absent
+		args = [ ]
+		spec = [ { name: :arg_0, default: 10, regex: /[0-9]+/, convert: :to_i } ]
+		expect = { :arg_0 => 10 }
 		go expect, args, spec
 	end
 
