@@ -35,7 +35,7 @@ module Mandar::Tools::Cron
 			stderr_saved.close unless is_tty
 
 			if caught_exception
-				system "cat #{log} >&2"
+				system "cat #{log} >&2" unless is_tty
 				$stderr.puts "Caught #{caught_exception.class}: #{caught_exception.message}"
 				$stderr.puts caught_exception.backtrace.join "\n"
 			end
