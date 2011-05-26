@@ -1,0 +1,162 @@
+#!/usr/bin/ruby
+
+script_path = $0
+script_path = File.readlink(script_path) while File.symlink?(script_path)
+CONFIG = File.expand_path("#{File.dirname(script_path)}/../..")
+$LOAD_PATH.unshift "#{CONFIG}/mandar/ruby"
+
+require "getoptlong"
+require "mandar"
+require "net/http"
+require "net/https"
+require "pp"
+require "resolv"
+require "set"
+
+class CheckSiteScript
+
+	def main args
+
+		@args = args
+
+		@name = "Site"
+		@messages = []
+		@critical = false
+		@warning = false
+		@unknown = false
+
+		process_args
+		perform_checks
+		perform_output
+
+		return @status
+	end
+
+	def process_args
+		@opts, @args = Mandar::Tools::Getopt.process ARGV, [
+			{ :name => :warning, :required => true, :convert => :to_f },
+			{ :name => :critical, :required => true, :convert => :to_f },
+			{ :name => :url, :required => true },
+			{ :name => :regex },
+			{ :name => :timeout, :convert => :to_f },
+			{ :name => :username },
+			{ :name => :password },
+		]
+		@args.empty? or raise "Extra args on command line"
+	end
+
+	def perform_checks
+
+		url = URI.parse @opts[:url]
+
+		addresses = Resolv.getaddresses url.host
+
+		worst = nil
+		successes = 0
+		failures = 0
+		mismatches = 0
+		error_codes = Set.new
+		addresses.each do |address|
+			req = nil
+			begin
+
+				start_time = Time.now
+
+				req = Net::HTTP::Get.new url.path
+				req["host"] = url.host
+				req["user-agent"] = "mandar check_site"
+				req.basic_auth @opts[:username], @opts[:password] if @opts[:username]
+
+				http = Net::HTTP.new address, url.port
+				http.open_timeout = @opts[:timeout]
+				http.read_timeout = @opts[:timeout]
+				http.use_ssl = url.scheme == "https"
+				http.start
+
+				res = http.request req
+
+				end_time = Time.now
+				duration = end_time - start_time
+
+				worst = duration if worst == nil
+				worst = duration if duration > worst
+
+				if res.code != "200"
+					error_codes << res.code
+				elsif @opts[:regex] && res.body !~ /#{@opts[:regex]}/
+					mismatches += 1
+				else
+					successes += 1
+				end
+
+			rescue Timeout::Error
+				failures += 1
+
+			end
+		end
+
+		errors = error_codes.size
+		total = successes + errors + failures + mismatches
+
+		if total == 0
+			critical "unable to resolve #{url.host}"
+		else
+			message "#{total} hosts found"
+
+			critical "#{failures} uncontactable" if failures > 0
+			critical "#{errors} errors (#{error_codes.to_a.join(",")})" if errors > 0
+			critical "#{mismatches} mismatches" if mismatches > 0
+
+			if worst >= @opts[:critical]
+				critical "#{worst}s time (critical is #{@opts[:critical]})"
+			elsif worst >= @opts[:warning]
+				warning "#{worst}s time (warning is #{@opts[:warning]})"
+			else
+				message "#{worst}s time"
+			end
+		end
+
+	end
+
+	def perform_output
+
+		if @critical
+			puts "#{@name} CRITICAL: #{@messages.join ", "}"
+			@status = 2
+
+		elsif @warning
+			puts "#{@name} WARNING: #{@messages.join ", "}"
+			@status = 1
+
+		elsif @unknown
+			puts "#{@name} UNKNOWN: #{@messages.join ", "}"
+			@status = 3
+
+		else
+			puts "#{@name} OK: #{@messages.join ", "}"
+			@status = 0
+		end
+	end
+
+	def message string
+		@messages << string
+	end
+
+	def critical string
+		@messages << string
+		@critical = true
+	end
+
+	def warning string
+		@messages << string
+		@warning = true
+	end
+
+	def unknown string
+		@messages << string
+		@unknown = true
+	end
+
+end
+
+exit CheckSiteScript.new.main ARGV
