@@ -8,8 +8,15 @@ class Mandar::Tools::MandarClient
 
 	def http
 		return @http if @http
-		@http = Net::HTTP.start @url.host, @url.port
+		@http = Net::HTTP.new @url.host, @url.port
 		@http.read_timeout = 300
+		if @url.scheme == "https"
+			@http.use_ssl = true
+			@http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+			@http.verify_depth = 5
+			@http.ca_path = "/etc/ssl/certs"
+		end
+		@http.start
 		return @http
 	end
 
@@ -29,7 +36,7 @@ class Mandar::Tools::MandarClient
 		case status
 			when 200 then return response
 			when 404 then return nil
-			else raise "Error"
+			else raise "Error #{status}"
 		end
 	end
 
