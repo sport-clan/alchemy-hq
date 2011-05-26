@@ -48,6 +48,8 @@ class CheckSiteScript
 	def perform_checks
 
 		url = URI.parse @opts[:url]
+		path = url.path
+		path += "?#{url.query}" if url.query
 
 		addresses = Resolv.getaddresses url.host
 
@@ -62,7 +64,7 @@ class CheckSiteScript
 
 				start_time = Time.now
 
-				req = Net::HTTP::Get.new url.path
+				req = Net::HTTP::Get.new path
 				req["host"] = url.host
 				req["user-agent"] = "mandar check_site"
 				req.basic_auth @opts[:username], @opts[:password] if @opts[:username]
