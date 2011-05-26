@@ -1,0 +1,54 @@
+#!/usr/bin/ruby
+
+script_path = $0
+script_path = File.readlink(script_path) while File.symlink?(script_path)
+CONFIG = File.expand_path("#{File.dirname(script_path)}/../..")
+$LOAD_PATH.unshift "#{CONFIG}/mandar/ruby"
+
+require "mandar"
+require "pp"
+
+$opts, $args = Mandar::Tools::Getopt.process ARGV, [
+	{ :name => :warning, :required => true, :convert => :to_i },
+	{ :name => :critical, :required => true, :convert => :to_i },
+	{ :name => :glob, :required => true },
+	{ :name => :name, :default => "NO FILES" },
+]
+$args.empty? or raise "Extra args on command line"
+
+messages = []
+unknown = false
+warning = false
+critical = false
+
+files = Dir.glob $opts[:glob]
+count = files.size
+if count > $opts[:critical]
+	messages << "#{count} files (critical is #{$opts[:critical]})"
+	critical = true
+elsif count > $opts[:warning]
+	messages << "#{count} files (warning is #{$opts[:warning]})"
+	warning = true
+else
+	messages << "#{count} files"
+end
+
+case
+
+when critical
+	puts "#{$opts[:name]} CRITICAL: #{messages.join ", "}"
+	exit 2
+
+when warning
+	puts "#{$opts[:name]} WARNING: #{messages.join ", "}"
+	exit 1
+
+when unknown
+	puts "#{$opts[:name]} UNKNOWN: #{messages.join ", "}"
+	exit 3
+
+else
+	puts "#{$opts[:name]} OK: #{messages.join ", "}"
+	exit 0
+
+end

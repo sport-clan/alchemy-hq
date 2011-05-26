@@ -1,0 +1,88 @@
+#!/usr/bin/ruby1.9.1
+
+require "cgi"
+require "fileutils"
+require "mandar"
+require "net/http"
+require "pp"
+require "time"
+require "uri"
+
+include Mandar::Tools::Escape
+
+class SendSmsUtil
+
+	def main args
+		@args = args
+		parse_args
+		load_config
+		find_provider
+		send_sms
+	end
+
+	def parse_args
+		@opts, @args = Mandar::Tools::Getopt.process @args, [
+			{ :name => :config, :required => true },
+			{ :name => :from, :required => true },
+			{ :name => :to, :required => true },
+			{ :name => :message, :required => true },
+			{ :name => :throttle, :regex => /[1-9][0-9]+/, :convert => :to_i },
+			{ :name => :throttle_dir },
+		]
+		@args.empty? or raise "Extra args on command line"
+	end
+
+	def load_config
+		config_doc = XML::Document.file @opts[:config]
+		@config = config_doc.root
+	end
+
+	def find_provider
+		@config.find("route").each do |route|
+			prefix = route.attributes["prefix"]
+			route_provider = route.attributes["provider"]
+			next unless @opts[:to] =~ /^#{prefix}/
+			@provider = @config.find_first "provider [@name = #{xp route_provider}]"
+			raise "Invalid provider specified in route: #{route_provider}" unless @provider
+			return
+		end
+		raise "No provider found for destination #{@opts[:to]}"
+	end
+
+	def send_sms
+
+		params = {}
+		@provider.find("request/param").each do |param|
+			param_name = param.attributes["name"]
+			param_value = param.attributes["value"]
+			param_value.gsub! "@[from]", @opts[:from]
+			param_value.gsub! "@[to]", @opts[:to]
+			param_value.gsub! "@[message]", @opts[:message]
+			params[param_name] = param_value
+		end
+		request_url = URI.parse @provider.find "string (request/@url)"
+		request_url.query = params.to_a.map { |k,v| "#{k}=#{v}" }.join "&"
+
+		request_path = request_url.path
+		request_path += "?" + request_url.query
+
+		Net::HTTP.start request_url.host, request_url.port do |http|
+
+			req = Net::HTTP::Get.new request_path
+			resp = http.request req
+
+			success_code = @provider.find "string (response/success/@status)"
+			success_regex = @provider.find "string (response/success/@regex)"
+			success_regex = /#{success_regex}/
+			raise "Response code #{resp.code} invalid" unless resp.code
+			raise "Response body invalid: #{resp.body}" unless resp.body =~ success_regex
+
+			puts "Message sent:"
+			puts resp.body
+
+		end
+	end
+
+end
+
+SendSmsUtil.new.main ARGV

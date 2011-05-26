@@ -5,19 +5,30 @@ module Mandar::Tools::Getopt
 		# convert easy_specs into specs
 		specs = {}
 		easy_specs.each do |easy_spec|
-			spec = {}
-			spec[:long_name] = "--#{easy_spec[:name].to_s.gsub "_", "-"}"
-			spec[:type] = case
-				when easy_spec[:boolean] then :boolean
-				when easy_spec[:required] then :required
-				else :optional
+			if easy_spec[:options]
+				(easy_spec[:options] | [ easy_spec[:default] ]).each do |option|
+					spec = {}
+					spec[:long_name] = "--#{option.to_s.gsub "_", "-"}"
+					spec[:type] = option == easy_spec[:default] ? :switch_default : :switch
+					spec[:key] = easy_spec[:name]
+					spec[:arg_value] = option
+					specs[spec[:long_name]] = spec
+				end
+			else
+				spec = {}
+				spec[:long_name] = "--#{easy_spec[:name].to_s.gsub "_", "-"}"
+				spec[:type] = case
+					when easy_spec[:boolean] then :boolean
+					when easy_spec[:required] then :required
+					else :optional
+				end
+				spec[:key] = easy_spec[:name]
+				spec[:arg_value] = easy_spec[:default]
+				spec[:verify] = easy_spec[:regex]
+				spec[:convert] = easy_spec[:convert]
+				spec[:multi] = easy_spec[:multi]
+				specs[spec[:long_name]] = spec
 			end
-			spec[:key] = easy_spec[:name]
-			spec[:arg_value] = easy_spec[:default]
-			spec[:verify] = easy_spec[:regex]
-			spec[:convert] = easy_spec[:convert]
-			spec[:multi] = easy_spec[:multi]
-			specs[spec[:long_name]] = spec
 		end
 
 		# save main argv value because we clobber it
@@ -90,7 +101,7 @@ module Mandar::Tools::Getopt
 
 			# perform conversions
 			specs.values.each do |spec|
-				next unless ret.include? spec[:key]
+				next unless ret[spec[:key]].is_a? String
 				next unless spec[:convert].is_a? Symbol
 				ret[spec[:key]] = ret[spec[:key]].send spec[:convert]
 			end

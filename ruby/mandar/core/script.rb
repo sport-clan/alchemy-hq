@@ -313,6 +313,7 @@ module Mandar::Core::Script
 					[ "grapher-graph", "name" ],
 					[ "grapher-graph-template", "name" ],
 					[ "grapher-scale", "name" ],
+					[ "role", "name" ],
 					[ "role-member", [ "role", "member" ] ],
 					[ "schema", "name" ],
 					[ "schema-option", "name" ],

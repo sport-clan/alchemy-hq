@@ -1,0 +1,35 @@
+#!/usr/bin/ruby
+
+script_path = $0
+script_path = File.readlink(script_path) while File.symlink?(script_path)
+CONFIG = File.expand_path("#{File.dirname(script_path)}/../..")
+$LOAD_PATH.unshift "#{CONFIG}/mandar/ruby"
+
+require "mandar"
+require "pp"
+
+$opts, $args = Mandar::Tools::Getopt.process ARGV, [
+	{ :name => :glob, :required => true },
+	{ :name => :compress_days, :regex => /[1-9][0-9]*/, :convert => :to_i },
+	{ :name => :keep_days, :regex => /[1-9][0-9]*/, :convert => :to_i },
+	{ :name => :mock, :boolean => true },
+	{ :name => :quiet, :boolean => true },
+]
+$args.empty? or raise "Extra args on command line"
+
+[ "#{$opts[:glob]}", "#{$opts[:glob]}.gz" ].each do |glob|
+	Dir.glob(glob).each do |file|
+
+		file =~ /([0-9]{4}-[0-9]{2}-[0-9]{2})\.log(\.gz)?$/ or next
+		date, compressed = $1, $2
+
+		age = Date.today - Date.parse(date)
+		if $opts[:keep_days] && age >= $opts[:keep_days]
+			puts "remove #{file} (#{age} days)" unless $opts[:quiet]
+			system "rm #{file}" unless $opts[:mock]
+		elsif $opts[:compress_days] && age >= $opts[:compress_days] && ! compressed
+			puts "compress #{file} (#{age} days)" unless $opts[:quiet]
+			system "gzip #{file}" unless $opts[:mock]
+		end
+	end
+end
