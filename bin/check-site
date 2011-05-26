@@ -83,7 +83,7 @@ class CheckSiteScript
 
 				if res.code != "200"
 					error_codes << res.code
-				elsif @opts[:regex] && res.body !~ @opts[:regex]
+				elsif @opts[:regex] && res.body !~ /#{@opts[:regex]}/
 					mismatches += 1
 				else
 					successes += 1
