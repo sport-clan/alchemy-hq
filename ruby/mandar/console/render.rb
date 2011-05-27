@@ -312,7 +312,7 @@ module Mandar::Console::Render
 		}
 
 		attrs = {}
-		attrs[:href] = url content[:_href]
+		attrs[:href] = path content[:_href]
 
 		element_whole :a, attrs, content[:_label]
 	end

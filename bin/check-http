@@ -13,14 +13,14 @@ require "resolv"
 require "set"
 
 $opts, $args = Mandar::Tools::Getopt.process ARGV, [
-	{ :name => :warning, :required => true, :convert => :to_f },
-	{ :name => :critical, :required => true, :convert => :to_f },
+	{ :name => :warning, :default => 10, :regex => /[0-9]+(\.[0-9]+)?/, :convert => :to_f },
+	{ :name => :critical, :default => 10, :regex => /[0-9]+(\.[0-9]+)?/, :convert => :to_f },
+	{ :name => :timeout, :default => 10, :regex => /[0-9]+(\.[0-9]+)?/, :convert => :to_f },
 	{ :name => :hostname, :required => true },
 	{ :name => :ssl, :boolean => true },
 	{ :name => :header, :multi => true },
 	{ :name => :path, :default => "/" },
 	{ :name => :regex },
-	{ :name => :timeout, :default => 10, :regex => /[0-9]+/, :convert => :to_f },
 	{ :name => :username },
 	{ :name => :password },
 	{ :name => :expect_header, :multi => true },
@@ -47,7 +47,12 @@ http.read_timeout = $opts[:timeout]
 http.use_ssl = $opts[:ssl]
 http.start
 
-res = http.request req
+timeout = false
+begin
+	res = http.request req
+rescue Timeout::Error
+	timeout = true
+end
 
 end_time = Time.now
 duration = end_time - start_time
@@ -61,10 +66,11 @@ warning = false
 critical = false
 
 # check timeout
-if duration >= $opts[:timeout]
+if timeout || duration >= $opts[:timeout]
 
 	# timed out
 	messages << "timed out after #{$opts[:timeout]}s"
+	critical = true
 
 else
 

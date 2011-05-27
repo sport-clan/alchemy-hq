@@ -169,7 +169,7 @@ module Mandar::Console::Forms
 		(0...(MAX_DEPTH + 2)).each do |i|
 
 			element_open :td, { class: "spacer-col spacer-col-#{i}" }
-			element_whole :img, { src: url("/empty.png"), width: COL_STEP, height: 1 }
+			element_whole :img, { src: path("/empty.png"), width: COL_STEP, height: 1 }
 			element_close :td
 		end
 		element_close :tr

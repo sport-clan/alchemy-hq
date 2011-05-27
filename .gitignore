@@ -1,3 +1,4 @@
+*.rnc.rng
 /.classes
 /.classes-eclipse
 /.compile-flag
