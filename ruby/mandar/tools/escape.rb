@@ -4,4 +4,8 @@ module Mandar::Tools::Escape
 		return "'" + str.gsub("'", "''") + "'"
 	end
 
+	def ue str
+	   return CGI::escape str
+	end
+
 end

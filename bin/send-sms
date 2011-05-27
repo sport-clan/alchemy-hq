@@ -12,6 +12,8 @@ include Mandar::Tools::Escape
 
 class SendSmsUtil
 
+	include Mandar::Tools::Escape
+
 	def main args
 		@args = args
 		parse_args
@@ -61,7 +63,7 @@ class SendSmsUtil
 			params[param_name] = param_value
 		end
 		request_url = URI.parse @provider.find "string (request/@url)"
-		request_url.query = params.to_a.map { |k,v| "#{k}=#{v}" }.join "&"
+		request_url.query = params.to_a.map { |k,v| "#{ue k}=#{ue v}" }.join "&"
 
 		request_path = request_url.path
 		request_path += "?" + request_url.query
