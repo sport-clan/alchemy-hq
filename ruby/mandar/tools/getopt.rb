@@ -1,22 +1,31 @@
 module Mandar::Tools::Getopt
 
+	def self.to_long name
+		return "--#{name.to_s.gsub "_", "-"}"
+	end
+
 	def self.process argv, easy_specs
 
 		# convert easy_specs into specs
 		specs = {}
+		ret = {}
 		easy_specs.each do |easy_spec|
 			if easy_spec[:options]
-				(easy_spec[:options] | [ easy_spec[:default] ]).each do |option|
+				options = easy_spec[:options].clone
+				options << easy_spec[:default] if easy_spec[:default]
+				options.each do |option|
 					spec = {}
-					spec[:long_name] = "--#{option.to_s.gsub "_", "-"}"
+					spec[:long_name] = to_long option
 					spec[:type] = option == easy_spec[:default] ? :switch_default : :switch
 					spec[:key] = easy_spec[:name]
 					spec[:arg_value] = option
 					specs[spec[:long_name]] = spec
 				end
+				ret[easy_spec[:name]] = easy_spec[:default]
 			else
+				easy_spec[:long_name] = to_long easy_spec[:name]
 				spec = {}
-				spec[:long_name] = "--#{easy_spec[:name].to_s.gsub "_", "-"}"
+				spec[:long_name] = to_long easy_spec[:name]
 				spec[:type] = case
 					when easy_spec[:boolean] then :boolean
 					when easy_spec[:required] then :required
@@ -28,6 +37,15 @@ module Mandar::Tools::Getopt
 				spec[:convert] = easy_spec[:convert]
 				spec[:multi] = easy_spec[:multi]
 				specs[spec[:long_name]] = spec
+				if easy_spec[:multi]
+					ret[easy_spec[:name]] = []
+				elsif easy_spec[:boolean]
+					ret[easy_spec[:name]] = false
+				elsif easy_spec[:required]
+					# do nothing
+				else
+					ret[easy_spec[:name]] = easy_spec[:default]
+				end
 			end
 		end
 
@@ -40,7 +58,6 @@ module Mandar::Tools::Getopt
 
 			require "getoptlong"
 			getopt_args = []
-			ret = {}
 			specs.each do |long_name, spec|
 				getopt_flags = case spec[:type]
 					when :required then GetoptLong::REQUIRED_ARGUMENT
@@ -51,9 +68,9 @@ module Mandar::Tools::Getopt
 					else raise "Invalid getopt argument type: #{spec[:type]}"
 				end
 				getopt_args << [ spec[:long_name], getopt_flags ]
-				ret[spec[:key]] = spec[:arg_value] if [ :optional, :switch_default ].include? spec[:type]
-				ret[spec[:key]] = [] if spec[:multi]
-				ret[spec[:key]] = false if spec[:type] == :boolean
+				#ret[spec[:key]] = spec[:arg_value] if [ :optional, :switch_default ].include? spec[:type]
+				#ret[spec[:key]] = [] if spec[:multi]
+				#ret[spec[:key]] = false if spec[:type] == :boolean
 			end
 			ARGV.clear
 			new_argv.each { |arg| ARGV << arg }
@@ -77,25 +94,27 @@ module Mandar::Tools::Getopt
 				next unless spec[:type] == :required
 				next if ! spec[:multi] && ret.include?(spec[:key])
 				next if spec[:multi] && ! ret[spec[:key]].empty?
-				$stderr.puts "#{$0}: option '#{spec[:long_name]}' is required"
-				raise Mandar::Tools::GetoptError
+				msg = "#{$0}: option '#{spec[:long_name]}' is required"
+				$stderr.puts msg
+				raise Mandar::Tools::GetoptError.new msg
 			end
 
-			# check for mismatched arguments
-			specs.values.each do |spec|
-				next unless ret.include? spec[:key]
-				next unless spec[:verify].is_a? Regexp
-				next if ret[spec[:key]] == spec[:arg_value]
-				if spec[:multi]
-					ret[spec[:key]].each do |value|
-						next if value =~ /^#{spec[:verify]}$/
-						$stderr.puts "#{$0}: option '#{spec[:long_name]}' is invalid: #{value}"
-						raise Mandar::Tools::GetoptError
+			# check for mismatched regex arguments
+			easy_specs.each do |easy_spec|
+				next unless easy_spec[:regex]
+				if easy_spec[:multi]
+					ret[easy_spec[:name]].each do |value|
+						next if value =~ /^#{easy_spec[:regex]}$/
+						msg = "#{$0}: option '#{easy_spec[:long_name]}' is invalid: #{value}"
+						$stderr.puts msg
+						raise Mandar::Tools::GetoptError.new msg
 					end
 				else
-					next if ret[spec[:key]] =~ /^#{spec[:verify]}$/
-					$stderr.puts "#{$0}: option '#{spec[:long_name]}' is invalid: #{ret[spec[:key]]}"
-					raise Mandar::Tools::GetoptError
+					next if ret[easy_spec[:name]] == easy_spec[:default]
+					next if ret[easy_spec[:name]] =~ /^#{easy_spec[:regex]}$/
+					msg = "#{$0}: option '#{easy_spec[:long_name]}' is invalid: #{ret[easy_spec[:name]]}"
+					$stderr.puts msg
+					raise Mandar::Tools::GetoptError.new msg
 				end
 			end
 

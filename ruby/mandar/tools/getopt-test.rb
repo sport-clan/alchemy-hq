@@ -214,4 +214,42 @@ class GetoptTest < Test::Unit::TestCase
 		go expect, args, spec
 	end
 
+	# ---------------------------------------- switch
+
+	def test_switch_missing_no_default
+		args = %W[ ]
+		spec = [ { name: :arg0, options: [ :opt0, :opt1 ] } ]
+		expect = { :arg0 => nil }
+		go expect, args, spec
+	end
+
+	def test_switch_missing_default
+		args = %W[ ]
+		spec = [ { name: :arg0, default: :opt0, options: [ :opt1 ] } ]
+		expect = { :arg0 => :opt0 }
+		go expect, args, spec
+	end
+
+	def test_switch_present_no_default
+		args = %W[ --opt1 ]
+		spec = [ { name: :arg0, options: [ :opt0, :opt1 ] } ]
+		expect = { :arg0 => :opt1 }
+		go expect, args, spec
+	end
+
+	def test_switch_present_default
+		args = %W[ --opt1 ]
+		spec = [ { name: :arg0, default: :opt0, options: [ :opt1 ] } ]
+		expect = { :arg0 => :opt1 }
+		go expect, args, spec
+	end
+
+	def test_switch_multiple_no_default
+		# TODO
+	end
+
+	def test_switch_multiple_default
+		# TODO
+	end
+
 end
