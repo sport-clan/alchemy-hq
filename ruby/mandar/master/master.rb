@@ -118,21 +118,32 @@ module Mandar::Master
 			--checksum
 			--copy-links
 			--delete
+			--delete-excluded
 			--executability
 			--perms
 			--recursive
 			--rsh=#{rsh_cmd}
 			--timeout=30
 
-			--exclude=/abstract
-			--exclude=/concrete
-			--exclude=/alchemy-hq/etc/build.properties
-			--exclude=/mandar-config.xml
 			--include=/.work/concrete
 			--include=/.work/concrete/#{host_name}
 			--exclude=/.work/concrete/*
 			--exclude=/.work/*
 			--include=/.work
+
+			--include=/alchemy-hq
+			--include=/alchemy-hq/bin
+			--include=/alchemy-hq/etc
+			--exclude=/alchemy-hq/etc/build.properties
+			--include=/alchemy-hq/ruby
+			--exclude=/alchemy-hq/*
+
+			--include=/scripts
+
+			--include=/#{File.basename $0}
+
+			--exclude=/*
+
 			--exclude=.*
 
 			#{CONFIG}/
