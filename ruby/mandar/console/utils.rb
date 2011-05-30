@@ -22,7 +22,7 @@ module Mandar::Console::Utils
 	end
 
 	def url path
-		ret = "#{config.attributes["url-prefix"]}#{path}"
+		ret = "#{config.attributes["url-prefix"]}#{config.attributes["path-prefix"]}#{path}"
 		return ret.empty? ? "/" : ret
 	end
 
