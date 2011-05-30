@@ -122,11 +122,11 @@ module Mandar::Master
 			--perms
 			--recursive
 			--rsh=#{rsh_cmd}
-			--timeout=10
+			--timeout=30
 
 			--exclude=/abstract
 			--exclude=/concrete
-			--exclude=/mandar/etc/build.properties
+			--exclude=/alchemy-hq/etc/build.properties
 			--exclude=/mandar-config.xml
 			--include=/.work/concrete
 			--include=/.work/concrete/#{host_name}

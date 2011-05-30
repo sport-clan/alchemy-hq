@@ -258,7 +258,8 @@ module Mandar::Core::Script
 				Mandar::Master.deploy hosts
 
 			when "server-deploy"
-				system "test -h /mandar || ln -s #{Mandar.deploy_dir}/mandar /mandar"
+				system "test -h /mandar && rm /mandar"
+				system "test -h /alchemy-hq || ln -s #{Mandar.deploy_dir}/alchemy-hq /alchemy-hq"
 				File.open("/etc/mandar-hostname", "w") { |f| f.puts ARGV[1] }
 				Mandar::Deploy::Control.deploy Mandar::Core::Config.service.find("task")
 
