@@ -413,6 +413,14 @@ module Mandar::Core::Script
 					Mandar::Console::Server.new.run
 				end
 
+			when "run"
+				Mandar.host = "local"
+				hosts = process_hosts ARGV[1]
+				Mandar::Master.run_command hosts, ARGV[2..-1].join(" ")
+
+			when "server-run"
+				Mandar::Support::Core.shell ARGV[1]
+
 			else
 				Mandar.error "syntax error"
 
