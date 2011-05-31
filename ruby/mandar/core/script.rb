@@ -336,59 +336,8 @@ module Mandar::Core::Script
 
 				Mandar.notice "done"
 
-			when "deploy-master"
-				Mandar.die "TODO fix me!"
-				raise "syntax error" unless ARGV.length == 2
-				git_rev = ARGV[1]
-
-				Mandar.host = "local"
-
-				Mandar.notice "pushing #{git_rev} to origin"
-				system "git --git-dir #{CONFIG}/.git push origin #{git_rev}" or raise "error"
-				git_commit_id = %x[ git --git-dir #{CONFIG}/.git rev-parse #{git_rev} ][0...8]
-
-				Mandar.notice "selecting #{git_commit_id}"
-				cdb = Mandar.cdb
-
-				deploy_master = cdb.get("deployment/TODO-mandar-live")
-				deploy_master["version"] = git_commit_id
-				deploy_master["updated"] = Time.now.to_i
-				cdb.update deploy_master
-
-				deploy_console = cdb.get("deployment/TODO-console")
-				deploy_console["version"] = git_commit_id
-				deploy_console["updated"] = Time.now.to_i
-				cdb.update deploy_console
-
-				$no_database = false
-				$no_config = false
-				$series = true
-
-				Mandar::Core::Config.rebuild_abstract
-				Mandar::Core::Config.rebuild_concrete [ "xenon" ]
-				Mandar::Master.deploy [ "xenon" ]
-
 			when "help", nil
 				puts HELP
-
-			when "test"
-
-				# find aws account
-				Mandar.host = "local"
-				aws_account_row = Mandar.cdb.get("aws-account/production")
-				aws_account = Mandar::AWS::Account.new
-				aws_account.name = aws_account_row["name"]
-				aws_account.access_key_id = aws_account_row["access-key-id"]
-				aws_account.secret_access_key = aws_account_row["secret-access-key"]
-
-				# create aws client
-				aws_client = Mandar::AWS::Client.new aws_account, "ec2.amazonaws.com", "2010-08-31"
-				aws_client.default_prefix = "a"
-
-				# retrieve info
-				resp = aws_client.describe_snapshots :filter => { :name => "volume-id", :value => "vol-e63b668f" }
-				pp resp
-				exit
 
 			when "clean"
 				Mandar::Master.disconnect_all
