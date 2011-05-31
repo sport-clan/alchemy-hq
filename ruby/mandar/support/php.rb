@@ -26,7 +26,12 @@ module Mandar::Support::PHP
 			when "define"
 				check_constant define_name = elem0.attributes["name"]
 				define_value = elem0.attributes["value"]
-				f.print "define (#{to_php define_name}, #{to_php define_value});\n"
+				if define_value
+					f.print "define (#{to_php define_name}, #{to_php define_value});\n"
+				else
+					config = Mandar::Support::ConfigFuncs.xml_to_config elem0.find_first("*")
+					f.puts "define (#{to_php define_name}, #{to_php config});\n"
+				end
 
 			when "string-var"
 				check_variable var_name = elem0.attributes["name"]
