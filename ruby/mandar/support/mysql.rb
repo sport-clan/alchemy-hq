@@ -32,6 +32,10 @@ module Mandar::Support::MySQL
 					end
 				end
 
+			when "include-dir"
+				include_name = elem0.attributes["name"]
+				f.print "!includedir #{include_name}\n"
+
 			else
 				raise "Unexpected #{elem0.name} element"
 			end
