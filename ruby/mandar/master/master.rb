@@ -293,4 +293,13 @@ module Mandar::Master
 			Mandar.notice "all deployments completed successfully"
 		end
 	end
+
+	def self.run_command hosts, command
+		Mandar.notice "running command on hosts"
+		hosts.each do |host|
+			Mandar.notice "running on #{host}"
+			Mandar::Master.run_self_on_host host, [ "server-run", command ]
+		end
+	end
+
 end
