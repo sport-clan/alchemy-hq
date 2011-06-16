@@ -19,6 +19,12 @@ module Mandar::Support::Apache
 			when "comment"
 				f.puts "#{indent}; #{child_value}"
 
+			when "literal"
+				value = child_elem.find "string (value)"
+				value.split(/[\r\n]+/).each do |line|
+					f.puts "#{indent}#{line}"
+				end
+
 			else
 				raise "Unexpected #{child_elem.name} element"
 
