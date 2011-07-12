@@ -1,0 +1,65 @@
+#!/usr/bin/ruby1.9.1
+
+require "rubygems"
+
+require "json"
+require "mandar"
+require "mongo"
+require "pp"
+
+module AlchemyHQ end
+module AlchemyHQ::Scripts end
+
+class AlchemyHQ::Scripts::MongoImportScript
+
+	attr_accessor :args
+	attr_accessor :status
+
+	def initialize
+		@args = []
+		@status = 0
+	end
+
+	def main
+		process_args
+		setup
+		inner_main
+	end
+
+	def inner_main
+		File.open @opts[:data], "r" do |f|
+			while line = f.gets
+				line.strip!
+				data = JSON.parse line
+				id = data["_id"]
+				data.delete "_id"
+				@coll.update({ "_id" => id }, data, :safe => true, :upsert => true)
+			end
+		end
+	end
+
+	def process_args
+		@opts, @args = Mandar::Tools::Getopt.process @args, [
+			{ name: :hostname, default: "localhost" },
+			{ name: :port, default: 27017, regex: /[1-9][0-9]*/, convert: :to_i },
+			{ name: :database, default: "test" },
+			{ name: :collection, required: true },
+			{ name: :upsert, boolean: true },
+			{ name: :data, required: true },
+		]
+	end
+
+	def setup
+		@mongo = Mongo::Connection.new @opts[:hostname], @opts[:port]
+		@db = @mongo.db @opts[:database]
+		@coll = @db[@opts[:collection]]
+	end
+
+end
+
+if $0 =~ /\/mongo-import$/
+	script = AlchemyHQ::Scripts::MongoImportScript.new
+	script.args = ARGV
+	script.main
+	exit script.status
+end
