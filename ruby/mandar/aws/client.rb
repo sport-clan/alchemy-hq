@@ -21,6 +21,7 @@ class Mandar::AWS::Client
 		query_string = params_to_signed_query_string(params)
 
 		require "net/http"
+		require "net/https"
 		unless @http
 			@http = Net::HTTP.new @endpoint, 443
 			@http.use_ssl = true
