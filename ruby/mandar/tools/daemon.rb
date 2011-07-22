@@ -61,7 +61,7 @@ module Mandar::Tools::Daemon
 				end
 
 				# yield
-				yield
+				yield self
 
 			rescue => e
 
@@ -72,7 +72,7 @@ module Mandar::Tools::Daemon
 	end
 
 	def self.log message
-		now = Time.now.strftime "%Y-%m-%d %H:%M:%S %Z"
+		now = Time.now.utc.strftime "%Y-%m-%dT%H:%M:%SZ"
 		message.chomp.split("\n").each do |line|
 			$stderr.puts "#{now} #{line}"
 			@wr.puts "log #{now} #{line}" if @wr
@@ -83,6 +83,49 @@ module Mandar::Tools::Daemon
 		@wr.puts "exit #{status}"
 		@wr.close
 		@wr = nil
+	end
+
+	def self.stop options
+
+		# check for existing pid file
+		unless File.exists? options[:pid_path]
+			log "No PID file found"
+			return
+		end
+		existing_pid = File.read(options[:pid_path]).to_i
+
+		# check for process
+		unless File.directory? "/proc/#{existing_pid}"
+			log "No process found with PID #{existing_pid}"
+			log "Removing stale PID file"
+			File.unlink options[:pid_path]
+			return
+		end
+
+		# kill process and wait for it to die
+		log "Killing PID #{existing_pid}"
+		Process.kill "TERM", existing_pid
+		sleep 0.1 while File.directory? "/proc/#{existing_pid}"
+
+	end
+
+	def self.auto opts, &proc
+		case opts[:action]
+
+		when :start
+			self.start opts, &proc
+
+		when :stop
+			self.stop opts, &proc
+
+		when :restart
+			self.stop opts, &proc
+			self.start opts, &proc
+
+		else
+			raise "Don't recognise action: #{opts[:action]}"
+
+		end
 	end
 
 end

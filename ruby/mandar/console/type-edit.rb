@@ -145,7 +145,7 @@ class Mandar::Console::TypeEdit
 	end
 
 	def update_field_bigtext type_elem, field_elem, path, form, value
-		return form[path].to_s
+		return form[path].to_s.gsub("\r\n", "\n")
 	end
 
 # ======================================== xml field
