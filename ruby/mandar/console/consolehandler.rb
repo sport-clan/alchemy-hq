@@ -60,6 +60,11 @@ class Mandar::Console::ConsoleHandler
 			get_vars["id"] = $1
 			Mandar::Console::TypeEdit.new.handle
 
+		when /^\/about$/
+			set_content_type "text/plain"
+			console_print "LibXML ruby version: #{XML::VERSION}\n"
+			console_print "LibXML native version: #{XML::LIBXML_VERSION}\n"
+
 		else
 			not_found
 
