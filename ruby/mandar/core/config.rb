@@ -25,8 +25,8 @@ module Mandar::Core::Config
 			doc = XML::Document.file mandar_config_file, :options =>XML::Parser::Options::NOBLANKS
 
 			# validate document
-			relax = Mandar::Core::Config.load_relax_ng "#{MANDAR}/etc/mandar-config.rnc"
-			doc.validate_relaxng relax
+			#relax = Mandar::Core::Config.load_relax_ng "#{MANDAR}/etc/mandar-config.rnc"
+			#doc.validate_relaxng relax
 
 			# save and return
 			return @mandar_config = doc.root
