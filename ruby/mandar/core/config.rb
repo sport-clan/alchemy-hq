@@ -5,7 +5,6 @@ module Mandar::Core::Config
 
 	def self.reload()
 		mandar true
-		config true
 		service true
 	end
 
@@ -74,7 +73,7 @@ module Mandar::Core::Config
 
 				# load xml
 				XML::default_line_numbers = true
-				doc = XML::Document.file "#{dir}/#{file}", :options =>XML::Parser::Options::NOBLANKS
+				doc = XML::Document.string File.read("#{dir}/#{file}"), :options =>XML::Parser::Options::NOBLANKS
 
 				# merge it in
 				doc.root.find("*").each do |elem|
@@ -282,7 +281,14 @@ module Mandar::Core::Config
 		return elem
 	end
 
-	def self.data_dump()
+	def self.schemas_elem
+		return @schemas_elem if @schemas_elem && ! reload
+		schemas_doc = XML::Document.file "#{WORK}/schema.xml", :options =>XML::Parser::Options::NOBLANKS
+		@schemas_elem = schemas_doc.root
+		return @schemas_elem
+	end
+
+	def self.data_dump
 
 		Mandar.notice "dumping data"
 
@@ -296,8 +302,6 @@ module Mandar::Core::Config
 		FileUtils.remove_entry_secure "#{WORK}/data" if File.directory? "#{WORK}/data"
 		FileUtils.mkdir_p "#{WORK}/data", :mode => 0700
 
-		schemas_doc = XML::Document.file "#{WORK}/schema.xml", :options =>XML::Parser::Options::NOBLANKS
-		schemas_elem = schemas_doc.root
 		rows = Mandar.cdb.view("root", "by_type")["rows"]
 		values_by_type = Hash.new
 		rows.each do |row|
@@ -360,8 +364,6 @@ module Mandar::Core::Config
 		@data_docs = {}
 		@data_strs = {}
 
-		schemas_elem = XML::Parser.file("#{WORK}/schema.xml").parse.root
-
 		schemas_elem.find("schema").each do |schema_elem|
 			schema_name = schema_elem.attributes["name"]
 
@@ -404,7 +406,7 @@ module Mandar::Core::Config
 		end
 		old_schema_data = File.read(schema_file)
 
-		# process abstract config, repeat until schema is consistent
+		# process abstract config, repeat until schema and rules are consistent
 		while true
 
 			if $no_database
@@ -419,11 +421,11 @@ module Mandar::Core::Config
 
 			# write new schema file
 			Mandar.trace "writing schema.xml"
-			Tempfile.open("mandar") do |f|
+			Tempfile.open("alchemy-hq-schemas-xml-") do |f|
 				doc = XML::Document.new
 				doc.root = XML::Node.new "schemas"
 
-				%W[ schema schema-option ].each do |elem_name|
+				%W[ schema schema-option abstract-rule ].each do |elem_name|
 					schema_result = Mandar::Engine::Abstract.results[elem_name]
 					if schema_result
 						schema_result[:doc].root.find(elem_name).each do |schema_elem|
@@ -434,6 +436,7 @@ module Mandar::Core::Config
 				f.puts doc.to_s
 				FileUtils.move f.path, schema_file
 			end
+			@schemas_elem = nil
 
 			# if schema file hasn't changed then we're done, otherwise start again
 			new_schema_data = File.read(schema_file)
