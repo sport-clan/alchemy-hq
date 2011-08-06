@@ -24,9 +24,9 @@ module Mandar::EC2::LoadBalancer
 				a:member
 			").each do |balancer_elem|
 				balancer = {
-					:name => balancer_elem.find_first("string (a:LoadBalancerName)"),
+					:name => balancer_elem.find("string (a:LoadBalancerName)"),
 					:instances => balancer_elem.find("a:Instances / a:member").to_a.map { |instance_elem|
-						instance_elem.find_first "string (a:InstanceId)"
+						instance_elem.find "string (a:InstanceId)"
 					}.sort,
 					:zones => balancer_elem.find("a:AvailabilityZones / a:member").to_a.map { |zone_elem|
 						zone_elem.find("string()")

@@ -466,7 +466,7 @@ module Mandar::Core::Config
 				FileUtils.mv tmp.path, "#{filename}.rng"
 			end
 		end
-		return XML::RelaxNG.document(XML::Document.file("#{filename}.rng"))
+		return XML::RelaxNG.document(XML::Document.string(File.read("#{filename}.rng")))
 	end
 
 end

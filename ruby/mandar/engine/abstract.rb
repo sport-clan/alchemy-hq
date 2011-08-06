@@ -9,7 +9,6 @@ module Mandar::Engine::Abstract
 	end
 
 	def self.load_source
-		return if @abstracts
 
 		Mandar.debug "loading abstract sources"
 		abstracts = {}
@@ -33,6 +32,21 @@ module Mandar::Engine::Abstract
 				File.read(include_path).gsub("\n", " ").strip
 			end
 			abstracts[abstract[:name]] = abstract
+		end
+
+		FileUtils.rm_rf "#{WORK}/abstract-rules"
+		FileUtils.mkdir_p "#{WORK}/abstract-rules"
+		Mandar::Core::Config.schemas_elem.find("abstract-rule[@enabled='yes']").each do |rule|
+			abstract = {}
+			abstract[:name] = rule.attributes["name"]
+			abstract[:type] = rule.attributes["type"]
+			abstract[:path] = "#{WORK}/abstract-rules/#{abstract[:name]}.#{abstract[:type]}"
+			abstract[:source] = rule.find "string(source)"
+			abstract[:data] = rule.find("inputs/data").to_a.map { |elem| elem.attributes["name"] }
+			abstract[:in] = rule.find("inputs/abstract").to_a.map { |elem| elem.attributes["name"] }
+			abstract[:out] = rule.find("outputs/abstract").to_a.map { |elem| elem.attributes["name"] }
+			abstracts[abstract[:name]] = abstract
+			File.open(abstract[:path], "w") { |f| f.print abstract[:source] }
 		end
 
 		return @abstracts = abstracts
@@ -149,7 +163,15 @@ module Mandar::Engine::Abstract
 
 		else
 
-			config_client.compile_xslt abstract[:path]
+			begin
+				config_client.compile_xslt abstract[:path]
+			rescue => e
+				Mandar.error e.to_s
+				Mandar.error "deleting #{WORK}"
+				FileUtils.rm_rf "#{WORK}"
+				raise "error compiling #{abstract[:path]}"
+			end
+
 			abstract[:str] = config_client.execute_xslt
 			config_client.reset
 

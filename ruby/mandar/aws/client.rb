@@ -105,8 +105,8 @@ class Mandar::AWS::Client
 		return params_string
 	end
 
-	def urlenc(str)
-		return str.gsub(/[^-a-zA-Z0-9_.~]/) { |ch| "%%%02X" % ch[0] }
+	def urlenc str
+		return CGI::escape str
 	end
 
 	def sym_to_aws(sym)
