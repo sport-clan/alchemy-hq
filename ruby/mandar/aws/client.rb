@@ -106,7 +106,9 @@ class Mandar::AWS::Client
 	end
 
 	def urlenc str
-		return CGI::escape str
+		return str.gsub(/([^-a-zA-Z0-9_.~]+)/) do
+			'%' + $1.unpack("H2" * $1.bytesize).join("%").upcase
+	    end
 	end
 
 	def sym_to_aws(sym)
