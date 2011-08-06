@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
 
 path = ARGV.shift
 socket_path = "#{path}.sock"
@@ -10,16 +10,20 @@ fork do
 	rd.close
 
 	# close input/output streams
-	$stdin.close
-	$stdout.close
-	$stderr.close
+	$stdin.reopen "/dev/null", "r"
+	$stdout.reopen "/dev/null", "w"
+	$stderr.reopen "/dev/null", "w"
 
 	# exit if ssh dies
 	Signal.trap "CHLD" do
 		exit
 	end
+
 	# run ssh as subprocess
-	ssh_pid = fork { wr.close; exec *ARGV }
+	ssh_pid = fork do
+		wr.close
+		exec *ARGV
+	end
 
 	# write pid file
 	File.open(pid_path, "w") { |f| f.puts $$ }
