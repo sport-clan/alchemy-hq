@@ -181,7 +181,7 @@ module Mandar::Support::Core
 			unless $mock
 
 				# copy the file
-				File.syscopy src, dest
+				FileUtils.cp src, dest
 
 				dest_file = File.new dest
 

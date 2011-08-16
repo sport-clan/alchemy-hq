@@ -105,8 +105,10 @@ class Mandar::AWS::Client
 		return params_string
 	end
 
-	def urlenc(str)
-		return str.gsub(/[^-a-zA-Z0-9_.~]/) { |ch| "%%%02X" % ch[0] }
+	def urlenc str
+		return str.gsub(/([^-a-zA-Z0-9_.~]+)/) do
+			'%' + $1.unpack("H2" * $1.bytesize).join("%").upcase
+	    end
 	end
 
 	def sym_to_aws(sym)

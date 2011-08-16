@@ -98,7 +98,7 @@ module Mandar::Deploy::Formats
 	def self.format_xml(file_elem, f)
 
 		doc = XML::Document.new
-		doc.root = file_elem.find_first("*")
+		doc.root = doc.import file_elem.find_first("*")
 
 		# kill whitespace
 		doc.find("//text()").each do |e| e.remove! if e.content =~ /^\s*$/ end
