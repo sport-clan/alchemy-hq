@@ -92,9 +92,10 @@ class Mandar::AWS::Client
 
 		string_to_sign = "POST\n#{@endpoint}\n/\n#{params_string}"
 
-		require "hmac-sha2"
+		require "openssl"
 		require "base64"
-		hmac = HMAC::SHA256.digest(@account.secret_access_key, string_to_sign)
+		digest = OpenSSL::Digest::Digest.new "sha256"
+		hmac = OpenSSL::HMAC.digest digest, @account.secret_access_key, string_to_sign
 		hmac_b64 = Base64.encode64(hmac).chop
 
 		params_hash["Signature"] = hmac_b64
