@@ -16,6 +16,7 @@ module Mandar::EC2
 			aws_account = aws_account_load aws_account_name
 
 			# connect
+			require "AWS"
 			ret = AWS::EC2::Base.new({
 				:server => "ec2.amazonaws.com",
 				:access_key_id => aws_account.access_key_id,
