@@ -41,7 +41,7 @@ module Mandar::Master
 				ssh_args = %W[
 					#{MANDAR}/etc/ssh-wrapper
 					#{run_path}
-					ssh -MNq
+					ssh -MNqa
 					root@#{host_hostname}
 					-S #{socket_path}
 					-i #{ssh_key_file.path}
