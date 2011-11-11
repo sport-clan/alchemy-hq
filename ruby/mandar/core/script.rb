@@ -415,7 +415,7 @@ module Mandar::Core::Script
 
 			when "run"
 				Mandar.host = "local"
-				hosts = process_hosts ARGV[1]
+				hosts = process_hosts([ ARGV[1] ])
 				Mandar::Master.run_command hosts, ARGV[2..-1].join(" ")
 
 			when "server-run"
