@@ -2,6 +2,7 @@ module Mandar::Engine
 
 	def self.zorba
 		return @zorba if @zorba
+
 		return nil unless defined? Zorba_api
 
 		Mandar.debug "initialising zorba xquery library"

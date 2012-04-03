@@ -117,7 +117,12 @@ module Mandar::Engine::Abstract
 			result[:doc].root.each { |elem| doc.root << doc.import(elem) }
 		end
 		if zorba
-			data_manager.loadDocument "abstract.xml", doc.to_s
+			docIter = data_manager.parseXML doc.to_s
+			docIter.open
+			item = Zorba_api::Item::createEmptyItem
+			docIter.next item
+			docIter.destroy
+			data_manager.getDocumentManager.put "abstract.xml", item
 		else
 			config_client.set_document "abstract.xml", doc.to_s
 		end
@@ -133,7 +138,12 @@ module Mandar::Engine::Abstract
 			data_doc.root.each { |elem| doc.root << doc.import(elem) }
 		end
 		if zorba
-			data_manager.loadDocument "data.xml", doc.to_s
+			docIter = data_manager.parseXML doc.to_s
+			docIter.open
+			item = Zorba_api::Item::createEmptyItem
+			docIter.next item
+			docIter.destroy
+			data_manager.getDocumentManager.put "data.xml", item
 		else
 			config_client.set_document "data.xml", doc.to_s
 		end
@@ -158,8 +168,8 @@ module Mandar::Engine::Abstract
 
 			# clean up
 			xquery.destroy()
-			data_manager.deleteDocument "abstract.xml"
-			data_manager.deleteDocument "data.xml"
+			data_manager.getDocumentManager.remove "abstract.xml"
+			data_manager.getDocumentManager.remove "data.xml"
 
 		else
 

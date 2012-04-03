@@ -71,7 +71,12 @@ module Mandar::Engine::Concrete
 				result[:doc].root.each { |elem| doc.root << doc.import(elem) }
 			end
 			if zorba
-				data_manager.loadDocument "abstract.xml", doc.to_s
+				docIter = data_manager.parseXML doc.to_s
+				docIter.open
+				item = Zorba_api::Item::createEmptyItem
+				docIter.next item
+				docIter.destroy
+				data_manager.getDocumentManager.put "abstract.xml", item
 			else
 				Mandar::Engine.config_client.set_document "abstract.xml", doc.to_s
 			end
@@ -86,7 +91,12 @@ module Mandar::Engine::Concrete
 
 				# set hostname
 				if zorba
-					data_manager.loadDocument "host-name.xml", "<host-name value=\"#{host}\"/>"
+					docIter = data_manager.parseXML "<host-name value=\"#{host}\"/>"
+					docIter.open
+					item = Zorba_api::Item::createEmptyItem
+					docIter.next item
+					docIter.destroy
+					data_manager.getDocumentManager.put "host-name.xml", item
 				else
 					Mandar::Engine.config_client.set_document "host-name.xml", "<host-name value=\"#{host}\"/>"
 				end
@@ -116,7 +126,7 @@ module Mandar::Engine::Concrete
 
 				# remove hostname
 				if zorba
-					data_manager.deleteDocument "host-name.xml"
+					data_manager.getDocumentManager.remove "host-name.xml"
 				end
 
 			end
@@ -124,7 +134,7 @@ module Mandar::Engine::Concrete
 			# clean up
 			#xquery.destroy()
 			if zorba
-				data_manager.deleteDocument "abstract.xml"
+				data_manager.getDocumentManager.remove "abstract.xml"
 			else
 				Mandar::Engine.config_client.reset
 			end
