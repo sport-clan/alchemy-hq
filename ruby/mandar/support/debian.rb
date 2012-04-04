@@ -26,8 +26,8 @@ module Mandar::Debian
 		Mandar::Support::Core.shell full_cmd or raise "Error executing #{full_cmd}" unless $mock
 
 		Mandar.notice "installing #{names_to_install_str}"
-		aptitude_cmd = Mandar.shell_quote(%W[ aptitude -y install ] + names_to_install)
-		full_cmd = "DEBIAN_FRONTEND=noninteractive #{aptitude_cmd}"
+		apt_cmd = Mandar.shell_quote(%W[ apt-get -y install ] + names_to_install)
+		full_cmd = "DEBIAN_FRONTEND=noninteractive #{apt_cmd}"
 		Mandar::Support::Core.shell full_cmd or raise "Error executing #{full_cmd}" unless $mock
 
 		apt_packages(true)
@@ -44,8 +44,8 @@ module Mandar::Debian
 		system "apt-get -q2 update" or raise "Error" unless $mock
 
 		Mandar.notice "remove #{names_to_remove_str}"
-		aptitude_cmd = Mandar.shell_quote(%W[ aptitude -y remove ] + names_to_remove)
-		system "#{aptitude_cmd}" or raise "Error" unless $mock
+		apt_cmd = Mandar.shell_quote(%W[ apt-get -y remove ] + names_to_remove)
+		system "#{apt_cmd}" or raise "Error" unless $mock
 
 		apt_packages(true)
 	end

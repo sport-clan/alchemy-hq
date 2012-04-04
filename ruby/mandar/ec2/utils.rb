@@ -317,8 +317,8 @@ module Mandar::EC2::Utils
 
 			# install ruby
 			puts "installing ruby (if not already)"
-			update_cmd = Mandar.shell_quote %W[ aptitude update ]
-			upgrade_cmd = Mandar.shell_quote %W[ aptitude -y install ruby libxml-ruby rubygems ]
+			update_cmd = Mandar.shell_quote %W[ apt-get update ]
+			upgrade_cmd = Mandar.shell_quote %W[ apt-get -y install ruby libxml-ruby rubygems ]
 			full_cmd = "#{update_cmd}; #{upgrade_cmd}"
 			system Mandar.shell_quote %W[
 				ssh
