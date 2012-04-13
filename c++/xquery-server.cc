@@ -137,10 +137,10 @@ void handle_request (
 	if (name == "run xquery") {
 
 		string xquery_text =
-			arguments.get ("xquery text", "UTF-8").asString ();
+			arguments ["xquery text"].asString ();
 
 		string input_text =
-			arguments.get ("input text", "UTF-8").asString ();
+			arguments ["input text"].asString ();
 
 		run_xquery (socket, xquery_text, input_text);
 
