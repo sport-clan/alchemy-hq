@@ -5,10 +5,10 @@ LIBS = -l zmq -l jsoncpp -l xqilla -l xerces-c
 all: xquery-server
 
 xquery-server: $(OBJECTS)
-	g++ -o $@ $< $(LIBS)
+	g++ -o $@ $< $(LIBS) -g
 
 %.o: %.cc
-	g++ -c -o $@ $<
+	g++ -c -o $@ $< -g
 
 clean:
 	rm -f xquery-server *.o

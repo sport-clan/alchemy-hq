@@ -1,3 +1,7 @@
+Before do
+	@input_text = "<xml/>"
+end
+
 When /^I perform the transform$/ do
 
 	request = {

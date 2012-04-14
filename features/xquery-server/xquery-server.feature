@@ -7,11 +7,6 @@ Feature: XQuery server
       1 + 1
       """
 
-    And an input document:
-      """
-      <xml/>
-      """
-
     When I perform the transform
 
     Then the result should be:
@@ -38,4 +33,28 @@ Feature: XQuery server
     Then the result should be:
       """
       hello world
+      """
+
+  Scenario: Import a module
+
+    Given an xquery module named "module.xquery":
+      """
+      module namespace lib = "module.xquery";
+
+      declare function lib:message () as item () * {
+        ("hello world 1", "hello world 2")
+      };
+      """
+
+    And an xquery script:
+      """
+      import module namespace lib = "module.xquery";
+      string-join (lib:message (), ', ')
+      """
+
+    When I perform the transform
+
+    Then the result should be:
+      """
+      hello world 1, hello world 2
       """
