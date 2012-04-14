@@ -3,28 +3,7 @@ Given /^an xquery script:$/ do |xquery_text|
 end
 
 Given /^an xquery module named "([^"]*)":$/ do |module_name, module_text|
-
-	request = {
-		"name" => "set library module",
-		"arguments" => {
-			"module name" => module_name,
-			"module text" => module_text,
-		}
-	}
-
-	reply = xquery_client.perform request
-
-	case reply["name"]
-
-		when "ok"
-
-			# do nothing
-
-		else
-
-			raise "Error"
-
-	end
+	xquery_client.set_library_module module_name, module_text
 end
 
 Given /^an input document:$/ do |input_text|

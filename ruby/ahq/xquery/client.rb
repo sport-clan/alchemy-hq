@@ -36,4 +36,48 @@ class Ahq::Xquery::Client
 		return YAML.load reply_string
 	end
 
+	def set_library_module module_name, module_text
+
+		request = {
+			"name" => "set library module",
+			"arguments" => {
+				"module name" => module_name,
+				"module text" => module_text,
+			}
+		}
+
+		reply = perform request
+
+		case reply["name"]
+
+			when "ok"
+				# do nothing
+
+			else
+				raise "Error"
+		end
+	end
+
+	def run_xquery xquery_text, input_text
+
+		request = {
+			"name" => "run xquery",
+			"arguments" => {
+				"xquery text" => xquery_text,
+				"input text" => input_text,
+			}
+		}
+
+		reply = perform request
+
+		case reply["name"]
+
+			when "ok"
+				return reply["arguments"]["result text"]
+
+			else
+				raise "Error"
+		end
+	end
+
 end
