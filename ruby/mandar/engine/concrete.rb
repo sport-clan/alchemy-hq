@@ -20,11 +20,6 @@ module Mandar::Engine::Concrete
 			concrete[:source].scan(/\(: (in) ([a-z0-9]+(?:-[a-z0-9]+)*) :\)$/).each do |type, name|
 				concrete[type.to_sym] << name
 			end
-			concrete[:source].gsub!(/\(: include ([a-z0-9]+(?:-[a-z0-9]+)*) :\)$/) do |match|
-				include_path = "#{CONFIG}/include/#{$1}.#{concrete[:type]}"
-				File.exists? include_path or raise "Include file not found #{$1}.#{concrete[:type]}"
-				File.read(include_path).gsub("\n", " ").strip
-			end
 			concretes[concrete[:name]] = concrete
 		end
 
@@ -36,8 +31,8 @@ module Mandar::Engine::Concrete
 
 	def self.rebuild abstract_results, hosts
 
-		zorba = Mandar::Engine.zorba
-		data_manager = Mandar::Engine.data_manager
+		xquery_session = Mandar::Engine.xquery_session
+		xslt2_client = Mandar::Engine.xslt2_client
 
 		load_source
 
@@ -46,10 +41,21 @@ module Mandar::Engine::Concrete
 		start_time = Time.now
 
 		# create directories
+
 		FileUtils.remove_entry_secure "#{WORK}/concrete" if File.directory? "#{WORK}/concrete"
 		FileUtils.mkdir "#{WORK}/concrete"
 		hosts.each do |host|
 			FileUtils.mkdir "#{WORK}/concrete/#{host}"
+		end
+
+		# load xquery modules
+
+		include_dir = "#{CONFIG}/include"
+		Dir["#{include_dir}/*.xquery"].each do |path|
+			path =~ /^ #{Regexp.quote include_dir} \/ (.+) $/x
+			name = $1
+			text = File.read path
+			xquery_session.set_library_module name, text
 		end
 
 		@concretes.each do |concrete_name, concrete|
@@ -70,73 +76,101 @@ module Mandar::Engine::Concrete
 				end
 				result[:doc].root.each { |elem| doc.root << doc.import(elem) }
 			end
-			if zorba
-				docIter = data_manager.parseXML doc.to_s
-				docIter.open
-				item = Zorba_api::Item::createEmptyItem
-				docIter.next item
-				docIter.destroy
-				data_manager.getDocumentManager.put "abstract.xml", item
-			else
-				Mandar::Engine.config_client.set_document "abstract.xml", doc.to_s
+
+			case concrete[:type]
+
+				when "xquery"
+
+					xquery_session.set_library_module \
+						"abstract.xml",
+						doc.to_s
+
+				when "xslt2"
+
+					Mandar::Engine.config_client.set_document \
+						"abstract.xml", \
+						doc.to_s
+
+				else
+					raise "Error"
 			end
 
-			unless zorba
+			# compile
+
+			if concrete[:type] == "xslt2"
 				Mandar::Engine.config_client.compile_xslt concrete[:path]
 			end
+
+			# process
 
 			hosts.each do |host|
 
 				Mandar.debug "rebuilding concrete config #{concrete_name} for #{host}"
 
 				# set hostname
-				if zorba
-					docIter = data_manager.parseXML "<host-name value=\"#{host}\"/>"
-					docIter.open
-					item = Zorba_api::Item::createEmptyItem
-					docIter.next item
-					docIter.destroy
-					data_manager.getDocumentManager.put "host-name.xml", item
-				else
-					Mandar::Engine.config_client.set_document "host-name.xml", "<host-name value=\"#{host}\"/>"
+
+				case concrete[:type]
+
+					when "xquery"
+
+						xquery_session.set_library_module \
+							"host-name.xml",
+							"<host-name value=\"#{host}\"/>"
+
+					when "xslt2"
+
+						Mandar::Engine.config_client.set_document \
+							"host-name.xml", \
+							"<host-name value=\"#{host}\"/>"
+
+					else
+						raise "Error"
+
 				end
 
 				# perform trasnformation
-				if zorba
-					begin
-						xquery = zorba.compileQuery(concrete[:source])
-					rescue => e
-						Mandar.error "#{e.to_s}"
-						raise "error compiling concrete/#{concrete_name}.xquery"
-					end
-					begin
-						ret = xquery.execute()
-					rescue => e
-						Mandar.error "#{e.to_s}"
-						raise "error processing concrete #{concrete_name} for #{host}"
-					end
-					xquery.destroy()
-				else
-					ret = Mandar::Engine.config_client.execute_xslt
+
+				case concrete[:type]
+
+					when "xquery"
+
+						begin
+							ret =
+								xquery_session.run_xquery \
+									concrete[:source], \
+									"<xml/>"
+						rescue => e
+							Mandar.error e.to_s
+							raise "error compiling #{concrete[:path]}"
+						end
+
+					when "xslt2"
+
+						ret =
+							Mandar::Engine.config_client.execute_xslt
 				end
 
 				# save doc
+
 				doc = XML::Document.string ret, :options => XML::Parser::Options::NOBLANKS
 				doc.save "#{WORK}/concrete/#{host}/#{concrete_name}.xml"
-
-				# remove hostname
-				if zorba
-					data_manager.getDocumentManager.remove "host-name.xml"
-				end
 
 			end
 
 			# clean up
-			#xquery.destroy()
-			if zorba
-				data_manager.getDocumentManager.remove "abstract.xml"
-			else
-				Mandar::Engine.config_client.reset
+
+			case concrete[:type]
+
+				when "xquery"
+
+					# nothing
+
+				when "xslt2"
+
+					Mandar::Engine.config_client.reset
+
+				else
+					raise "Error"
 			end
 
 		end

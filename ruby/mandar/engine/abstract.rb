@@ -26,11 +26,6 @@ module Mandar::Engine::Abstract
 			abstract[:source].scan(/\(: (data|in|out) ([a-z0-9]+(?:-[a-z0-9]+)*) :\)$/).each do |type, name|
 				abstract[type.to_sym] << name
 			end
-			abstract[:source].gsub!(/\(: include ([a-z0-9]+(?:-[a-z0-9]+)*) :\)$/) do |match|
-				include_path = "#{CONFIG}/include/#{$1}.#{abstract[:type]}"
-				File.exists? include_path or raise "Include file not found #{$1}.#{abstract[:type]}"
-				File.read(include_path).gsub("\n", " ").strip
-			end
 			abstracts[abstract[:name]] = abstract
 		end
 
@@ -96,17 +91,27 @@ module Mandar::Engine::Abstract
 
 	def self.rebuild_one data_docs, abstract
 		abstract_name = abstract[:name]
+		abstract_type = abstract[:type]
 
-		zorba = Mandar::Engine.zorba
-		data_manager = Mandar::Engine.data_manager
-
-		config_client = Mandar::Engine.config_client unless zorba
+		xquery_session = Mandar::Engine.xquery_session
+		xslt2_client = Mandar::Engine.xslt2_client
 
 		Mandar.debug "rebuilding abstract #{abstract_name}"
 
 		start_time = Time.now
 
+		# load xquery modules
+
+		include_dir = "#{CONFIG}/include"
+		Dir["#{include_dir}/*.xquery"].each do |path|
+			path =~ /^ #{Regexp.quote include_dir} \/ (.+) $/x
+			name = $1
+			text = File.read path
+			xquery_session.set_library_module name, text
+		end
+
 		# setup abstract
+
 		doc = XML::Document.new
 		doc.root = XML::Node.new "abstract"
 		abstract[:in].each do |in_name|
@@ -116,18 +121,21 @@ module Mandar::Engine::Abstract
 			end
 			result[:doc].root.each { |elem| doc.root << doc.import(elem) }
 		end
-		if zorba
-			docIter = data_manager.parseXML doc.to_s
-			docIter.open
-			item = Zorba_api::Item::createEmptyItem
-			docIter.next item
-			docIter.destroy
-			data_manager.getDocumentManager.put "abstract.xml", item
-		else
-			config_client.set_document "abstract.xml", doc.to_s
+
+		case abstract_type
+
+			when "xquery"
+				xquery_session.set_library_module "abstract.xml", doc.to_s
+
+			when "xslt2"
+				config_client.set_document "abstract.xml", doc.to_s
+
+			else
+				raise "Error"
 		end
 
 		# setup data
+
 		doc = XML::Document.new
 		doc.root = XML::Node.new "data"
 		abstract[:data].each do |data_name|
@@ -137,57 +145,58 @@ module Mandar::Engine::Abstract
 			end
 			data_doc.root.each { |elem| doc.root << doc.import(elem) }
 		end
-		if zorba
-			docIter = data_manager.parseXML doc.to_s
-			docIter.open
-			item = Zorba_api::Item::createEmptyItem
-			docIter.next item
-			docIter.destroy
-			data_manager.getDocumentManager.put "data.xml", item
-		else
-			config_client.set_document "data.xml", doc.to_s
+
+		case abstract_type
+
+			when "xquery"
+				xquery_session.set_library_module "data.xml", doc.to_s
+
+			when "xslt2"
+				config_client.set_document "data.xml", doc.to_s
+
+			else
+				raise "Error"
 		end
 
-		if zorba
+		# perform query
 
-			# compile xquery
-			begin
-				xquery = Mandar::Engine.zorba.compileQuery(abstract[:source])
-			rescue => e
-				Mandar.error "#{e.to_s}"
-				raise "error compiling abstract/#{abstract_name}.xquery"
-			end
+		case abstract_type
 
-			# execute query
-			begin
-				abstract[:str] = xquery.execute()
-			rescue => e
-				Mandar.error "#{e.to_s}"
-				raise "error processing abstract/#{abstract_name}.xquery"
-			end
+			when "xquery"
 
-			# clean up
-			xquery.destroy()
-			data_manager.getDocumentManager.remove "abstract.xml"
-			data_manager.getDocumentManager.remove "data.xml"
+				begin
+					abstract[:str] = \
+						xquery_session.run_xquery \
+							abstract[:source], \
+							"<xml/>"
+				rescue => e
+					Mandar.error e.to_s
+					Mandar.error "deleting #{WORK}"
+					FileUtils.rm_rf "#{WORK}"
+					raise "error compiling #{abstract[:path]}"
+				end
 
-		else
+			when "xslt2"
 
-			begin
-				config_client.compile_xslt abstract[:path]
-			rescue => e
-				Mandar.error e.to_s
-				Mandar.error "deleting #{WORK}"
-				FileUtils.rm_rf "#{WORK}"
-				raise "error compiling #{abstract[:path]}"
-			end
+				begin
+					config_client.compile_xslt abstract[:path]
+				rescue => e
+					Mandar.error e.to_s
+					Mandar.error "deleting #{WORK}"
+					FileUtils.rm_rf "#{WORK}"
+					raise "error compiling #{abstract[:path]}"
+				end
 
-			abstract[:str] = config_client.execute_xslt
-			config_client.reset
+				abstract[:str] = config_client.execute_xslt
+				config_client.reset
+
+			else
+				raise "Error"
 
 		end
 
 		# delete and/or create
+
 		FileUtils.mkdir_p "#{WORK}/abstract/#{abstract_name}"
 
 		# process output
