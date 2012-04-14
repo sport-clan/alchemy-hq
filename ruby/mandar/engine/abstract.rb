@@ -94,6 +94,7 @@ module Mandar::Engine::Abstract
 					# check dependencies
 
 					next if abstract[:in].find { |name| pending.include? name }
+
 					remaining.delete abstract_name
 					num_processed += 1
 
