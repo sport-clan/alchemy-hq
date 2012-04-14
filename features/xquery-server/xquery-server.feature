@@ -57,3 +57,14 @@ Feature: XQuery server
       """
       hello world 1, hello world 2
       """
+
+  Scenario: Invalid xquery
+
+    Given an xquery script:
+      """
+      123;;;
+      """
+
+    When I perform the transform
+
+    Then I should get an error

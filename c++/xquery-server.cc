@@ -148,7 +148,43 @@ void run_xquery (
 
 		cout << UTF8 (error.getError ()) << "\n";
 
-		exit (1);
+		// send reply
+
+		Json::FastWriter writer;
+
+		Json::Value root (Json::objectValue);
+
+		root ["name"] =
+			"error";
+
+		root ["arguments"] =
+			Json::Value (Json::objectValue);
+
+		root ["arguments"] ["type"] =
+			UTF8 (error.getType ());
+
+		root ["arguments"] ["error"] =
+			UTF8 (error.getError ());
+
+		root ["arguments"] ["file"] =
+			UTF8 (error.getXQueryFile ());
+
+		root ["arguments"] ["line"] =
+			error.getXQueryLine ();
+
+		root ["arguments"] ["column"] =
+			error.getXQueryColumn ();
+
+		string reply_text =
+			writer.write (root);
+
+		zmq::message_t reply (reply_text.size ());
+
+		memcpy (reply.data (), reply_text.data (), reply_text.size ());
+
+		socket.send (reply);
+
+		return;
 	}
 
 	// send reply

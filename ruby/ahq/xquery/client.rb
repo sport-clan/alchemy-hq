@@ -8,6 +8,9 @@ class Ahq::Xquery::Client
 
 	def initialize url
 
+		require "yaml"
+		require "zmq"
+
 		@zmq_context = ZMQ::Context.new 1
 
 		@zmq_socket = @zmq_context.socket ZMQ::REQ
@@ -54,7 +57,7 @@ class Ahq::Xquery::Client
 				# do nothing
 
 			else
-				raise "Error"
+				raise "Unknown response: #{reply["name"]}"
 		end
 	end
 
@@ -75,8 +78,17 @@ class Ahq::Xquery::Client
 			when "ok"
 				return reply["arguments"]["result text"]
 
+			when "error"
+				arguments = reply["arguments"]
+				file = arguments["file"]
+				file = "file" if file.empty?
+				line = arguments["line"]
+				column = arguments["column"]
+				error = arguments["error"]
+				raise "#{file}:#{line}:#{column} #{error}"
+
 			else
-				raise "Error"
+				raise "Unknown response: #{reply["name"]}"
 		end
 	end
 
