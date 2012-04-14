@@ -18,8 +18,6 @@ module Mandar::Engine
 
 	def self.xquery_client
 
-		return @xquery_client if @xquery_client
-
 		mandar = Mandar::Core::Config.mandar
 		xquery_config = mandar.find_first "xquery"
 
@@ -27,22 +25,11 @@ module Mandar::Engine
 
 		require "ahq/xquery/client"
 
-		@xquery_client = \
+		xquery_client = \
 			Ahq::Xquery::Client.new \
 				xquery_config.attributes["url"]
 
-		at_exit do
-			@xquery_client.close
-		end
-
-		return @xquery_client
-	end
-
-	def self.xquery_session
-
-		return nil unless xquery_client
-
-		return xquery_client.session
+		return xquery_client
 	end
 
 end

@@ -158,6 +158,7 @@ module Mandar::Core::Config
 	end
 
 	def self.stager_start(deploy_mode, deploy_role, deploy_mock)
+
 		[ :unstaged, :staged, :rollback ].include? deploy_mode \
 			or raise "Invalid mode: #{deploy_mode}"
 
@@ -168,6 +169,7 @@ module Mandar::Core::Config
 		} [deploy_mode]
 
 		# control differences between staged deploy and rollback
+
 		unless deploy_mode == :unstaged
 			change_pending_state = {
 				:staged => "deploy",
@@ -188,14 +190,17 @@ module Mandar::Core::Config
 		end
 
 		# load locks
+
 		locks = Mandar.cdb.get("mandar-locks")
 		locks or raise "Internal error"
 
 		# check for concurrent deployment
+
 		locks["deploy"] \
 			and Mandar.die "another deployment is in progress for role #{locks["deploy"]["role"]}"
 
 		# check for concurrent changes
+
 		locks["changes"].each do |role, change|
 			next if change["state"] == "stage"
 			next if change["role"] == deploy_role && deploy_mode != :unstaged
@@ -203,6 +208,7 @@ module Mandar::Core::Config
 		end
 
 		# find our changes
+
 		if deploy_mode != :unstaged
 			change = locks["changes"][deploy_role]
 			change or Mandar.die "no staged changes for #{deploy_role}"
@@ -212,13 +218,16 @@ module Mandar::Core::Config
 		end
 
 		# display confirmation
+
 		Mandar.notice "beginning #{mode_text} for role #{deploy_role}"
 
 		# allocate seq
+
 		lock_seq = locks["next-seq"]
 		locks["next-seq"] += 1
 
 		# create lock
+
 		locks["deploy"] = {
 			"role" => deploy_role,
 			"host" => Socket.gethostname,
@@ -229,6 +238,7 @@ module Mandar::Core::Config
 		}
 
 		# update change state
+
 		unless deploy_mock
 			if deploy_mode != :unstaged
 				change["state"] = change_pending_state
@@ -237,29 +247,36 @@ module Mandar::Core::Config
 		end
 
 		# save locks
+
 		Mandar.cdb.update locks
 
 		at_exit do
 
 			# load locks
+
 			locks = Mandar.cdb.get("mandar-locks")
 			locks or raise "Internal error"
 
 			# check seq
-			locks["deploy"]["seq"] = lock_seq or Mandar.die "Lock sequence number changed"
+
+			locks["deploy"]["seq"] == lock_seq \
+				or Mandar.die "Lock sequence number changed"
 
 			# clear lock
+
 			locks["deploy"] = nil
 
 			unless deploy_mock
 				if deploy_mode != :unstaged
 
 					# find our changes
+
 					change = locks["changes"][deploy_role]
 					change or raise "Internal error"
 					change["state"] == change_pending_state or raise "Internal error"
 
 					# update change state
+
 					change["state"] = change_done_state
 					change[change_done_timestamp] = Time.now.to_i
 
@@ -267,10 +284,12 @@ module Mandar::Core::Config
 			end
 
 			# save locks
+
 			Mandar.cdb.update locks
 
 			# display confirmation
-			Mandar.notice "finished #{mode_text} changes for role #{deploy_role}"
+
+			Mandar.notice "finished #{mode_text} for role #{deploy_role}"
 		end
 	end
 

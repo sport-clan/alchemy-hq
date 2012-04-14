@@ -56,32 +56,58 @@ module Mandar::Engine::Abstract
 
 		start_time = Time.now
 
-		# remove existing
-		FileUtils.remove_entry_secure "#{WORK}/abstract" if File.directory? "#{WORK}/abstract"
-		FileUtils.mkdir "#{WORK}/abstract"
+		begin
 
-		remaining = @abstracts.clone
-		until remaining.empty?
+			# setup xquery
 
-			pending = Set.new
-			remaining.each do |abstract_name, abstract|
-				pending.merge abstract[:out]
-			end
+			xquery_client = Mandar::Engine.xquery_client
+			if xquery_client
 
-			num_processed = 0
-			remaining.each do |abstract_name, abstract|
+				xquery_session = xquery_client.session
 
-				# check dependencies
-				next if abstract[:in].find { |name| pending.include? name }
-				remaining.delete abstract_name
-				num_processed += 1
-
-				# do it
-				rebuild_one data_docs, abstract
+				include_dir = "#{CONFIG}/include"
+				Dir["#{include_dir}/*.xquery"].each do |path|
+					path =~ /^ #{Regexp.quote include_dir} \/ (.+) $/x
+					name = $1
+					text = File.read path
+					xquery_session.set_library_module name, text
+				end
 
 			end
 
-			Mandar.die "circular dependency in abstract: #{remaining.keys.sort.join ", "}" unless num_processed > 0
+			# remove existing
+
+			FileUtils.remove_entry_secure "#{WORK}/abstract" if File.directory? "#{WORK}/abstract"
+			FileUtils.mkdir "#{WORK}/abstract"
+
+			remaining = @abstracts.clone
+			until remaining.empty?
+
+				pending = Set.new
+				remaining.each do |abstract_name, abstract|
+					pending.merge abstract[:out]
+				end
+
+				num_processed = 0
+				remaining.each do |abstract_name, abstract|
+
+					# check dependencies
+
+					next if abstract[:in].find { |name| pending.include? name }
+					remaining.delete abstract_name
+					num_processed += 1
+
+					# do it
+
+					rebuild_one xquery_session, data_docs, abstract
+
+				end
+
+				Mandar.die "circular dependency in abstract: #{remaining.keys.sort.join ", "}" unless num_processed > 0
+			end
+
+		ensure
+			xquery_client.close if xquery_client
 		end
 
 		end_time = Time.now
@@ -89,26 +115,15 @@ module Mandar::Engine::Abstract
 
 	end
 
-	def self.rebuild_one data_docs, abstract
+	def self.rebuild_one xquery_session, data_docs, abstract
 		abstract_name = abstract[:name]
 		abstract_type = abstract[:type]
 
-		xquery_session = Mandar::Engine.xquery_session
 		xslt2_client = Mandar::Engine.xslt2_client
 
 		Mandar.debug "rebuilding abstract #{abstract_name}"
 
 		start_time = Time.now
-
-		# load xquery modules
-
-		include_dir = "#{CONFIG}/include"
-		Dir["#{include_dir}/*.xquery"].each do |path|
-			path =~ /^ #{Regexp.quote include_dir} \/ (.+) $/x
-			name = $1
-			text = File.read path
-			xquery_session.set_library_module name, text
-		end
 
 		# setup abstract
 
@@ -200,6 +215,7 @@ module Mandar::Engine::Abstract
 		FileUtils.mkdir_p "#{WORK}/abstract/#{abstract_name}"
 
 		# process output
+
 		abstract[:doc] = XML::Document.string abstract[:str], :options => XML::Parser::Options::NOBLANKS
 		abstract[:result] = {}
 		abstract[:out].each { |out| abstract[:result][out] = [] }
@@ -210,6 +226,7 @@ module Mandar::Engine::Abstract
 		end
 
 		# write output
+
 		abstract[:result].each do |result_name, elems|
 			doc = XML::Document.new
 			doc.root = XML::Node.new "abstract"
@@ -218,12 +235,14 @@ module Mandar::Engine::Abstract
 		end
 
 		# add output to results
+
 		abstract[:result].each do |result_name, elems|
 			set_result result_name, elems
 		end
 
 		end_time = Time.now
 		Mandar.trace "rebuilding abstract #{abstract_name} took #{((end_time - start_time) * 1000).to_i}ms"
+
 	end
 
 	def self.set_result name, elems

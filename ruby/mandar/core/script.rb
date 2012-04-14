@@ -220,16 +220,21 @@ module Mandar::Core::Script
 				Mandar.warning "running in mock deployment mode" if $mock
 
 				# begin staged/rollback deploy
+
 				Mandar::Core::Config.stager_start $deploy_mode, $deploy_role, $mock
 
 				# rebuild config
+
 				Mandar::Core::Config.rebuild_abstract
+
 				abstract = Mandar::Core::Config.abstract
 
 				# determine list of hosts to deploy to
+
 				hosts = process_hosts ARGV[1..-1]
 
 				# reduce list of hosts on various criteria
+
 				hosts = hosts.select do |host|
 					host_elem = abstract["mandar-host"].find_first("mandar-host[@name='#{host}']")
 					case
