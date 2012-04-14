@@ -275,7 +275,7 @@ module Mandar::Core::Script
 				hosts = cdb.view_key("root", "by_type", "host")["rows"].map { |row| row["value"] }
 				hosts.each do |host|
 					next unless host["action"].is_a?(String) && ! host["action"].empty?
-					Mandar::Actions.perform cdb, host
+					Mandar::Master::Actions.perform cdb, host
 				end
 
 			when "ec2-instances"
@@ -420,7 +420,7 @@ module Mandar::Core::Script
 
 			when "run"
 				Mandar.host = "local"
-				hosts = process_hosts ARGV[1]
+				hosts = process_hosts([ ARGV[1] ])
 				Mandar::Master.run_command hosts, ARGV[2..-1].join(" ")
 
 			when "server-run"

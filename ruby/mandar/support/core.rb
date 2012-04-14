@@ -514,26 +514,32 @@ module Mandar::Support::Core
 
 		cmd = ""
 
-		shell_elem.find("env").each do |env_elem|
-			env_name = env_elem.attributes["name"]
-			env_value = env_elem.attributes["value"]
-			cmd += " " unless cmd.empty?
-			cmd += "#{env_name}=#{Mandar.shell_quote env_value}"
-		end
-
 		shell_cmd = shell_elem.attributes["cmd"]
 		cmd += shell_cmd if shell_cmd
 
-		shell_elem.find("arg").each do |arg_elem|
-			arg_name = arg_elem.attributes["name"]
-			arg_value = arg_elem.attributes["value"]
-			if arg_name
-				cmd += " " unless cmd.empty?
-				cmd += "#{arg_name}"
-			end
-			if arg_value
-				cmd += " " unless cmd.empty?
-				cmd += "#{Mandar.shell_quote arg_value}"
+		shell_elem.find("*").each do |elem|
+			case elem.name
+
+				when "env"
+					env_name = elem.attributes["name"]
+					env_value = elem.attributes["value"]
+					cmd += " " unless cmd.empty?
+					cmd += "#{env_name}=#{Mandar.shell_quote env_value}"
+
+				when "arg"
+					arg_name = elem.attributes["name"]
+					arg_value = elem.attributes["value"]
+					if arg_name
+						cmd += " " unless cmd.empty?
+						cmd += "#{arg_name}"
+					end
+					if arg_value
+						cmd += " " unless cmd.empty?
+						cmd += "#{Mandar.shell_quote arg_value}"
+					end
+
+				else
+					raise "Error"
 			end
 		end
 

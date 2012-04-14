@@ -33,7 +33,7 @@ class Mandar::Console::TypeEdit
 				row["mandar_type"] = type_name
 				row["_id"] = type_name + "/" + (
 					type.find("id/*").to_a.map \
-						{ |id_elem| post_vars["id-#{id_elem.attributes["name"]}"] }
+						{ |id_elem| row[id_elem.attributes["name"]] }
 				).join("/")
 				stager.create row, console_user
 				redirect_see_other "/type/edit/#{type_name}"
@@ -280,7 +280,8 @@ class Mandar::Console::TypeEdit
 # ======================================== ts update field
 
 	def create_field_ts_update type_elem, field_elem, path, value, depth, readonly
-		return make_text_field path, field_elem.attributes["name"], to_ymd_hms(value), depth, true
+		value_str = "%s (%s)" % [ to_ymd_hms(value), value ]
+		return make_text_field path, field_elem.attributes["name"], value_str, depth, true
 	end
 
 	def update_field_ts_update type_elem, field_elem, path, form, value
