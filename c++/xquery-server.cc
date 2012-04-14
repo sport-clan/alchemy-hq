@@ -266,16 +266,21 @@ void handle_request (
 	}
 }
 
-int main () {
- 
+int main (int argc, char * argv []) {
+
+	if (argc != 2) {
+		cout << "Syntax error\n";
+		return 1;
+	}
+
     // setup
 
     zmq::context_t context (1);
     zmq::socket_t socket (context, ZMQ_REP);
 
-    socket.bind ("tcp://*:5555");
+    socket.bind (argv [1]);
 
-	cout << "Running\n";
+	cout << "Ready\n";
 
     while (true) {
 

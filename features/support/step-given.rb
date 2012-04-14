@@ -12,7 +12,7 @@ Given /^an xquery module named "([^"]*)":$/ do |module_name, module_text|
 		}
 	}
 
-	reply = zmq_perform request
+	reply = xquery_client.perform request
 
 	case reply["name"]
 

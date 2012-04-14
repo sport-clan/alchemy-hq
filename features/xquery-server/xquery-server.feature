@@ -40,7 +40,6 @@ Feature: XQuery server
     Given an xquery module named "module.xquery":
       """
       module namespace lib = "module.xquery";
-
       declare function lib:message () as item () * {
         ("hello world 1", "hello world 2")
       };

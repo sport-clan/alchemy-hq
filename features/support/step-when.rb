@@ -12,7 +12,7 @@ When /^I perform the transform$/ do
 		}
 	}
 
-	reply = zmq_perform request
+	reply = xquery_client.perform request
 
 	case reply["name"]
 
