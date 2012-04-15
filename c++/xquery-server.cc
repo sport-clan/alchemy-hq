@@ -89,16 +89,20 @@ struct Session :
 
 map <string, Session *> sessions;
 
-Session * get_session (string session_id) {
+Session & get_session (string session_id) {
 
 	Session * session =
 		sessions [session_id];
 
 	if (session != NULL)
-		return session;
+		return * session;
 
-	return sessions [session_id] =
-		new Session ();
+	session = new Session ();
+
+	sessions [session_id] =
+		session;
+
+	return * session;
 }
 
 void set_error (
@@ -129,7 +133,7 @@ void compile_xquery (
 		string session_id,
 		string xquery_text) {
 
-	Session * session =
+	Session & session =
 		get_session (session_id);
 
 	try {
@@ -137,20 +141,19 @@ void compile_xquery (
 		AutoDelete<DynamicContext> static_context (
 			xqilla.createContext ());
 
-		static_context->setModuleResolver (
-			session);
+		static_context->setModuleResolver (& session);
 
 		DocumentCache * documentCache =
 			static_context->getDocumentCache ();
 
-		documentCache->setXMLEntityResolver (session);
+		documentCache->setXMLEntityResolver (& session);
 
 		AutoDelete<XQQuery> query (
 			xqilla.parse (
 				X (xquery_text.c_str ()),
 				static_context.adopt ()));
 
-		session->set_query (query.adopt ());
+		session.set_query (query.adopt ());
 
 	} catch (XQException & error) {
 
@@ -172,12 +175,12 @@ void run_xquery (
 		string session_id,
 		string input_text) {
 
-	Session * session =
+	Session & session =
 		get_session (session_id);
 
 	// fail if there is no query
 
-	if (! session->query) {
+	if (! session.query) {
 
 		reply ["name"] =
 			"usage error";
@@ -197,7 +200,7 @@ void run_xquery (
 			X ("input.xml"));
 
 		AutoDelete<DynamicContext> dynamic_context (
-			session->query->createDynamicContext ());
+			session.query->createDynamicContext ());
 
 		Node::Ptr input_document =
 			dynamic_context->parseDocument (
@@ -208,7 +211,7 @@ void run_xquery (
 		dynamic_context->setContextSize (1);
 
 		Result result =
-			session->query->execute (dynamic_context);
+			session.query->execute (dynamic_context);
 
 		ostringstream result_stream;
 
@@ -242,12 +245,12 @@ void set_library_module (
 		string module_name,
 		string module_text) {
 
-	Session * session =
+	Session & session =
 		get_session (session_id);
 
 	// set module
 
-	session->modules [module_name] =
+	session.modules [module_name] =
 		module_text;
 
 	// send reply
@@ -316,7 +319,6 @@ string handle_request (
 		cout << "Invalid function name: " << request_name << "\n";
 
 		exit (1);
-
 	}
 
 	// send reply
@@ -350,10 +352,9 @@ int main (int argc, char * argv []) {
 
 		socket.recv (& request);
 
-		string request_string =
-			string (
-				(const char *) request.data (),
-				request.size ());
+		string request_string (
+			(const char *) request.data (),
+			request.size ());
 
 		// handle
 
