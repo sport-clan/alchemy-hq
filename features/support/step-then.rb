@@ -4,4 +4,5 @@ end
 
 Then /^I should get an error$/ do
 	@exception.should_not be_nil
+	@exception = nil
 end
