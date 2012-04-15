@@ -1,4 +1,8 @@
-module Mandar::Core::Script
+require "mandar/tools"
+
+class Mandar::Core::Script
+
+	include Mandar::Tools::Escape
 
 	HELP = [
 		"",
@@ -38,7 +42,7 @@ module Mandar::Core::Script
 		"",
 	].join("\n") + "\n"
 
-	def self.parse_args()
+	def parse_args()
 		require "getoptlong"
 
 		opts = GetoptLong.new(*[
@@ -159,7 +163,7 @@ module Mandar::Core::Script
 		end
 	end
 
-	def self.main()
+	def main()
 		STDOUT.sync = true
 		argv_copy = ARGV.clone
 		parse_args
@@ -172,7 +176,7 @@ module Mandar::Core::Script
 		end
 	end
 
-	def self.process_hosts args
+	def process_hosts args
 		abstract = Mandar::Core::Config.abstract
 		hosts = []
 		for arg in args
@@ -201,7 +205,7 @@ module Mandar::Core::Script
 		return hosts
 	end
 
-	def self.do_command
+	def do_command
 		case ARGV[0]
 
 			when "config"
@@ -425,6 +429,101 @@ module Mandar::Core::Script
 
 			when "server-run"
 				Mandar::Support::Core.shell ARGV[1]
+
+			when "export"
+
+				raise "syntax error" unless ARGV.length == 2
+				zip_name = ARGV[1]
+
+				Mandar::Core::Config.data_ready
+
+				require "zip/zip"
+
+				Zip::ZipOutputStream.open zip_name do |zip|
+
+					# write schema
+
+					zip.put_next_entry "schema.xml"
+					zip << File.read("#{WORK}/schema.xml")
+
+					# write data
+
+					Mandar::Core::Config.data_strs.each do |name, doc|
+						zip.put_next_entry "data/#{name}.xml"
+						zip << doc
+					end
+
+				end
+
+			when "import"
+
+				raise "syntax error" unless ARGV.length == 2
+				zip_name = ARGV[1]
+
+				require "zip/zip"
+
+				# load schema
+
+				schemas_doc = Zip::ZipFile.open zip_name do |zip|
+					io = zip.get_input_stream "schema.xml"
+					XML::Document.io io,
+						:options =>XML::Parser::Options::NOBLANKS
+				end
+				schemas_elem = schemas_doc.root
+
+				# delete existing
+
+				docs = []
+				rows = Mandar.cdb.view("root", "by_type")["rows"]
+				rows.each do |row|
+					row = row["value"]
+					docs << {
+						"_id" => row["_id"],
+						"_rev" => row["_rev"],
+						"_deleted" => true,
+					}
+				end
+				Mandar.cdb.bulk docs
+
+				# add new
+
+				Zip::ZipInputStream.open zip_name do |zip|
+					while entry = zip.get_next_entry
+
+						next unless entry.name =~ /^data\/(.+).xml$/
+						name = $1
+
+						schema_elem =
+							schemas_elem.find_first \
+								"schema [ @name = #{xp name} ]"
+
+						updates = []
+
+						doc = XML::Document.string zip.read,
+							:options =>XML::Parser::Options::NOBLANKS
+
+						doc.find("/data/*").each do |elem|
+
+							json = Mandar::Core::Config.xml_to_json \
+								schemas_elem,
+								schema_elem,
+								elem
+
+							id_parts =
+								schema_elem.find("id/*").to_a.map do |id_elem|
+									json[id_elem.attributes["name"]]
+								end
+
+							json["_id"] = name + "/" + id_parts.join("/")
+							json["mandar_type"] = name
+
+							updates << json
+						end
+
+						Mandar.cdb.bulk updates
+
+					end
+				end
 
 			else
 				Mandar.error "syntax error"

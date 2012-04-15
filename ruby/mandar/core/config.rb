@@ -3,6 +3,9 @@ module Mandar::Core::Config
 	@data_docs = {}
 	@data_strs = {}
 
+	def self.data_docs() @data_docs end
+	def self.data_strs() @data_strs end
+
 	def self.reload()
 		mandar true
 		service true
@@ -125,7 +128,8 @@ module Mandar::Core::Config
 				temp_doc.root.each { |temp_elem| prop << temp_elem.copy(true) }
 				elem << prop
 			else
-				raise "unexpected element #{field_elem.name} found in field list for schema #{schemas_elem.attributes["name"]}"
+				raise "unexpected element #{field_elem.name} found in field "
+					"list for schema #{schema_elem.attributes["name"]}"
 			end
 		end
 		if value["content"].is_a? Array
@@ -143,6 +147,141 @@ module Mandar::Core::Config
 				elem << prop
 			end
 		end
+	end
+
+	# TODO this is messy
+	def self.xp str
+		return "'" + str.gsub("'", "''") + "'"
+	end
+
+	def self.field_to_json schemas_elem, schema_elem, fields_elem, elem, value
+
+		fields_elem.find("* [name() != 'option']").each do |field_elem|
+
+			field_name = field_elem.attributes["name"]
+
+			case field_elem.name
+
+				when "text"
+
+					value[field_name] = elem.attributes[field_name]
+
+				when "int", "ts-update"
+
+					temp = elem.attributes[field_name]
+
+					value[field_name] = temp.empty? ? nil : temp.to_i
+
+				when "list"
+
+					value[field_name] = []
+
+					elem.find("* [ name () = #{xp field_name} ]") \
+						.each do |child_elem|
+
+						prop = {}
+
+						field_to_json \
+							schemas_elem,
+							schema_elem,
+							field_elem,
+							child_elem,
+							prop
+
+						value[field_name] << prop
+					end
+
+				when "struct"
+
+					prop = {}
+
+					child_elem =
+						elem.find_first \
+							"* [ name () = #{xp field_name} ]"
+
+					if child_elem
+						field_to_json \
+							schemas_elem,
+							schema_elem,
+							field_elem,
+							child_elem,
+							prop
+					end
+
+					value[field_name] = prop unless prop.empty?
+
+				when "xml"
+
+					value[field_name] = ""
+
+					elem.find("* [ name () = #{xp field_name} ] / *") \
+						.each do |prop|
+
+						value[field_name] += prop.to_s
+					end
+
+				when "bool"
+
+					value[field_name] = \
+						elem.attributes[field_name] == "yes"
+
+				when "bigtext"
+
+					value[field_name] =
+						elem.find_first("* [ name () = #{xp field_name} ]") \
+							.content
+
+				else
+
+					raise "unexpected element #{field_elem.name} found in " \
+						"field list for schema " \
+						"#{schema_elem.attributes["name"]}"
+
+			end
+		end
+
+		content = []
+
+		elem.find("*").each do |child_elem|
+
+			option_elem =
+				fields_elem.find_first \
+					"option [ @name = #{xp child_elem.name} ]"
+
+			next unless option_elem
+
+			option_ref =
+				option_elem.attributes["ref"]
+
+			schema_option_elem =
+				schemas_elem.find_first \
+					"schema-option [@name = '#{option_ref}']"
+
+			raise "Error" \
+				unless schema_option_elem
+
+			schema_option_props_elem =
+				schema_option_elem.find_first "props"
+
+			prop = {}
+
+			field_to_json \
+				schemas_elem,
+				schema_elem,
+				schema_option_props_elem,
+				child_elem,
+				prop
+
+			content << {
+				"type" => child_elem.name,
+				"value" => prop,
+			}
+
+		end
+
+		value["content"] = content \
+			unless content.empty?
+
 	end
 
 	def self.staged_change()
@@ -300,6 +439,27 @@ module Mandar::Core::Config
 		return elem
 	end
 
+	def self.xml_to_json schemas_elem, schema_elem, elem
+
+		value = {}
+
+		field_to_json \
+			schemas_elem,
+			schema_elem,
+			schema_elem.find_first("id"),
+			elem,
+			value
+
+		field_to_json \
+			schemas_elem,
+			schema_elem,
+			schema_elem.find_first("fields"),
+			elem,
+			value
+
+		return value
+	end
+
 	def self.schemas_elem
 		return @schemas_elem if @schemas_elem && ! reload
 		schemas_doc = XML::Document.file "#{WORK}/schema.xml", :options =>XML::Parser::Options::NOBLANKS
@@ -411,6 +571,15 @@ module Mandar::Core::Config
 		return true
 	end
 
+	def self.data_ready
+		if $no_database
+			Mandar.warning "not dumping data due to --no-database option"
+			data_load
+		else
+			data_dump
+		end
+	end
+
 	def self.rebuild_abstract
 		return if warn_no_config
 
@@ -428,12 +597,7 @@ module Mandar::Core::Config
 		# process abstract config, repeat until schema and rules are consistent
 		while true
 
-			if $no_database
-				Mandar.warning "not dumping data due to --no-database option"
-				data_load
-			else
-				data_dump
-			end
+			data_ready
 
 			# process abstract config
 			Mandar::Engine::Abstract.rebuild @data_docs
