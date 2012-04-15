@@ -484,9 +484,20 @@ module Mandar::Core::Config
 		rows = Mandar.cdb.view("root", "by_type")["rows"]
 		values_by_type = Hash.new
 		rows.each do |row|
-			next unless row["value"]["mandar_type"]
-			values_by_type[row["value"]["mandar_type"]] ||= Hash.new
-			values_by_type[row["value"]["mandar_type"]][row["id"]] = row["value"]
+
+			next unless row["value"]["transaction"] == "current"
+
+			type = row["value"]["type"]
+
+			values_by_type[type] ||= Hash.new
+
+			value = row["value"]["value"]
+
+			row["id"] =~ /^current\/(.+)$/
+			value["_id"] = $1
+
+			values_by_type[type][value["_id"]] =
+				value
 		end
 
 		change = staged_change

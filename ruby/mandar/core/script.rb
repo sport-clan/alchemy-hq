@@ -313,7 +313,7 @@ class Mandar::Core::Script
 				doc.root.attributes["database-name"] = profile.attributes["database-name"]
 				doc.root.attributes["database-user"] = profile.attributes["database-user"]
 				doc.root.attributes["database-pass"] = profile.attributes["database-pass"]
-				doc.root.attributes["deploy-command"] = "sudo -u #{ENV["USER"]} -H #{CONFIG}/#{File.basename $0}"
+				doc.root.attributes["deploy-command"] = "#{CONFIG}/#{File.basename $0}"
 				doc.root.attributes["deploy-profile"] = $profile
 				doc.root.attributes["admin-group"] = mandar.attributes["admin-group"]
 				doc.root.attributes["path-prefix"] = ""
@@ -473,17 +473,31 @@ class Mandar::Core::Script
 
 				# delete existing
 
-				docs = []
-				rows = Mandar.cdb.view("root", "by_type")["rows"]
-				rows.each do |row|
-					row = row["value"]
-					docs << {
-						"_id" => row["_id"],
-						"_rev" => row["_rev"],
+				updates = []
+				Mandar.cdb.all_docs["rows"].each do |row|
+					updates << {
+						"_id" => row["id"],
+						"_rev" => row["value"]["rev"],
 						"_deleted" => true,
 					}
 				end
-				Mandar.cdb.bulk docs
+				Mandar.cdb.bulk updates
+
+				# design documents
+
+				Mandar.cdb.create({
+					"_id" => "_design/root",
+					"language" => "javascript",
+					"views" => {
+						"by_type" => {
+							"map" =>
+								"function (doc) {\n" \
+								"    if (! doc.transaction) return;\n" \
+								"    emit (doc.type, doc);\n" \
+								"}\n",
+						}
+					},
+				})
 
 				# add new
 
@@ -514,10 +528,13 @@ class Mandar::Core::Script
 									json[id_elem.attributes["name"]]
 								end
 
-							json["_id"] = name + "/" + id_parts.join("/")
-							json["mandar_type"] = name
-
-							updates << json
+							updates << {
+								"_id" => "current/#{name}/#{id_parts.join("/")}",
+								"transaction" => "current",
+								"type" => name,
+								"source" => "data",
+								"value" => json,
+							}
 						end
 
 						Mandar.cdb.bulk updates

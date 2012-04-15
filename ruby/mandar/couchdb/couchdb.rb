@@ -156,5 +156,12 @@ module Mandar::CouchDB
 			return @server.call "POST", path, { "docs" => docs }
 		end
 
+		def all_docs
+			path = Mandar::CouchDB.urlf \
+				"/%/_all_docs", \
+				@db
+			return @server.call "GET", path
+		end
+
 	end
 end

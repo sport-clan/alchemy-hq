@@ -11,69 +11,117 @@ class Mandar::Console::Stager
 		id = record["_id"]
 
 		# sanity check arguments
-		raise "Invalid record argument #{record.class}" unless record.is_a? Hash
-		raise "Invalid action argument #{action}" unless [ :create, :update, :delete ].include? action
+
+		raise "Invalid record argument #{record.class}" \
+			unless record.is_a? Hash
+
+		raise "Invalid action argument #{action}" \
+			unless [ :create, :update, :delete ].include? action
 
 		# get locks and stuff
-		locks = locks_man.load
-		my_change = locks_man.my_change locks, my_role, true
-		change_item = my_change["items"][id]
+
+		locks =
+			locks_man.load
+
+		my_change =
+			locks_man.my_change locks, my_role, true
+
+		change_item =
+			my_change["items"][id]
 
 		# check for concurrent updates by the same role
-		raise "Concurrent update" if action == :create && change_item && change_item["action"] != "delete"
-		raise "Concurrent update" if action != :create && change_item && record["_rev"] != change_item["rev"]
+
+		raise "Concurrent update" \
+			if action == :create \
+				&& change_item \
+				&& change_item["action"] != "delete"
+
+		raise "Concurrent update" \
+			if action != :create \
+				&& change_item \
+				&& record["_rev"] != change_item["rev"]
 
 		# check for concurrent updates by another role
+
 		locks["changes"].each do |change_role, change|
+
 			next if change_role == my_role
-			raise "Record is locked by #{change_role}" if change["items"].include? id
+
+			raise "Record is locked by #{change_role}" \
+				if change["items"].include? id
+
 		end
 
 		# make sure we aren't in the middle of a deployment
+
 		case my_change["state"]
+
 			when "stage"
+
 			when "done"
-			when "deploy" then raise "Can't change records while a deploy is in progress"
-			when "rollback" then raise "Can't change records while a rollback is in progress"
-			else raise "Internal error"
+
+			when "deploy"
+				raise "Can't change records while a deploy is in progress"
+
+			when "rollback"
+				raise "Can't change records while a rollback is in progress"
+
+			else
+				raise "Internal error"
+
 		end
 
-		if change_item && action == :delete && change_item["action"] == "create"
+		if change_item \
+			&& action == :delete \
+			&& change_item["action"] == "create"
 
 			# delete change item (new record being deleted)
+
 			my_change["items"].delete id
 
 		else
 
 			# create clean copy of record
+
 			record_clone = data_clone record
 
 			if change_item
 
 				# update existing change item
+
 				if change_item["record"]["_rev"]
 					record_clone["_rev"] = change_item["record"]["_rev"]
 				else
 					record_clone.delete "_rev"
 				end
+
 				change_item["record"] = record_clone
 				change_item["rev"] = entropy.rand_token
-				change_item["action"] = "update" if action == :create && change_item["action"] == "delete"
-				change_item["action"] = "delete" if action == :delete
+
+				change_item["action"] = "update" \
+					if action == :create \
+						&& change_item["action"] == "delete"
+
+				change_item["action"] = "delete" \
+					if action == :delete
 
 			else
 
 				# create new change item
+
 				change_item = {
 					"action" => action.to_s,
 					"record" => record_clone,
 					"rev" => entropy.rand_token,
 				}
+
 				my_change["items"][id] = change_item
+
 			end
 		end
 
 		# and save it
+
 		locks_man.save locks
 
 	end
@@ -109,20 +157,43 @@ class Mandar::Console::Stager
 		end
 
 		# return row from db
-		return db.get_nil id
+
+		row = db.get_nil "current/#{id}"
+		if row
+			value = row["value"]
+			row["_id"] =~ /^current\/(.+)$/
+			value["_id"] = $1
+			value["_rev"] = row["_rev"]
+			pp value
+			return value
+		else
+			return nil
+		end
 
 	end
 
 	def get_all type_name, my_role
 
 		# get locks and stuff
+
 		locks = locks_man.load
 		my_change = locks_man.my_change locks, my_role, false
 
 		# perform query
-		result = db.view_key "root", "by_type", type_name
-		db_values = result["rows"].map { |row| row["value"] }
-		return db_values unless my_change
+
+		result =
+			db.view_key "root", "by_type", type_name
+
+		db_values =
+			result["rows"].map do |row|
+				value = row["value"]["value"]
+				row["value"]["_id"] =~ /^current\/(.+)$/
+				value["_id"] = $1
+				value
+			end
+
+		return db_values \
+			unless my_change
 
 		# do update and delete
 		values = []
@@ -175,11 +246,50 @@ class Mandar::Console::Stager
 		raise "Invalid state #{my_change["state"]}" if force && ! [ "done", "stage" ].include?(my_change["state"])
 
 		my_change["items"].each do |key, item|
+
+			id = "current/#{item["record"]["_id"]}"
+
 			case item["action"]
-				when "create" then db.create item["record"]
-				when "update" then db.update item["record"]
-				when "delete" then db.delete key, item["record"]["_rev"]
-				else raise "Internal error"
+
+				when "create"
+
+					item["record"]["_id"] =~ /^([^\/]+)\//
+					type = $1
+
+					row = {
+						"_id" => id,
+						"transaction" => "current",
+						"type" => type,
+						"source" => "data",
+						"value" => item["record"]
+					}
+
+					db.create row
+
+				when "update"
+
+					item["record"]["_id"] =~ /^([^\/]+)\//
+					type = $1
+
+					row = {
+						"_id" => id,
+						"_rev" => item["record"]["_rev"],
+						"transaction" => "current",
+						"type" => type,
+						"source" => "data",
+						"value" => item["record"]
+					}
+
+					db.update row
+
+				when "delete"
+
+					db.delete id, item["record"]["_rev"]
+
+				else
+
+					raise "Internal error"
+
 			end
 		end
 
