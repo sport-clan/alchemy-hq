@@ -22,8 +22,7 @@ module Mandar::Engine::Abstract
 			abstract[:source] = File.read abstract[:path]
 			abstract[:in] = []
 			abstract[:out] = []
-			abstract[:data] = []
-			abstract[:source].scan(/\(: (data|in|out) ([a-z0-9]+(?:-[a-z0-9]+)*) :\)$/).each do |type, name|
+			abstract[:source].scan(/\(: (in|out) ([a-z0-9]+(?:-[a-z0-9]+)*) :\)$/).each do |type, name|
 				abstract[type.to_sym] << name
 			end
 			abstracts[abstract[:name]] = abstract
@@ -37,7 +36,6 @@ module Mandar::Engine::Abstract
 			abstract[:type] = rule.attributes["type"]
 			abstract[:path] = "#{WORK}/abstract-rules/#{abstract[:name]}.#{abstract[:type]}"
 			abstract[:source] = rule.find "string(source)"
-			abstract[:data] = rule.find("inputs/data").to_a.map { |elem| elem.attributes["name"] }
 			abstract[:in] = rule.find("inputs/abstract").to_a.map { |elem| elem.attributes["name"] }
 			abstract[:out] = rule.find("outputs/abstract").to_a.map { |elem| elem.attributes["name"] }
 			abstracts[abstract[:name]] = abstract
@@ -52,7 +50,16 @@ module Mandar::Engine::Abstract
 		load_source
 
 		Mandar.notice "rebuilding abstract"
+
+		# set up results with data
+
 		@results = {}
+
+		data_docs.each do |name, data_doc|
+			@results[name] = {
+				:doc => data_doc,
+			}
+		end
 
 		start_time = Time.now
 
@@ -83,6 +90,8 @@ module Mandar::Engine::Abstract
 
 			FileUtils.remove_entry_secure "#{WORK}/abstract" if File.directory? "#{WORK}/abstract"
 			FileUtils.mkdir "#{WORK}/abstract"
+
+			# do it
 
 			remaining = @abstracts.clone
 			until remaining.empty?
@@ -134,12 +143,20 @@ module Mandar::Engine::Abstract
 
 		doc = XML::Document.new
 		doc.root = XML::Node.new "abstract"
+
 		abstract[:in].each do |in_name|
-			unless result = @results[in_name]
+
+			result = @results[in_name]
+
+			unless result
 				Mandar.warning "No abstract result for #{in_name}, requested by #{abstract_name}"
 				next
 			end
-			result[:doc].root.each { |elem| doc.root << doc.import(elem) }
+
+			result[:doc].root.each do
+				|elem| doc.root << doc.import(elem)
+			end
+
 		end
 
 		case abstract_type
@@ -149,30 +166,6 @@ module Mandar::Engine::Abstract
 
 			when "xslt2"
 				config_client.set_document "abstract.xml", doc.to_s
-
-			else
-				raise "Error"
-		end
-
-		# setup data
-
-		doc = XML::Document.new
-		doc.root = XML::Node.new "data"
-		abstract[:data].each do |data_name|
-			unless data_doc = data_docs[data_name]
-				data_doc or Mandar.warning "no data for #{data_name}, requested by #{abstract_name}"
-				next
-			end
-			data_doc.root.each { |elem| doc.root << doc.import(elem) }
-		end
-
-		case abstract_type
-
-			when "xquery"
-				xquery_session.set_library_module "data.xml", doc.to_s
-
-			when "xslt2"
-				config_client.set_document "data.xml", doc.to_s
 
 			else
 				raise "Error"
