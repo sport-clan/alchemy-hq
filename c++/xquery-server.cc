@@ -274,7 +274,7 @@ int main (int argc, char * argv []) {
 
 	if (argc != 2) {
 		cout << "Syntax error\n";
-		return 1;
+		return EXIT_FAILURE;
 	}
 
 	// setup
@@ -317,5 +317,5 @@ int main (int argc, char * argv []) {
 		socket.send (reply);
 	}
 
-	return 0;
+	return EXIT_SUCCESS;
 }
