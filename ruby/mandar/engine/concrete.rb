@@ -103,8 +103,25 @@ module Mandar::Engine::Concrete
 
 				# compile
 
-				if concrete[:type] == "xslt2"
-					Mandar::Engine.config_client.compile_xslt concrete[:path]
+				case concrete[:type]
+
+					when "xquery"
+
+						begin
+							xquery_session.compile_xquery \
+								concrete[:source]
+						rescue => e
+							Mandar.error e.to_s
+							raise "error compiling #{concrete[:path]}"
+						end
+
+					when "xslt2"
+
+						Mandar::Engine.config_client.compile_xslt concrete[:path]
+
+					else
+						raise "Error"
+
 				end
 
 				# process
@@ -143,11 +160,10 @@ module Mandar::Engine::Concrete
 							begin
 								ret =
 									xquery_session.run_xquery \
-										concrete[:source], \
 										"<xml/>"
 							rescue => e
 								Mandar.error e.to_s
-								raise "error compiling #{concrete[:path]}"
+								raise "error running #{concrete[:path]}"
 							end
 
 						when "xslt2"

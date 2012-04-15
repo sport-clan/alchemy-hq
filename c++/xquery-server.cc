@@ -37,10 +37,25 @@ struct Session :
 
 	map<string,string> modules;
 
+	XQQuery * query;
+
 	Session () {
+
+		query = NULL;
 	}
 
 	virtual ~Session () {
+
+		if (query)
+			delete query;
+	}
+
+	void set_query (XQQuery * query) {
+
+		if (this->query)
+			delete this->query;
+
+		this->query = query;
 	}
 
 	virtual bool resolveModuleLocation (
@@ -60,7 +75,7 @@ struct Session :
 			UTF8 (resource_id->getSystemId ());
 
 		if (! modules.count (system_id))
-			return false;
+			return NULL;
 
 		string module_text =
 			modules [system_id];
@@ -86,18 +101,36 @@ Session * get_session (string session_id) {
 		new Session ();
 }
 
-void run_xquery (
+void set_error (
+		Json::Value & reply,
+		XQException & error) {
+
+	reply ["name"] =
+		"error";
+
+	reply ["arguments"] ["type"] =
+		UTF8 (error.getType ());
+
+	reply ["arguments"] ["error"] =
+		UTF8 (error.getError ());
+
+	reply ["arguments"] ["file"] =
+		UTF8 (error.getXQueryFile ());
+
+	reply ["arguments"] ["line"] =
+		error.getXQueryLine ();
+
+	reply ["arguments"] ["column"] =
+		error.getXQueryColumn ();
+}
+
+void compile_xquery (
 		Json::Value & reply,
 		string session_id,
-		string xquery_text,
-		string input_text) {
+		string xquery_text) {
 
 	Session * session =
 		get_session (session_id);
-
-	// perform query
-
-	string result_text;
 
 	try {
 
@@ -117,13 +150,54 @@ void run_xquery (
 				X (xquery_text.c_str ()),
 				static_context.adopt ()));
 
+		session->set_query (query.adopt ());
+
+	} catch (XQException & error) {
+
+		cout << UTF8 (error.getError ()) << "\n";
+
+		set_error (reply, error);
+
+		return;
+	}
+
+	// send reply
+
+	reply ["name"] =
+		"ok";
+}
+
+void run_xquery (
+		Json::Value & reply,
+		string session_id,
+		string input_text) {
+
+	Session * session =
+		get_session (session_id);
+
+	// fail if there is no query
+
+	if (! session->query) {
+
+		reply ["name"] =
+			"usage error";
+
+		return;
+	}
+
+	// perform query
+
+	string result_text;
+
+	try {
+
 		xercesc::MemBufInputSource input_source (
 			(XMLByte *) input_text.data (),
 			input_text.size (),
 			X ("input.xml"));
 
 		AutoDelete<DynamicContext> dynamic_context (
-			query->createDynamicContext ());
+			session->query->createDynamicContext ());
 
 		Node::Ptr input_document =
 			dynamic_context->parseDocument (
@@ -134,7 +208,7 @@ void run_xquery (
 		dynamic_context->setContextSize (1);
 
 		Result result =
-			query->execute (dynamic_context);
+			session->query->execute (dynamic_context);
 
 		ostringstream result_stream;
 
@@ -148,25 +222,7 @@ void run_xquery (
 
 		cout << UTF8 (error.getError ()) << "\n";
 
-		// send reply
-
-		reply ["name"] =
-			"error";
-
-		reply ["arguments"] ["type"] =
-			UTF8 (error.getType ());
-
-		reply ["arguments"] ["error"] =
-			UTF8 (error.getError ());
-
-		reply ["arguments"] ["file"] =
-			UTF8 (error.getXQueryFile ());
-
-		reply ["arguments"] ["line"] =
-			error.getXQueryLine ();
-
-		reply ["arguments"] ["column"] =
-			error.getXQueryColumn ();
+		set_error (reply, error);
 
 		return;
 	}
@@ -233,12 +289,18 @@ string handle_request (
 	reply ["arguments"] =
 		Json::Value (Json::objectValue);
 
-	if (request_name == "run xquery") {
+	if (request_name == "compile xquery") {
+
+		compile_xquery (
+			reply,
+			request_arguments ["session id"].asString (),
+			request_arguments ["xquery text"].asString ());
+
+	} else if (request_name == "run xquery") {
 
 		run_xquery (
 			reply,
 			request_arguments ["session id"].asString (),
-			request_arguments ["xquery text"].asString (),
 			request_arguments ["input text"].asString ());
 
 	} else if (request_name == "set library module") {

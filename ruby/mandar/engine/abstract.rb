@@ -63,7 +63,11 @@ module Mandar::Engine::Abstract
 			xquery_client = Mandar::Engine.xquery_client
 			if xquery_client
 
+				# create session
+
 				xquery_session = xquery_client.session
+
+				# send include files
 
 				include_dir = "#{CONFIG}/include"
 				Dir["#{include_dir}/*.xquery"].each do |path|
@@ -181,10 +185,14 @@ module Mandar::Engine::Abstract
 			when "xquery"
 
 				begin
+
+					xquery_session.compile_xquery \
+						abstract[:source]
+
 					abstract[:str] = \
 						xquery_session.run_xquery \
-							abstract[:source], \
 							"<xml/>"
+
 				rescue => e
 					Mandar.error e.to_s
 					Mandar.error "deleting #{WORK}"

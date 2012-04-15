@@ -34,13 +34,43 @@ class Ahq::Xquery::Session
 		end
 	end
 
-	def run_xquery xquery_text, input_text
+	def compile_xquery xquery_text
+
+		request = {
+			"name" => "compile xquery",
+			"arguments" => {
+				"session id" => @session_id,
+				"xquery text" => xquery_text,
+			}
+		}
+
+		reply = @client.perform request
+
+		case reply["name"]
+
+			when "ok"
+				return reply["arguments"]["result text"]
+
+			when "error"
+				arguments = reply["arguments"]
+				file = arguments["file"]
+				file = "file" if file.empty?
+				line = arguments["line"]
+				column = arguments["column"]
+				error = arguments["error"]
+				raise "#{file}:#{line}:#{column} #{error}"
+
+			else
+				raise "Unknown response: #{reply["name"]}"
+		end
+	end
+
+	def run_xquery input_text
 
 		request = {
 			"name" => "run xquery",
 			"arguments" => {
 				"session id" => @session_id,
-				"xquery text" => xquery_text,
 				"input text" => input_text,
 			}
 		}

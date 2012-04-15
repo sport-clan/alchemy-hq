@@ -2,12 +2,12 @@ Feature: XQuery server
 
   Scenario: Perform a transform
 
-    Given an xquery script:
+	When I compile the query:
       """
       1 + 1
       """
 
-    When I perform the transform
+	And I run the query
 
     Then the result should be:
       """
@@ -16,19 +16,17 @@ Feature: XQuery server
 
   Scenario: Reference the source document
 
-    Given an xquery script:
+	When I compile the query:
       """
       string (/doc/elem/@attr)
       """
 
-    And an input document:
+    And I run the query against:
       """
       <doc>
         <elem attr="hello world"/>
       </doc>
       """
-
-    When I perform the transform
 
     Then the result should be:
       """
@@ -45,13 +43,13 @@ Feature: XQuery server
       };
       """
 
-    And an xquery script:
+    When I compile the query:
       """
       import module namespace lib = "module.xquery";
       string-join (lib:message (), ', ')
       """
 
-    When I perform the transform
+    And I run the query
 
     Then the result should be:
       """
@@ -60,11 +58,11 @@ Feature: XQuery server
 
   Scenario: Invalid xquery
 
-    Given an xquery script:
+    When I compile the query:
       """
       123;;;
       """
 
-    When I perform the transform
+    And I run the query
 
     Then I should get an error
