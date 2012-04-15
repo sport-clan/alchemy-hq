@@ -87,7 +87,7 @@ Session * get_session (string session_id) {
 }
 
 void run_xquery (
-		zmq::socket_t & socket,
+		Json::Value & reply,
 		string session_id,
 		string xquery_text,
 		string input_text) {
@@ -150,70 +150,44 @@ void run_xquery (
 
 		// send reply
 
-		Json::FastWriter writer;
-
-		Json::Value root (Json::objectValue);
-
-		root ["name"] =
+		reply ["name"] =
 			"error";
 
-		root ["arguments"] =
+		reply ["arguments"] =
 			Json::Value (Json::objectValue);
 
-		root ["arguments"] ["type"] =
+		reply ["arguments"] ["type"] =
 			UTF8 (error.getType ());
 
-		root ["arguments"] ["error"] =
+		reply ["arguments"] ["error"] =
 			UTF8 (error.getError ());
 
-		root ["arguments"] ["file"] =
+		reply ["arguments"] ["file"] =
 			UTF8 (error.getXQueryFile ());
 
-		root ["arguments"] ["line"] =
+		reply ["arguments"] ["line"] =
 			error.getXQueryLine ();
 
-		root ["arguments"] ["column"] =
+		reply ["arguments"] ["column"] =
 			error.getXQueryColumn ();
-
-		string reply_text =
-			writer.write (root);
-
-		zmq::message_t reply (reply_text.size ());
-
-		memcpy (reply.data (), reply_text.data (), reply_text.size ());
-
-		socket.send (reply);
 
 		return;
 	}
 
 	// send reply
 
-	Json::FastWriter writer;
-
-	Json::Value root (Json::objectValue);
-
-	root ["name"] =
+	reply ["name"] =
 		"ok";
 
-	root ["arguments"] =
+	reply ["arguments"] =
 		Json::Value (Json::objectValue);
 
-	root ["arguments"] ["result text"] =
+	reply ["arguments"] ["result text"] =
 		result_text;
-
-	string reply_text =
-		writer.write (root);
-
-	zmq::message_t reply (reply_text.size ());
-
-	memcpy (reply.data (), reply_text.data (), reply_text.size ());
-
-	socket.send (reply);
 }
 
 void set_library_module (
-		zmq::socket_t & socket,
+		Json::Value & reply,
 		string session_id,
 		string module_name,
 		string module_text) {
@@ -228,38 +202,24 @@ void set_library_module (
 
 	// send reply
 
-	Json::FastWriter writer;
-
-	Json::Value root (Json::objectValue);
-
-	root ["name"] =
+	reply ["name"] =
 		"ok";
 
-	root ["arguments"] =
+	reply ["arguments"] =
 		Json::Value (Json::objectValue);
-
-	string reply_text =
-		writer.write (root);
-
-	zmq::message_t reply (reply_text.size ());
-
-	memcpy (reply.data (), reply_text.data (), reply_text.size ());
-
-	socket.send (reply);
 }
 
-void handle_request (
-		zmq::socket_t & socket,
+string handle_request (
 		string request_string) {
 
 	// decode
 
-	Json::Value root;
+	Json::Value request;
 
 	Json::Reader reader;
 
 	bool parsingSuccessful =
-		reader.parse (request_string, root);
+		reader.parse (request_string, request);
 
 	if (! parsingSuccessful) {
 
@@ -272,15 +232,17 @@ void handle_request (
 	// lookup function
 
 	string name =
-		root ["name"].asString ();
+		request ["name"].asString ();
 
 	Json::Value arguments =
-		root ["arguments"];
+		request ["arguments"];
+
+	Json::Value reply (Json::objectValue);
 
 	if (name == "run xquery") {
 
 		run_xquery (
-			socket,
+			reply,
 			arguments ["session id"].asString (),
 			arguments ["xquery text"].asString (),
 			arguments ["input text"].asString ());
@@ -288,7 +250,7 @@ void handle_request (
 	} else if (name == "set library module") {
 
 		set_library_module (
-			socket,
+			reply,
 			arguments ["session id"].asString (),
 			arguments ["module name"].asString (),
 			arguments ["module text"].asString ());
@@ -300,6 +262,12 @@ void handle_request (
 		exit (1);
 
 	}
+
+	// send reply
+
+	Json::FastWriter writer;
+
+	return writer.write (reply);
 }
 
 int main (int argc, char * argv []) {
@@ -309,30 +277,45 @@ int main (int argc, char * argv []) {
 		return 1;
 	}
 
-    // setup
+	// setup
 
-    zmq::context_t context (1);
-    zmq::socket_t socket (context, ZMQ_REP);
+	zmq::context_t context (1);
+	zmq::socket_t socket (context, ZMQ_REP);
 
-    socket.bind (argv [1]);
+	socket.bind (argv [1]);
 
 	cout << "Ready\n";
 
-    while (true) {
+	while (true) {
 
-        zmq::message_t request;
+		// get request
 
-        // get request
+		zmq::message_t request;
 
-        socket.recv (& request);
+		socket.recv (& request);
 
 		string request_string =
 			string (
 				(const char *) request.data (),
 				request.size ());
 
-		handle_request (socket, request_string);
-    }
+		// handle
 
-    return 0;
+		string reply_string =
+			handle_request (
+				request_string);
+
+		// send reply
+
+		zmq::message_t reply (reply_string.size ());
+
+		memcpy (
+			reply.data (),
+			reply_string.data (),
+			reply_string.size ());
+
+		socket.send (reply);
+	}
+
+	return 0;
 }
