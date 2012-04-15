@@ -153,9 +153,6 @@ void run_xquery (
 		reply ["name"] =
 			"error";
 
-		reply ["arguments"] =
-			Json::Value (Json::objectValue);
-
 		reply ["arguments"] ["type"] =
 			UTF8 (error.getType ());
 
@@ -179,9 +176,6 @@ void run_xquery (
 	reply ["name"] =
 		"ok";
 
-	reply ["arguments"] =
-		Json::Value (Json::objectValue);
-
 	reply ["arguments"] ["result text"] =
 		result_text;
 }
@@ -204,9 +198,6 @@ void set_library_module (
 
 	reply ["name"] =
 		"ok";
-
-	reply ["arguments"] =
-		Json::Value (Json::objectValue);
 }
 
 string handle_request (
@@ -231,33 +222,36 @@ string handle_request (
 
 	// lookup function
 
-	string name =
+	string request_name =
 		request ["name"].asString ();
 
-	Json::Value arguments =
+	Json::Value request_arguments =
 		request ["arguments"];
 
 	Json::Value reply (Json::objectValue);
 
-	if (name == "run xquery") {
+	reply ["arguments"] =
+		Json::Value (Json::objectValue);
+
+	if (request_name == "run xquery") {
 
 		run_xquery (
 			reply,
-			arguments ["session id"].asString (),
-			arguments ["xquery text"].asString (),
-			arguments ["input text"].asString ());
+			request_arguments ["session id"].asString (),
+			request_arguments ["xquery text"].asString (),
+			request_arguments ["input text"].asString ());
 
-	} else if (name == "set library module") {
+	} else if (request_name == "set library module") {
 
 		set_library_module (
 			reply,
-			arguments ["session id"].asString (),
-			arguments ["module name"].asString (),
-			arguments ["module text"].asString ());
+			request_arguments ["session id"].asString (),
+			request_arguments ["module name"].asString (),
+			request_arguments ["module text"].asString ());
 
 	} else {
 
-		cout << "Invalid function name: " << name << "\n";
+		cout << "Invalid function name: " << request_name << "\n";
 
 		exit (1);
 
