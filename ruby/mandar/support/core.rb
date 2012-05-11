@@ -539,7 +539,7 @@ module Mandar::Support::Core
 					end
 
 				else
-					raise "Error"
+					raise "Invalid element in <shell>: <#{elem.name}>"
 			end
 		end
 
