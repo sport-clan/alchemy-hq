@@ -1,0 +1,161 @@
+#!/usr/bin/env ruby
+
+script_path = $0
+script_path = File.readlink(script_path) while File.symlink?(script_path)
+CONFIG = File.expand_path("#{File.dirname(script_path)}/../..")
+$LOAD_PATH.unshift "#{CONFIG}/alchemy-hq/ruby"
+
+require "mandar"
+require "net/dns/core_ext"
+require "net/dns"
+require "net/dns/resolver"
+require "pp"
+require "resolv"
+require "set"
+
+def main
+	script = CheckDnsEntryScript.new
+	script.args = ARGV
+	script.main
+	exit script.status
+end
+
+DNS_PORT = 53
+
+class CheckDnsEntryScript < Mandar::Tools::CheckScript
+
+	def initialize
+		super
+		@name = "DNS entry"
+	end
+
+	def process_args
+
+		@opts, @args =
+			Mandar::Tools::Getopt.process ARGV, [
+
+				{ :name => :timeout,
+					:default => 10,
+					:regex => /[0-9]+(\.[0-9]+)?/,
+					:convert => :to_f },
+
+				{ :name => :domain,
+					:required => true },
+
+				{ :name => :tld,
+					:required => true },
+
+				{ :name => :type,
+					:required => true },
+
+				{ :name => :expect,
+					:required => true,
+					:multi => true },
+
+			]
+
+		@args.empty? or raise "Extra args on command line"
+	end
+
+	def perform_checks
+
+		# find out tld nameserver
+
+		resolver = Net::DNS::Resolver.new
+
+		begin
+			response = resolver.query "#{@opts[:tld]}.", Net::DNS::NS
+		rescue => e
+			critical "error resolving tld: #{e.message}"
+			return
+		end
+
+		if response.answer.empty?
+			critical "tld not found: #{@opts[:tld]}"
+			return
+		end
+
+		ns = response.answer.sample.value
+
+		# recursively resolve
+
+		while true
+
+			# perform one lookup
+
+			socket = UDPSocket.new
+
+			request =
+				Net::DNS::Packet.new \
+					"#{@opts[:domain]}.#{@opts[:tld]}.",
+					Net::DNS::A,
+					Net::DNS::IN
+
+			begin
+				socket.send request.data, 0, ns, DNS_PORT
+			rescue => e
+				critical "error contacting #{ns}: #{e.message}"
+				return
+			end
+
+			read, write, error = \
+				IO.select [ socket ], nil, nil, @opts[:timeout]
+
+			unless read
+				critical "timed out contacting #{ns}"
+				return
+			end
+
+			raw_response =
+				socket.recvfrom 4096
+
+			response =
+				Net::DNS::Packet.parse \
+					raw_response[0],
+					raw_response[1]
+
+			# check if it was successful
+
+			unless response.answer.empty?
+				result = response.answer.sample.value
+				message "resolves to #{result}"
+				break
+			end
+
+			# recurse via returned authority, if available
+
+			authority_ns = response.authority.select { |rr| rr.type == "NS" }
+
+			if authority_ns.empty?
+				critical "lookup failed at #{ns}"
+				return
+			end
+
+			# loop with the
+
+			ns = authority_ns.sample.value
+
+		end
+
+		# check it matches
+
+		if result != @opts[:expect][0]
+			critical "expected #{@opts[:expect][0]}"
+			return
+		end
+
+	end
+
+end
+
+# monkey patch to work with old ruby
+
+unless Array.instance_methods.include? :sample
+	class Array
+		def sample
+			self[rand(self.size)]
+		end
+	end
+end
+
+main
