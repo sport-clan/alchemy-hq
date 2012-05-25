@@ -40,12 +40,17 @@ module Mandar::Support::Service
 		end
 	end
 
-	def self.command_start(start_elem)
+	def self.command_start start_elem
+
 		start_service = start_elem.attributes["service"]
-		unless service start_service, "status"
-			Mandar.notice "starting #{start_service}"
-			service start_service, "start" unless $mock
-		end
+		start_stopped = start_elem.attributes["stopped"] == "yes"
+
+		return command_stop start_elem if start_stopped
+
+		return if service start_service, "status"
+
+		Mandar.notice "starting #{start_service}"
+		service start_service, "start" unless $mock
 	end
 
 	def self.command_stop(stop_elem)
