@@ -95,7 +95,7 @@ class Mandar::Console::TypeEdit
 	def create_field_list type_elem, field_elem, path, value, depth, readonly
 		field_name = field_elem.attributes["name"]
 		field_max = field_elem.attributes["max"]
-		value ||= []
+		value = [] unless value.is_a? Array
 		return [
 			value.map_with_index { |item, i|
 				item_path = "#{path}-#{i}"

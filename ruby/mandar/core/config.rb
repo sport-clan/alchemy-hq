@@ -108,13 +108,17 @@ module Mandar::Core::Config
 				elem << prop
 			when "bool"
 				elem.attributes[field_name] = "yes" if value[field_name]
+
 			when "list"
-				items = value[field_name] || []
-				items.each do |item|
-					prop = XML::Node.new field_name
-					field_to_xml schemas_elem, field_elem, item, prop
-					elem << prop
+				items = value[field_name]
+				if items.is_a? Array
+					items.each do |item|
+						prop = XML::Node.new field_name
+						field_to_xml schemas_elem, field_elem, item, prop
+						elem << prop
+					end
 				end
+
 			when "struct"
 				prop = XML::Node.new field_name
 				field_to_xml schemas_elem, field_elem, value[field_name], prop
