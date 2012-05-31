@@ -294,9 +294,9 @@ module Mandar::EC2::Utils
 			print " (#{(Time.now - start_time).to_i} seconds)\n"
 
 			# kill any existing ssh connection
-			if File.exists?("#{WORK}/ssh-control-sockets/#{name}.pid")
-				Process.kill 15, File.read("#{WORK}/ssh-control-sockets/#{name}.pid").to_i
-				FileUtils.rm_rf "#{WORK}/ssh-control-sockets/#{name}.sock"
+			if File.exists?("#{WORK}/ssh/#{name}.pid")
+				Process.kill 15, File.read("#{WORK}/ssh/#{name}.pid").to_i
+				FileUtils.rm_rf "#{WORK}/ssh/#{name}.sock"
 			end
 
 			# install default-key as root's id_rsa

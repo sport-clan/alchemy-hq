@@ -12,8 +12,8 @@ module Mandar::Master
 		host_ssh_host_key = host_elem.attributes["ssh-host-key"] or raise "No host key for host #{host_name}"
 		host_ssh_key_name = host_elem.attributes["ssh-key-name"] or raise "No key name for host #{host_name}"
 
-		FileUtils.mkdir_p "#{WORK}/ssh-control-sockets"
-		run_path = "#{WORK}/ssh-control-sockets/#{host_name}"
+		FileUtils.mkdir_p "#{WORK}/ssh"
+		run_path = "#{WORK}/ssh/#{host_name}"
 		socket_path = "#{run_path}.sock"
 		pid_path = "#{run_path}.pid"
 
@@ -47,7 +47,7 @@ module Mandar::Master
 					-i #{ssh_key_file.path}
 					-o ServerAliveInterval=10
 					-o ServerAliveCountMax=3
-					-o ConnectTimeout=20
+					-o ConnectTimeout=10
 					-o BatchMode=yes
 				]
 				ssh_cmd = "#{Mandar.shell_quote ssh_args} </dev/null"
@@ -58,12 +58,12 @@ module Mandar::Master
 	end
 
 	def self.disconnect_all()
-		if File.directory? "#{WORK}/ssh-control-sockets"
-			Dir.new("#{WORK}/ssh-control-sockets").each do |filename|
+		if File.directory? "#{WORK}/ssh"
+			Dir.new("#{WORK}/ssh").each do |filename|
 				next unless filename =~ /^(.+)\.pid$/
 				host = $1
 				Mandar.notice "disconnecting from #{host}"
-				pid = File.read("#{WORK}/ssh-control-sockets/#{host}.pid").to_i
+				pid = File.read("#{WORK}/ssh/#{host}.pid").to_i
 				Process.kill 15, pid
 			end
 		end
@@ -107,7 +107,7 @@ module Mandar::Master
 
 		rsh_cmd = Mandar.shell_quote %W[
 			ssh
-			-S #{WORK}/ssh-control-sockets/#{host_name}.sock
+			-S #{WORK}/ssh/#{host_name}.sock
 			-o BatchMode=yes
 			-o ConnectTimeout=10
 		]
@@ -164,7 +164,7 @@ module Mandar::Master
 		host_hostname = host_elem.attributes["hostname"]
 		ssh_args = %W[
 			ssh -q -T -A
-			-S #{WORK}/ssh-control-sockets/#{host_name}.sock
+			-S #{WORK}/ssh/#{host_name}.sock
 			-o BatchMode=yes
 			root@#{host_hostname}
 			#{Mandar.shell_quote cmd}
