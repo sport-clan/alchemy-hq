@@ -4,15 +4,10 @@ path = ARGV.shift
 socket_path = "#{path}.sock"
 pid_path = "#{path}.pid"
 
-rd, wr = IO.pipe
+ctl_rd, ctl_wr = IO.pipe
 
 fork do
-	rd.close
-
-	# close input/output streams
-	$stdin.reopen "/dev/null", "r"
-	$stdout.reopen "/dev/null", "w"
-	$stderr.reopen "/dev/null", "w"
+	ctl_rd.close
 
 	# exit if ssh dies
 	Signal.trap "CHLD" do
@@ -20,19 +15,32 @@ fork do
 	end
 
 	# run ssh as subprocess
+	ssh_rd, ssh_wr = IO.pipe
 	ssh_pid = fork do
-		wr.close
+		ssh_rd.close
+		$stdin.reopen "/dev/null", "r"
+		$stdout.reopen ssh_wr
+		$stderr.reopen ssh_wr
+		ctl_wr.close
 		exec *ARGV
 	end
+	ssh_wr.close
 
 	# write pid file
 	File.open(pid_path, "w") { |f| f.puts $$ }
 
 	# wait for socket
-	while ! File.exists? socket_path
-		sleep 1
+	while true
+		rs, = IO.select [ ssh_rd ], nil, nil, 1
+		ctl_wr.print ssh_rd.read_nonblock(1024) if rs
+		if File.exists? socket_path
+			break
+		end
 	end
-	wr.close
+
+	# signal we are ok
+	ctl_wr.puts "ok"
+	ctl_wr.close
 
 	# clean up on exit
 	at_exit do
@@ -48,12 +56,22 @@ fork do
 
 	# exit if pid file gets mangled
 	begin
-		while (mtime ||= nil) == (mtime = File.mtime(pid_path)) || File.read(pid_path).chomp == $$.to_s
-			sleep 1
+		while (mtime ||= nil) == (mtime = File.mtime(pid_path)) \
+				|| File.read(pid_path).chomp == $$.to_s
+			rs, = IO.select [ ssh_rd ], nil, nil, 1
+			ssh_rd.read_nonblock(1024) if rs
 		end
+	rescue IOError
 	rescue Errno::ENOENT
 	end
 end
 
-wr.close
-rd.gets
+ctl_wr.close
+
+ok = false
+while line = ctl_rd.gets
+	exit 0 if line == "ok\n"
+	puts line
+end
+
+exit 1
