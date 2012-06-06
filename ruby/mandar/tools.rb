@@ -3,6 +3,7 @@ end
 
 require "mandar/tools/backup"
 require "mandar/tools/check-script"
+require "mandar/tools/client"
 require "mandar/tools/cron"
 require "mandar/tools/daemon"
 require "mandar/tools/escape"
