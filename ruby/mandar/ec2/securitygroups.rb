@@ -20,9 +20,9 @@ module Mandar::EC2::SecurityGroups
 			groups_elem.attributes["endpoint"]
 
 		account = {
-			access_key_id: group_access_key_id,
-			secret_access_key: group_secret_access_key,
-			endpoint: group_endpoint,
+			:access_key_id => group_access_key_id,
+			:secret_access_key => group_secret_access_key,
+			:endpoint => group_endpoint,
 		}
 
 		ec2_client =
@@ -116,9 +116,9 @@ module Mandar::EC2::SecurityGroups
 						group_elem.attributes["description"]
 
 					ret[group_name] = {
-						name: group_name,
-						description: group_description,
-						rules: decode_group_elem(group_elem),
+						:name => group_name,
+						:description => group_description,
+						:rules => decode_group_elem(group_elem),
 					}
 
 				else
