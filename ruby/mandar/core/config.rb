@@ -437,7 +437,9 @@ module Mandar::Core::Config
 						end
 					end
 				end
-				f.puts doc.to_s
+				doc_str = doc.to_s
+				f.puts doc_str
+				f.flush
 				FileUtils.move f.path, schema_file
 			end
 			@schemas_elem = nil
