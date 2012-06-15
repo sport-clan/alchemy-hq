@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
 
 script_path = $0
 script_path = File.readlink(script_path) while File.symlink?(script_path)
@@ -55,7 +55,10 @@ class CheckSiteScript < Mandar::Tools::CheckScript
 				req = Net::HTTP::Get.new path
 				req["host"] = url.host
 				req["user-agent"] = "mandar check_site"
-				req.basic_auth @opts[:username], @opts[:password] if @opts[:username]
+
+				if @opts[:username]
+					req.basic_auth @opts[:username], @opts[:password]
+				end
 
 				http = Net::HTTP.new address, url.port
 				http.open_timeout = @opts[:timeout]
@@ -93,9 +96,14 @@ class CheckSiteScript < Mandar::Tools::CheckScript
 		else
 			message "#{total} hosts found"
 
-			critical "#{failures} uncontactable" if failures > 0
-			critical "#{errors} errors (#{error_codes.to_a.join(",")})" if errors > 0
-			critical "#{mismatches} mismatches" if mismatches > 0
+			critical "#{failures} uncontactable" \
+				if failures > 0
+
+			critical "#{errors} errors (#{error_codes.to_a.join(",")})" \
+				if errors > 0
+
+			critical "#{mismatches} mismatches" \
+				if mismatches > 0
 
 			if worst >= @opts[:critical]
 				critical "#{worst}s time (critical is #{@opts[:critical]})"
