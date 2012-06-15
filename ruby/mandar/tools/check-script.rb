@@ -12,9 +12,17 @@ class Mandar::Tools::CheckScript
 	end
 
 	def main
+
 		process_args
-		perform_checks
+
+		begin
+			perform_checks
+		rescue => e
+			unknown e.message
+		end
+
 		perform_output
+
 	end
 
 	def perform_output
