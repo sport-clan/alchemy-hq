@@ -10,13 +10,31 @@ require "pp"
 require "mandar"
 require "xml"
 
-$opts, $args = Mandar::Tools::Getopt.process ARGV, [
-	{ :name => :config, :required => true },
-	{ :name => :account, :required => true, :regex => /[a-z][a-z0-9]*(?:-[a-z0-9]+)*/ },
-	{ :name => :region, :required => true, :regex => /[a-z][a-z0-9]*(?:-[a-z0-9]+)*/ },
-	{ :name => :critical, :required => true, :regex => /[1-9][0-9]*/, :convert => :to_i },
-	{ :name => :warning, :required => true, :regex => /[1-9][0-9]*/, :convert => :to_i },
-]
+$opts, $args =
+	Mandar::Tools::Getopt.process ARGV, [
+
+		{ :name => :config,
+			:required => true },
+
+		{ :name => :account,
+			:required => true,
+			:regex => /[a-z][a-z0-9]*(?:-[a-z0-9]+)*/ },
+
+		{ :name => :region,
+			:required => true,
+			:regex => /[a-z][a-z0-9]*(?:-[a-z0-9]+)*/ },
+
+		{ :name => :critical,
+			:required => true,
+			:regex => /[1-9][0-9]*/,
+			:convert => :to_i },
+
+		{ :name => :warning,
+			:required => true,
+			:regex => /[1-9][0-9]*/,
+			:convert => :to_i },
+
+	]
 
 # load config
 $config = XML::Document.file $opts[:config]
@@ -34,7 +52,14 @@ aws_client = Mandar::AWS::Client.new account, "ec2.#{$opts[:region]}.amazonaws.c
 aws_client.default_prefix = "a"
 
 # retrieve info
-resp = aws_client.describe_snapshots :owner => "self"
+resp =
+	begin
+		aws_client.describe_snapshots :owner => "self"
+	rescue => e
+		puts "UNKNOWN: #{e.message}"
+		exit 3
+	end
+
 count = resp.find("a:snapshotSet / a:item").size
 
 case
