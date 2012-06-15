@@ -3,6 +3,9 @@ module Mandar::Core::Config
 	@data_docs = {}
 	@data_strs = {}
 
+	def self.data_docs() @data_docs end
+	def self.data_strs() @data_strs end
+
 	def self.reload()
 		mandar true
 		service true
@@ -24,8 +27,8 @@ module Mandar::Core::Config
 			doc = XML::Document.file mandar_config_file, :options =>XML::Parser::Options::NOBLANKS
 
 			# validate document
-			relax = Mandar::Core::Config.load_relax_ng "#{MANDAR}/etc/mandar-config.rnc"
-			doc.validate_relaxng relax
+			#relax = Mandar::Core::Config.load_relax_ng "#{MANDAR}/etc/mandar-config.rnc"
+			#doc.validate_relaxng relax
 
 			# save and return
 			return @mandar_config = doc.root
@@ -129,7 +132,8 @@ module Mandar::Core::Config
 				temp_doc.root.each { |temp_elem| prop << temp_elem.copy(true) }
 				elem << prop
 			else
-				raise "unexpected element #{field_elem.name} found in field list for schema #{schemas_elem.attributes["name"]}"
+				raise "unexpected element #{field_elem.name} found in field "
+					"list for schema #{schema_elem.attributes["name"]}"
 			end
 		end
 		if value["content"].is_a? Array
@@ -149,6 +153,141 @@ module Mandar::Core::Config
 		end
 	end
 
+	# TODO this is messy
+	def self.xp str
+		return "'" + str.gsub("'", "''") + "'"
+	end
+
+	def self.field_to_json schemas_elem, schema_elem, fields_elem, elem, value
+
+		fields_elem.find("* [name() != 'option']").each do |field_elem|
+
+			field_name = field_elem.attributes["name"]
+
+			case field_elem.name
+
+				when "text"
+
+					value[field_name] = elem.attributes[field_name]
+
+				when "int", "ts-update"
+
+					temp = elem.attributes[field_name]
+
+					value[field_name] = temp.empty? ? nil : temp.to_i
+
+				when "list"
+
+					value[field_name] = []
+
+					elem.find("* [ name () = #{xp field_name} ]") \
+						.each do |child_elem|
+
+						prop = {}
+
+						field_to_json \
+							schemas_elem,
+							schema_elem,
+							field_elem,
+							child_elem,
+							prop
+
+						value[field_name] << prop
+					end
+
+				when "struct"
+
+					prop = {}
+
+					child_elem =
+						elem.find_first \
+							"* [ name () = #{xp field_name} ]"
+
+					if child_elem
+						field_to_json \
+							schemas_elem,
+							schema_elem,
+							field_elem,
+							child_elem,
+							prop
+					end
+
+					value[field_name] = prop unless prop.empty?
+
+				when "xml"
+
+					value[field_name] = ""
+
+					elem.find("* [ name () = #{xp field_name} ] / *") \
+						.each do |prop|
+
+						value[field_name] += prop.to_s
+					end
+
+				when "bool"
+
+					value[field_name] = \
+						elem.attributes[field_name] == "yes"
+
+				when "bigtext"
+
+					value[field_name] =
+						elem.find_first("* [ name () = #{xp field_name} ]") \
+							.content
+
+				else
+
+					raise "unexpected element #{field_elem.name} found in " \
+						"field list for schema " \
+						"#{schema_elem.attributes["name"]}"
+
+			end
+		end
+
+		content = []
+
+		elem.find("*").each do |child_elem|
+
+			option_elem =
+				fields_elem.find_first \
+					"option [ @name = #{xp child_elem.name} ]"
+
+			next unless option_elem
+
+			option_ref =
+				option_elem.attributes["ref"]
+
+			schema_option_elem =
+				schemas_elem.find_first \
+					"schema-option [@name = '#{option_ref}']"
+
+			raise "Error" \
+				unless schema_option_elem
+
+			schema_option_props_elem =
+				schema_option_elem.find_first "props"
+
+			prop = {}
+
+			field_to_json \
+				schemas_elem,
+				schema_elem,
+				schema_option_props_elem,
+				child_elem,
+				prop
+
+			content << {
+				"type" => child_elem.name,
+				"value" => prop,
+			}
+
+		end
+
+		value["content"] = content \
+			unless content.empty?
+
+	end
+
 	def self.staged_change()
 		return nil unless $deploy_mode == :staged
 
@@ -162,6 +301,7 @@ module Mandar::Core::Config
 	end
 
 	def self.stager_start(deploy_mode, deploy_role, deploy_mock)
+
 		[ :unstaged, :staged, :rollback ].include? deploy_mode \
 			or raise "Invalid mode: #{deploy_mode}"
 
@@ -172,6 +312,7 @@ module Mandar::Core::Config
 		} [deploy_mode]
 
 		# control differences between staged deploy and rollback
+
 		unless deploy_mode == :unstaged
 			change_pending_state = {
 				:staged => "deploy",
@@ -192,14 +333,17 @@ module Mandar::Core::Config
 		end
 
 		# load locks
+
 		locks = Mandar.cdb.get("mandar-locks")
 		locks or raise "Internal error"
 
 		# check for concurrent deployment
+
 		locks["deploy"] \
 			and Mandar.die "another deployment is in progress for role #{locks["deploy"]["role"]}"
 
 		# check for concurrent changes
+
 		locks["changes"].each do |role, change|
 			next if change["state"] == "stage"
 			next if change["role"] == deploy_role && deploy_mode != :unstaged
@@ -207,6 +351,7 @@ module Mandar::Core::Config
 		end
 
 		# find our changes
+
 		if deploy_mode != :unstaged
 			change = locks["changes"][deploy_role]
 			change or Mandar.die "no staged changes for #{deploy_role}"
@@ -216,13 +361,16 @@ module Mandar::Core::Config
 		end
 
 		# display confirmation
+
 		Mandar.notice "beginning #{mode_text} for role #{deploy_role}"
 
 		# allocate seq
+
 		lock_seq = locks["next-seq"]
 		locks["next-seq"] += 1
 
 		# create lock
+
 		locks["deploy"] = {
 			"role" => deploy_role,
 			"host" => Socket.gethostname,
@@ -233,6 +381,7 @@ module Mandar::Core::Config
 		}
 
 		# update change state
+
 		unless deploy_mock
 			if deploy_mode != :unstaged
 				change["state"] = change_pending_state
@@ -241,29 +390,36 @@ module Mandar::Core::Config
 		end
 
 		# save locks
+
 		Mandar.cdb.update locks
 
 		at_exit do
 
 			# load locks
+
 			locks = Mandar.cdb.get("mandar-locks")
 			locks or raise "Internal error"
 
 			# check seq
-			locks["deploy"]["seq"] = lock_seq or Mandar.die "Lock sequence number changed"
+
+			locks["deploy"]["seq"] == lock_seq \
+				or Mandar.die "Lock sequence number changed"
 
 			# clear lock
+
 			locks["deploy"] = nil
 
 			unless deploy_mock
 				if deploy_mode != :unstaged
 
 					# find our changes
+
 					change = locks["changes"][deploy_role]
 					change or raise "Internal error"
 					change["state"] == change_pending_state or raise "Internal error"
 
 					# update change state
+
 					change["state"] = change_done_state
 					change[change_done_timestamp] = Time.now.to_i
 
@@ -271,10 +427,12 @@ module Mandar::Core::Config
 			end
 
 			# save locks
+
 			Mandar.cdb.update locks
 
 			# display confirmation
-			Mandar.notice "finished #{mode_text} changes for role #{deploy_role}"
+
+			Mandar.notice "finished #{mode_text} for role #{deploy_role}"
 		end
 	end
 
@@ -283,6 +441,27 @@ module Mandar::Core::Config
 		field_to_xml(schemas_elem, schema_elem.find_first("id"), value, elem)
 		field_to_xml(schemas_elem, schema_elem.find_first("fields"), value, elem)
 		return elem
+	end
+
+	def self.xml_to_json schemas_elem, schema_elem, elem
+
+		value = {}
+
+		field_to_json \
+			schemas_elem,
+			schema_elem,
+			schema_elem.find_first("id"),
+			elem,
+			value
+
+		field_to_json \
+			schemas_elem,
+			schema_elem,
+			schema_elem.find_first("fields"),
+			elem,
+			value
+
+		return value
 	end
 
 	def self.schemas_elem
@@ -309,9 +488,20 @@ module Mandar::Core::Config
 		rows = Mandar.cdb.view("root", "by_type")["rows"]
 		values_by_type = Hash.new
 		rows.each do |row|
-			next unless row["value"]["mandar_type"]
-			values_by_type[row["value"]["mandar_type"]] ||= Hash.new
-			values_by_type[row["value"]["mandar_type"]][row["id"]] = row["value"]
+
+			next unless row["value"]["transaction"] == "current"
+
+			type = row["value"]["type"]
+
+			values_by_type[type] ||= Hash.new
+
+			value = row["value"]["value"]
+
+			row["id"] =~ /^current\/(.+)$/
+			value["_id"] = $1
+
+			values_by_type[type][value["_id"]] =
+				value
 		end
 
 		change = staged_change
@@ -396,6 +586,15 @@ module Mandar::Core::Config
 		return true
 	end
 
+	def self.data_ready
+		if $no_database
+			Mandar.warning "not dumping data due to --no-database option"
+			data_load
+		else
+			data_dump
+		end
+	end
+
 	def self.rebuild_abstract
 		return if warn_no_config
 
@@ -413,12 +612,7 @@ module Mandar::Core::Config
 		# process abstract config, repeat until schema and rules are consistent
 		while true
 
-			if $no_database
-				Mandar.warning "not dumping data due to --no-database option"
-				data_load
-			else
-				data_dump
-			end
+			data_ready
 
 			# process abstract config
 			Mandar::Engine::Abstract.rebuild @data_docs

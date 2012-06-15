@@ -1,30 +1,35 @@
 module Mandar::Engine
 
-	def self.zorba
-		return @zorba if @zorba
-		return nil unless defined? Zorba_api
+	def self.xslt2_client
 
-		Mandar.debug "initialising zorba xquery library"
-		start_time = Time.now
+		return @xslt2_client if @xslt2_client
 
-		store = Zorba_api::InMemoryStore.getInstance()
-		@zorba = Zorba_api::Zorba.getInstance(store)
+		mandar = Mandar::Core::Config.mandar
+		xslt2_config = mandar.find_first "xslt2"
 
-		end_time = Time.now
-		Mandar.trace "initialising zorba xquery library took #{((end_time - start_time) * 1000).to_i}ms"
+		return false unless xslt2_config
 
-		return @zorba
+		@xslt2_client = Mandar::Engine::ConfigClient.new
+
+		@xslt2_client.start
+
+		return @xslt2_client
 	end
 
-	def self.data_manager
-		return zorba ? zorba.getXmlDataManager() : nil
-	end
+	def self.xquery_client
 
-	def self.config_client
-		return @config_client if @config_client
-		@config_client = Mandar::Engine::ConfigClient.new
-		@config_client.start
-		return @config_client
+		mandar = Mandar::Core::Config.mandar
+		xquery_config = mandar.find_first "xquery"
+
+		return false unless xquery_config
+
+		require "ahq/xquery/client"
+
+		xquery_client = \
+			Ahq::Xquery::Client.new \
+				xquery_config.attributes["url"]
+
+		return xquery_client
 	end
 
 end

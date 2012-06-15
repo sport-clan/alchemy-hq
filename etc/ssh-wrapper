@@ -4,17 +4,32 @@ path = ARGV.shift
 socket_path = "#{path}.sock"
 pid_path = "#{path}.pid"
 
+# close file descriptors
+
+3.upto 1023 do |fd|
+	begin
+		io.close \
+			if io = IO::new(fd)
+	rescue
+	end
+end
+
+# fork child with pipe
+
 ctl_rd, ctl_wr = IO.pipe
 
 fork do
+
 	ctl_rd.close
 
 	# exit if ssh dies
+
 	Signal.trap "CHLD" do
 		exit
 	end
 
 	# run ssh as subprocess
+
 	ssh_rd, ssh_wr = IO.pipe
 	ssh_pid = fork do
 		ssh_rd.close
@@ -27,9 +42,13 @@ fork do
 	ssh_wr.close
 
 	# write pid file
-	File.open(pid_path, "w") { |f| f.puts $$ }
+
+	File.open pid_path, "w" do |f|
+		f.puts $$
+	end
 
 	# wait for socket
+
 	while true
 		rs, = IO.select [ ssh_rd ], nil, nil, 1
 		ctl_wr.print ssh_rd.read_nonblock(1024) if rs
@@ -39,10 +58,12 @@ fork do
 	end
 
 	# signal we are ok
+
 	ctl_wr.puts "ok"
 	ctl_wr.close
 
 	# clean up on exit
+
 	at_exit do
 		begin
 			Process.kill 15, ssh_pid
@@ -55,18 +76,26 @@ fork do
 	end
 
 	# exit if pid file gets mangled
+
 	begin
+
 		while (mtime ||= nil) == (mtime = File.mtime(pid_path)) \
 				|| File.read(pid_path).chomp == $$.to_s
 			rs, = IO.select [ ssh_rd ], nil, nil, 1
 			ssh_rd.read_nonblock(1024) if rs
 		end
+
 	rescue IOError
+
 	rescue Errno::ENOENT
+
 	end
+
 end
 
 ctl_wr.close
+
+# wait for child
 
 ok = false
 while line = ctl_rd.gets

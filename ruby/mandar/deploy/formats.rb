@@ -101,7 +101,9 @@ module Mandar::Deploy::Formats
 		doc.root = doc.import file_elem.find_first("*")
 
 		# kill whitespace
-		doc.find("//text()").each do |e| e.remove! if e.content =~ /^\s*$/ end
+		doc.find("//text()").each do |e|
+			e.remove! if e.content =~ /\A\s*\Z$/
+		end
 
 		# output
 		f.print doc.to_s

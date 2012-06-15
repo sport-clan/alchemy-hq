@@ -1,4 +1,8 @@
-module Mandar::Core::Script
+require "mandar/tools"
+
+class Mandar::Core::Script
+
+	include Mandar::Tools::Escape
 
 	HELP = [
 		"",
@@ -38,7 +42,7 @@ module Mandar::Core::Script
 		"",
 	].join("\n") + "\n"
 
-	def self.parse_args()
+	def parse_args()
 		require "getoptlong"
 
 		opts = GetoptLong.new(*[
@@ -159,7 +163,7 @@ module Mandar::Core::Script
 		end
 	end
 
-	def self.main()
+	def main()
 		STDOUT.sync = true
 		argv_copy = ARGV.clone
 		parse_args
@@ -172,7 +176,7 @@ module Mandar::Core::Script
 		end
 	end
 
-	def self.process_hosts args
+	def process_hosts args
 		abstract = Mandar::Core::Config.abstract
 		hosts = []
 		for arg in args
@@ -201,7 +205,7 @@ module Mandar::Core::Script
 		return hosts
 	end
 
-	def self.do_command
+	def do_command
 		case ARGV[0]
 
 			when "config"
@@ -220,16 +224,21 @@ module Mandar::Core::Script
 				Mandar.warning "running in mock deployment mode" if $mock
 
 				# begin staged/rollback deploy
+
 				Mandar::Core::Config.stager_start $deploy_mode, $deploy_role, $mock
 
 				# rebuild config
+
 				Mandar::Core::Config.rebuild_abstract
+
 				abstract = Mandar::Core::Config.abstract
 
 				# determine list of hosts to deploy to
+
 				hosts = process_hosts ARGV[1..-1]
 
 				# reduce list of hosts on various criteria
+
 				hosts = hosts.select do |host|
 					host_elem = abstract["mandar-host"].find_first("mandar-host[@name='#{host}']")
 					case
@@ -304,7 +313,7 @@ module Mandar::Core::Script
 				doc.root.attributes["database-name"] = profile.attributes["database-name"]
 				doc.root.attributes["database-user"] = profile.attributes["database-user"]
 				doc.root.attributes["database-pass"] = profile.attributes["database-pass"]
-				doc.root.attributes["deploy-command"] = "sudo -u #{ENV["USER"]} -H #{CONFIG}/#{File.basename $0}"
+				doc.root.attributes["deploy-command"] = "#{CONFIG}/#{File.basename $0}"
 				doc.root.attributes["deploy-profile"] = $profile
 				doc.root.attributes["admin-group"] = mandar.attributes["admin-group"]
 				doc.root.attributes["path-prefix"] = ""
@@ -420,6 +429,118 @@ module Mandar::Core::Script
 
 			when "server-run"
 				Mandar::Support::Core.shell ARGV[1]
+
+			when "export"
+
+				raise "syntax error" unless ARGV.length == 2
+				zip_name = ARGV[1]
+
+				Mandar::Core::Config.data_ready
+
+				require "zip/zip"
+
+				Zip::ZipOutputStream.open zip_name do |zip|
+
+					# write schema
+
+					zip.put_next_entry "schema.xml"
+					zip << File.read("#{WORK}/schema.xml")
+
+					# write data
+
+					Mandar::Core::Config.data_strs.each do |name, doc|
+						zip.put_next_entry "data/#{name}.xml"
+						zip << doc
+					end
+
+				end
+
+			when "import"
+
+				raise "syntax error" unless ARGV.length == 2
+				zip_name = ARGV[1]
+
+				require "zip/zip"
+
+				# load schema
+
+				schemas_doc = Zip::ZipFile.open zip_name do |zip|
+					io = zip.get_input_stream "schema.xml"
+					XML::Document.io io,
+						:options =>XML::Parser::Options::NOBLANKS
+				end
+				schemas_elem = schemas_doc.root
+
+				# delete existing
+
+				updates = []
+				Mandar.cdb.all_docs["rows"].each do |row|
+					updates << {
+						"_id" => row["id"],
+						"_rev" => row["value"]["rev"],
+						"_deleted" => true,
+					}
+				end
+				Mandar.cdb.bulk updates
+
+				# design documents
+
+				Mandar.cdb.create({
+					"_id" => "_design/root",
+					"language" => "javascript",
+					"views" => {
+						"by_type" => {
+							"map" =>
+								"function (doc) {\n" \
+								"    if (! doc.transaction) return;\n" \
+								"    emit (doc.type, doc);\n" \
+								"}\n",
+						}
+					},
+				})
+
+				# add new
+
+				Zip::ZipInputStream.open zip_name do |zip|
+					while entry = zip.get_next_entry
+
+						next unless entry.name =~ /^data\/(.+).xml$/
+						name = $1
+
+						schema_elem =
+							schemas_elem.find_first \
+								"schema [ @name = #{xp name} ]"
+
+						updates = []
+
+						doc = XML::Document.string zip.read,
+							:options =>XML::Parser::Options::NOBLANKS
+
+						doc.find("/data/*").each do |elem|
+
+							json = Mandar::Core::Config.xml_to_json \
+								schemas_elem,
+								schema_elem,
+								elem
+
+							id_parts =
+								schema_elem.find("id/*").to_a.map do |id_elem|
+									json[id_elem.attributes["name"]]
+								end
+
+							updates << {
+								"_id" => "current/#{name}/#{id_parts.join("/")}",
+								"transaction" => "current",
+								"type" => name,
+								"source" => "data",
+								"value" => json,
+							}
+						end
+
+						Mandar.cdb.bulk updates
+
+					end
+				end
 
 			else
 				Mandar.error "syntax error"

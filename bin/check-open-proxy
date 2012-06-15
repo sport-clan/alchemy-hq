@@ -1,0 +1,128 @@
+#!/usr/bin/ruby
+
+script_path = $0
+script_path = File.readlink(script_path) while File.symlink?(script_path)
+CONFIG = File.expand_path("#{File.dirname(script_path)}/../..")
+$LOAD_PATH.unshift "#{CONFIG}/alchemy-hq/ruby"
+
+require "mandar"
+require "net/http"
+require "net/https"
+require "pp"
+require "resolv"
+require "set"
+
+$opts, $args = Mandar::Tools::Getopt.process ARGV, [
+	{ :name => :hostname, :required => true },
+	{ :name => :port, :convert => :to_i },
+	{ :name => :ssl, :boolean => true },
+	{ :name => :timeout, :default => 2, :convert => :to_i },
+	{ :name => :header, :multi => true },
+	{ :name => :target, :required => true },
+	{ :name => :regex },
+	{ :name => :expect_header, :multi => true },
+	{ :name => :expect_status, :default => "200", :regex => /[1-9][0-9][0-9]/ },
+]
+$args.empty? or raise "Extra args on command line"
+
+start_time = Time.now
+
+default_port = $opts[:ssl] ? true : false
+port = $opts[:port] || default_port
+target = URI.parse $opts[:target]
+
+proxy = Net::HTTP::Proxy $opts[:hostname], port
+http = proxy.new target.host, target.port
+
+http.open_timeout = $opts[:timeout]
+http.read_timeout = $opts[:timeout]
+http.use_ssl = $opts[:ssl]
+
+req = Net::HTTP::Get.new target.path
+$opts[:header].each do |header|
+	raise "Invalid header #{header}" unless header =~ /^([-A-Za-z0-9]+):\s*(.+)$/
+	header_name = $1
+	header_value = $2
+	req[header_name] = header_value
+end
+
+begin
+	res = http.request req
+rescue Errno::ECONNREFUSED
+	failure = :connection_refused
+rescue Timeout::Error
+	failure = :timeout
+rescue => e
+	failure = e
+end
+
+messages = []
+unknown = false
+warning = false
+critical = false
+
+if failure == :timeout
+
+	# timed out
+	messages << "timed out after #{$opts[:timeout]}s"
+
+elsif failure == :connection_refused
+
+	# timed out
+	messages << "connection refused"
+
+elsif failure
+
+	# unknown error
+	message << "unknown error #{e.message}"
+	unknown = true
+
+else
+
+	# check status
+	messages << "status #{res.code}"
+	if res.code != $opts[:expect_status]
+		messages << "expected #{$opts[:expect_status]}"
+		critical = true
+	end
+
+	# check headers
+	$opts[:expect_header].each do |header|
+		raise "Invalid header #{header}" unless header =~ /^([-A-Za-z0-9]+):\s*(.+)$/
+		header_name = $1
+		header_value = $2
+		next if res[header_name] =~ /^#{header_value}$/
+		messages << "invalid #{header_name} header: #{res[header_name]}"
+		critical = true
+	end
+
+	# check body
+	if $opts[:regex]
+		if res.body =~ /#{$opts[:regex]}/
+			messages << "body ok"
+		else
+			messages << "body regex failed: #{$opts[:regex]}"
+			critical = true
+		end
+	end
+
+end
+
+case
+
+	when critical
+		puts "HTTP CRITICAL: #{messages.join ", "}"
+		exit 2
+
+	when warning
+		puts "HTTP WARNING: #{messages.join ", "}"
+		exit 1
+
+	when unknown
+		puts "HTTP UNKNOWN: #{messages.join ", "}"
+		exit 3
+
+	else
+		puts "HTTP OK: #{messages.join ", "}"
+		exit 0
+end

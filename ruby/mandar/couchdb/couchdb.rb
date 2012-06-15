@@ -78,7 +78,9 @@ module Mandar::CouchDB
 
 			response = JSON.parse(response_string, :max_nesting => false)
 
-			raise Mandar::CouchDB::map_error response if response["error"]
+			if response.is_a?(Hash) && response["error"]
+				raise Mandar::CouchDB::map_error response
+			end
 
 			return response
 		end
@@ -145,6 +147,20 @@ module Mandar::CouchDB
 		def view_key(design, view, key)
 			path = Mandar::CouchDB.urlf("/%/_design/%/_view/%?key=%", @db, design, view, key.to_json)
 			return @server.call("GET", path)
+		end
+
+		def bulk docs
+			path = Mandar::CouchDB.urlf \
+				"/%/_bulk_docs", \
+				@db
+			return @server.call "POST", path, { "docs" => docs }
+		end
+
+		def all_docs
+			path = Mandar::CouchDB.urlf \
+				"/%/_all_docs", \
+				@db
+			return @server.call "GET", path
 		end
 
 	end

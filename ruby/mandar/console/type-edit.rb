@@ -16,6 +16,7 @@ class Mandar::Console::TypeEdit
 		# load object from database
 		exist = id ? true : false
 		row = exist ? stager.get(id, console_user) : {} or raise "Not found"
+pp row
 
 		# apply updates from post
 		if request_method == :post

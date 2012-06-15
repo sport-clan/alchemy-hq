@@ -22,14 +22,8 @@ module Mandar::Engine::Abstract
 			abstract[:source] = File.read abstract[:path]
 			abstract[:in] = []
 			abstract[:out] = []
-			abstract[:data] = []
-			abstract[:source].scan(/\(: (data|in|out) ([a-z0-9]+(?:-[a-z0-9]+)*) :\)$/).each do |type, name|
+			abstract[:source].scan(/\(: (in|out) ([a-z0-9]+(?:-[a-z0-9]+)*) :\)$/).each do |type, name|
 				abstract[type.to_sym] << name
-			end
-			abstract[:source].gsub!(/\(: include ([a-z0-9]+(?:-[a-z0-9]+)*) :\)$/) do |match|
-				include_path = "#{CONFIG}/include/#{$1}.#{abstract[:type]}"
-				File.exists? include_path or raise "Include file not found #{$1}.#{abstract[:type]}"
-				File.read(include_path).gsub("\n", " ").strip
 			end
 			abstracts[abstract[:name]] = abstract
 		end
@@ -42,7 +36,6 @@ module Mandar::Engine::Abstract
 			abstract[:type] = rule.attributes["type"]
 			abstract[:path] = "#{WORK}/abstract-rules/#{abstract[:name]}.#{abstract[:type]}"
 			abstract[:source] = rule.find "string(source)"
-			abstract[:data] = rule.find("inputs/data").to_a.map { |elem| elem.attributes["name"] }
 			abstract[:in] = rule.find("inputs/abstract").to_a.map { |elem| elem.attributes["name"] }
 			abstract[:out] = rule.find("outputs/abstract").to_a.map { |elem| elem.attributes["name"] }
 			abstracts[abstract[:name]] = abstract
@@ -57,36 +50,78 @@ module Mandar::Engine::Abstract
 		load_source
 
 		Mandar.notice "rebuilding abstract"
+
+		# set up results with data
+
 		@results = {}
+
+		data_docs.each do |name, data_doc|
+			@results[name] = {
+				:doc => data_doc,
+			}
+		end
 
 		start_time = Time.now
 
-		# remove existing
-		FileUtils.remove_entry_secure "#{WORK}/abstract" if File.directory? "#{WORK}/abstract"
-		FileUtils.mkdir "#{WORK}/abstract"
+		begin
 
-		remaining = @abstracts.clone
-		until remaining.empty?
+			# setup xquery
 
-			pending = Set.new
-			remaining.each do |abstract_name, abstract|
-				pending.merge abstract[:out]
-			end
+			xquery_client = Mandar::Engine.xquery_client
+			if xquery_client
 
-			num_processed = 0
-			remaining.each do |abstract_name, abstract|
+				# create session
 
-				# check dependencies
-				next if abstract[:in].find { |name| pending.include? name }
-				remaining.delete abstract_name
-				num_processed += 1
+				xquery_session = xquery_client.session
 
-				# do it
-				rebuild_one data_docs, abstract
+				# send include files
+
+				include_dir = "#{CONFIG}/include"
+				Dir["#{include_dir}/*.xquery"].each do |path|
+					path =~ /^ #{Regexp.quote include_dir} \/ (.+) $/x
+					name = $1
+					text = File.read path
+					xquery_session.set_library_module name, text
+				end
 
 			end
 
-			Mandar.die "circular dependency in abstract: #{remaining.keys.sort.join ", "}" unless num_processed > 0
+			# remove existing
+
+			FileUtils.remove_entry_secure "#{WORK}/abstract" if File.directory? "#{WORK}/abstract"
+			FileUtils.mkdir "#{WORK}/abstract"
+
+			# do it
+
+			remaining = @abstracts.clone
+			until remaining.empty?
+
+				pending = Set.new
+				remaining.each do |abstract_name, abstract|
+					pending.merge abstract[:out]
+				end
+
+				num_processed = 0
+				remaining.each do |abstract_name, abstract|
+
+					# check dependencies
+
+					next if abstract[:in].find { |name| pending.include? name }
+
+					remaining.delete abstract_name
+					num_processed += 1
+
+					# do it
+
+					rebuild_one xquery_session, data_docs, abstract
+
+				end
+
+				Mandar.die "circular dependency in abstract: #{remaining.keys.sort.join ", "}" unless num_processed > 0
+			end
+
+		ensure
+			xquery_client.close if xquery_client
 		end
 
 		end_time = Time.now
@@ -94,93 +129,95 @@ module Mandar::Engine::Abstract
 
 	end
 
-	def self.rebuild_one data_docs, abstract
+	def self.rebuild_one xquery_session, data_docs, abstract
 		abstract_name = abstract[:name]
+		abstract_type = abstract[:type]
 
-		zorba = Mandar::Engine.zorba
-		data_manager = Mandar::Engine.data_manager
-
-		config_client = Mandar::Engine.config_client unless zorba
+		xslt2_client = Mandar::Engine.xslt2_client
 
 		Mandar.debug "rebuilding abstract #{abstract_name}"
 
 		start_time = Time.now
 
 		# setup abstract
+
 		doc = XML::Document.new
 		doc.root = XML::Node.new "abstract"
+
 		abstract[:in].each do |in_name|
-			unless result = @results[in_name]
+
+			result = @results[in_name]
+
+			unless result
 				Mandar.warning "No abstract result for #{in_name}, requested by #{abstract_name}"
 				next
 			end
-			result[:doc].root.each { |elem| doc.root << doc.import(elem) }
-		end
-		if zorba
-			data_manager.loadDocument "abstract.xml", doc.to_s
-		else
-			config_client.set_document "abstract.xml", doc.to_s
-		end
 
-		# setup data
-		doc = XML::Document.new
-		doc.root = XML::Node.new "data"
-		abstract[:data].each do |data_name|
-			unless data_doc = data_docs[data_name]
-				data_doc or Mandar.warning "no data for #{data_name}, requested by #{abstract_name}"
-				next
-			end
-			data_doc.root.each { |elem| doc.root << doc.import(elem) }
-		end
-		if zorba
-			data_manager.loadDocument "data.xml", doc.to_s
-		else
-			config_client.set_document "data.xml", doc.to_s
-		end
-
-		if zorba
-
-			# compile xquery
-			begin
-				xquery = Mandar::Engine.zorba.compileQuery(abstract[:source])
-			rescue => e
-				Mandar.error "#{e.to_s}"
-				raise "error compiling abstract/#{abstract_name}.xquery"
+			result[:doc].root.each do
+				|elem| doc.root << doc.import(elem)
 			end
 
-			# execute query
-			begin
-				abstract[:str] = xquery.execute()
-			rescue => e
-				Mandar.error "#{e.to_s}"
-				raise "error processing abstract/#{abstract_name}.xquery"
-			end
+		end
 
-			# clean up
-			xquery.destroy()
-			data_manager.deleteDocument "abstract.xml"
-			data_manager.deleteDocument "data.xml"
+		case abstract_type
 
-		else
+			when "xquery"
+				xquery_session.set_library_module "abstract.xml", doc.to_s
 
-			begin
-				config_client.compile_xslt abstract[:path]
-			rescue => e
-				Mandar.error e.to_s
-				Mandar.error "deleting #{WORK}"
-				FileUtils.rm_rf "#{WORK}"
-				raise "error compiling #{abstract[:path]}"
-			end
+			when "xslt2"
+				config_client.set_document "abstract.xml", doc.to_s
 
-			abstract[:str] = config_client.execute_xslt
-			config_client.reset
+			else
+				raise "Error"
+		end
+
+		# perform query
+
+		case abstract_type
+
+			when "xquery"
+
+				begin
+
+					xquery_session.compile_xquery \
+						abstract[:source]
+
+					abstract[:str] = \
+						xquery_session.run_xquery \
+							"<xml/>"
+
+				rescue => e
+					Mandar.error e.to_s
+					Mandar.error "deleting #{WORK}"
+					FileUtils.rm_rf "#{WORK}"
+					raise "error compiling #{abstract[:path]}"
+				end
+
+			when "xslt2"
+
+				begin
+					config_client.compile_xslt abstract[:path]
+				rescue => e
+					Mandar.error e.to_s
+					Mandar.error "deleting #{WORK}"
+					FileUtils.rm_rf "#{WORK}"
+					raise "error compiling #{abstract[:path]}"
+				end
+
+				abstract[:str] = config_client.execute_xslt
+				config_client.reset
+
+			else
+				raise "Error"
 
 		end
 
 		# delete and/or create
+
 		FileUtils.mkdir_p "#{WORK}/abstract/#{abstract_name}"
 
 		# process output
+
 		abstract[:doc] = XML::Document.string abstract[:str], :options => XML::Parser::Options::NOBLANKS
 		abstract[:result] = {}
 		abstract[:out].each { |out| abstract[:result][out] = [] }
@@ -191,6 +228,7 @@ module Mandar::Engine::Abstract
 		end
 
 		# write output
+
 		abstract[:result].each do |result_name, elems|
 			doc = XML::Document.new
 			doc.root = XML::Node.new "abstract"
@@ -199,12 +237,14 @@ module Mandar::Engine::Abstract
 		end
 
 		# add output to results
+
 		abstract[:result].each do |result_name, elems|
 			set_result result_name, elems
 		end
 
 		end_time = Time.now
 		Mandar.trace "rebuilding abstract #{abstract_name} took #{((end_time - start_time) * 1000).to_i}ms"
+
 	end
 
 	def self.set_result name, elems
