@@ -164,8 +164,8 @@ module Mandar::Engine::Abstract
 			when "xquery"
 				xquery_session.set_library_module "abstract.xml", doc.to_s
 
-			when "xslt2"
-				config_client.set_document "abstract.xml", doc.to_s
+			when "xslt"
+				xslt2_client.set_document "abstract.xml", doc.to_s
 
 			else
 				raise "Error"
@@ -193,10 +193,10 @@ module Mandar::Engine::Abstract
 					raise "error compiling #{abstract[:path]}"
 				end
 
-			when "xslt2"
+			when "xslt"
 
 				begin
-					config_client.compile_xslt abstract[:path]
+					xslt2_client.compile_xslt abstract[:path]
 				rescue => e
 					Mandar.error e.to_s
 					Mandar.error "deleting #{WORK}"
@@ -204,8 +204,8 @@ module Mandar::Engine::Abstract
 					raise "error compiling #{abstract[:path]}"
 				end
 
-				abstract[:str] = config_client.execute_xslt
-				config_client.reset
+				abstract[:str] = xslt2_client.execute_xslt
+				xslt2_client.reset
 
 			else
 				raise "Error"

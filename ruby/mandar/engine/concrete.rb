@@ -91,9 +91,9 @@ module Mandar::Engine::Concrete
 							"abstract.xml",
 							doc.to_s
 
-					when "xslt2"
+					when "xslt"
 
-						Mandar::Engine.config_client.set_document \
+						xslt2_client.set_document \
 							"abstract.xml", \
 							doc.to_s
 
@@ -115,9 +115,9 @@ module Mandar::Engine::Concrete
 							raise "error compiling #{concrete[:path]}"
 						end
 
-					when "xslt2"
+					when "xslt"
 
-						Mandar::Engine.config_client.compile_xslt concrete[:path]
+						xslt2_client.compile_xslt concrete[:path]
 
 					else
 						raise "Error"
@@ -140,9 +140,9 @@ module Mandar::Engine::Concrete
 								"host-name.xml",
 								"<host-name value=\"#{host}\"/>"
 
-						when "xslt2"
+						when "xslt"
 
-							Mandar::Engine.config_client.set_document \
+							xslt2_client.set_document \
 								"host-name.xml", \
 								"<host-name value=\"#{host}\"/>"
 
@@ -166,10 +166,10 @@ module Mandar::Engine::Concrete
 								raise "error running #{concrete[:path]}"
 							end
 
-						when "xslt2"
+						when "xslt"
 
 							ret =
-								Mandar::Engine.config_client.execute_xslt
+								xslt2_client.execute_xslt
 					end
 
 					# save doc
@@ -187,9 +187,9 @@ module Mandar::Engine::Concrete
 
 						# nothing
 
-					when "xslt2"
+					when "xslt"
 
-						Mandar::Engine.config_client.reset
+						xslt2_client.reset
 
 					else
 						raise "Error"
