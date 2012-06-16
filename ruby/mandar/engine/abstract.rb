@@ -13,12 +13,20 @@ module Mandar::Engine::Abstract
 		Mandar.debug "loading abstract sources"
 		abstracts = {}
 
-		Dir.new("#{CONFIG}/abstract").each do |filename|
-			next unless filename =~ /^([a-z0-9]+(?:-[a-z0-9]+)*)\.(xslt|xquery)$/
+		Dir.glob("#{CONFIG}/abstract/**/*").each do |filename|
+
+			next unless filename =~ /^
+				#{Regexp.quote "#{CONFIG}/abstract/"}
+				(
+					(.+)
+					\. (xslt|xquery)
+				)
+			$/x
+
 			abstract = {}
-			abstract[:name] = $1
-			abstract[:type] = $2
-			abstract[:path] = "#{CONFIG}/abstract/#{filename}"
+			abstract[:name] = $2
+			abstract[:type] = $3
+			abstract[:path] = filename
 			abstract[:source] = File.read abstract[:path]
 			abstract[:in] = []
 			abstract[:out] = []
@@ -26,6 +34,7 @@ module Mandar::Engine::Abstract
 				abstract[type.to_sym] << name
 			end
 			abstracts[abstract[:name]] = abstract
+
 		end
 
 		FileUtils.rm_rf "#{WORK}/abstract-rules"
