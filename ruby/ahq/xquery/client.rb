@@ -14,7 +14,7 @@ class Ahq::Xquery::Client
 		@zmq_context = ZMQ::Context.new 1
 
 		@zmq_socket = @zmq_context.socket ZMQ::REQ
-		@zmq_socket.connect "tcp://localhost:5555"
+		@zmq_socket.connect url
 
 	end
 
