@@ -487,21 +487,29 @@ module Mandar::Core::Config
 
 		rows = Mandar.cdb.view("root", "by_type")["rows"]
 		values_by_type = Hash.new
+
+		legacy = false
+
 		rows.each do |row|
 
-			next unless row["value"]["transaction"] == "current"
+			if legacy
 
-			type = row["value"]["type"]
+				type = row["value"]["mandar_type"]
+				value = row["value"]
+
+			else
+
+				type = row["value"]["type"]
+				value = row["value"]["value"]
+
+				row["id"] =~ /^current\/(.+)$/
+				value["_id"] = $1
+
+			end
 
 			values_by_type[type] ||= Hash.new
+			values_by_type[type][value["_id"]] = value
 
-			value = row["value"]["value"]
-
-			row["id"] =~ /^current\/(.+)$/
-			value["_id"] = $1
-
-			values_by_type[type][value["_id"]] =
-				value
 		end
 
 		change = staged_change
