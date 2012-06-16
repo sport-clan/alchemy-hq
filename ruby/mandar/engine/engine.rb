@@ -16,10 +16,9 @@ module Mandar::Engine
 		return @xslt2_client
 	end
 
-	def self.xquery_client
+	def self.xquery_server_start
 
-		return @xquery_client \
-			if @xquery_client
+		return if @xquery_server_started
 
 		mandar = Mandar::Core::Config.mandar
 		xquery_config = mandar.find_first "xquery"
@@ -29,7 +28,7 @@ module Mandar::Engine
 		xquery_port =
 			xquery_config.attributes["port"]
 
-		xquery_url =
+		@xquery_url =
 			"tcp://127.0.0.1:#{xquery_port}"
 
 		rd, wr = IO.pipe
@@ -55,7 +54,7 @@ module Mandar::Engine
 
 				exec \
 					xquery_server,
-					xquery_url
+					@xquery_url
 			end
 
 			wr.puts pid
@@ -72,13 +71,21 @@ module Mandar::Engine
 			Process.kill "TERM", pid
 		end
 
+		@xquery_server_started = true
+
+	end
+
+	def self.xquery_client
+
+		xquery_server_start
+
 		require "ahq/xquery/client"
 
-		@xquery_client = \
+		xquery_client = \
 			Ahq::Xquery::Client.new \
-				xquery_url
+				@xquery_url
 
-		return @xquery_client
+		return xquery_client
 	end
 
 end

@@ -8,6 +8,8 @@ class Ahq::Xquery::Client
 
 	def initialize url
 
+		@state = :error
+
 		require "yaml"
 		require "zmq"
 
@@ -16,18 +18,31 @@ class Ahq::Xquery::Client
 		@zmq_socket = @zmq_context.socket ZMQ::REQ
 		@zmq_socket.connect url
 
+		@state = :open
+
 	end
 
 	def close
+
+		@state == :open \
+			or raise "Invalid state #{@state}"
+
+		@state = :error
 
 		@zmq_socket.close if @zmq_socket
 		@zmq_socket = nil
 
 		@zmq_context.close if @zmq_context
 		@zmq_context = nil
+
+		@state = :closed
+
 	end
 
 	def session
+
+		@state == :open \
+			or raise "Invalid state #{@state}"
 
 		require "ahq/xquery/session"
 
@@ -40,6 +55,9 @@ class Ahq::Xquery::Client
 
 	def perform request
 
+		@state == :open \
+			or raise "Invalid state #{@state}"
+
 		# send request
 
 		request_string = JSON.dump request
@@ -49,6 +67,7 @@ class Ahq::Xquery::Client
 
 		reply_string = @zmq_socket.recv
 		return YAML.load reply_string
+
 	end
 
 end
