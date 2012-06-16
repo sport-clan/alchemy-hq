@@ -67,6 +67,8 @@ module Mandar::Debian
 
 		names_to_remove = names & apt_packages
 
+		# TODO warn on provides?
+
 		return if names_to_remove.empty?
 
 		names_to_remove_str = names_to_remove.join ' '
