@@ -23,21 +23,16 @@ class Mandar::Console::Server
 
 	def run
 
-		config = {}
-		config[:Port] = 8080
-
-		server = WEBrick::HTTPServer.new config
-
 		app_ctx = {}
+
+		config_doc = XML::Document.file "#{CONFIG}/console-config.xml"
+		config = config_doc.root
+		app_ctx[:config] = config
 
 		app_ctx[:element_indent] = "  "
 
 		entropy = Mandar::Console::Entropy.new
 		app_ctx[:entropy] = entropy
-
-		config_doc = XML::Document.file "#{CONFIG}/console-config.xml"
-		config = config_doc.root
-		app_ctx[:config] = config
 
 		db_host = config.attributes["database-host"]
 		db_port = config.attributes["database-port"]
@@ -105,13 +100,27 @@ class Mandar::Console::Server
 			end
 
 		end
-		server.mount "/", proc_handler
+
+		# http server
+
+		http_server_config = {}
+
+		http_server_config[:Port] =
+			config.attributes["http-port"].to_i
+
+		http_server =
+			WEBrick::HTTPServer.new \
+				http_server_config
+
+		http_server.mount "/", proc_handler
 
 		%W[ INT TERM ].each do |signal|
-			trap(signal) { server.shutdown }
+			trap signal do
+				http_server.shutdown
+			end
 		end
 
-		server.start
+		http_server.start
 
 	end
 

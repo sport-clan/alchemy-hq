@@ -317,6 +317,7 @@ class Mandar::Core::Script
 				doc.root.attributes["deploy-profile"] = $profile
 				doc.root.attributes["admin-group"] = mandar.attributes["admin-group"]
 				doc.root.attributes["path-prefix"] = ""
+				doc.root.attributes["http-port"] = "8080"
 				doc.root.attributes["url-prefix"] = "http://localhost:8080"
 				[
 					[ "grapher-config", [ ] ],
