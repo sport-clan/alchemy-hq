@@ -15,23 +15,41 @@ module Mandar::Core::Config
 		(@config_lock ||= Mutex.new).synchronize do
 
 			# use cached copy
-			return @mandar_config if @mandar_config unless reload
+
+			return @hq_config if @hq_config unless reload
 
 			require "xml"
 
 			# check file exists
-			mandar_config_file = "#{CONFIG}/mandar-config.xml"
-			File.exists? mandar_config_file or Mandar.die "File does not exist #{mandar_config_file}"
+
+			hq_config_file =
+				"#{CONFIG}/etc/hq-config.xml"
+
+			File.exists? hq_config_file \
+				or Mandar.die "File does not exist #{hq_config_file}"
 
 			# parse document
-			doc = XML::Document.file mandar_config_file, :options =>XML::Parser::Options::NOBLANKS
+
+			hq_config_doc =
+				XML::Document.file \
+					hq_config_file,
+					:options => XML::Parser::Options::NOBLANKS
 
 			# validate document
-			#relax = Mandar::Core::Config.load_relax_ng "#{MANDAR}/etc/mandar-config.rnc"
-			#doc.validate_relaxng relax
+
+			if false
+
+				relax =
+					Mandar::Core::Config.load_relax_ng \
+						"#{MANDAR}/etc/mandar-config.rnc"
+
+				hq_config_doc.validate_relaxng relax
+
+			end
 
 			# save and return
-			return @mandar_config = doc.root
+
+			return @hq_config = hq_config_doc.root
 		end
 	end
 
