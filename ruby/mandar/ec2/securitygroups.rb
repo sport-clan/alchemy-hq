@@ -377,7 +377,7 @@ module Mandar::EC2::SecurityGroups
 
 					when :remove
 
-						result =
+						result_doc =
 							ec2_client.revoke_security_group_ingress \
 								options
 
