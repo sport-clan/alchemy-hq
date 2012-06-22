@@ -53,6 +53,26 @@ module Mandar::Support::PHP
 				config = Mandar::Support::ConfigFuncs.xml_to_config elem0.find_first("*")
 				f.puts "$#{var_name} = #{to_php config};\n"
 
+			when "ini-set"
+
+				ini_set_name = elem0.attributes["name"].to_s
+				ini_set_value = elem0.attributes["value"]
+				ini_set_type = elem0.attributes["type"]
+
+				value = case ini_set_type
+
+					when "string", nil
+						ini_set_value.to_s
+
+					when "int"
+						ini_set_value.to_i
+
+					else
+						raise "Error"
+				end
+
+				f.puts "ini_set (#{to_php ini_set_name}, #{to_php value});"
+
 			else
 				raise "Unexpected #{elem0.name} element"
 
