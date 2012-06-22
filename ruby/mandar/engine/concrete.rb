@@ -200,10 +200,20 @@ module Mandar::Engine::Concrete
 
 					# save doc
 
-					doc =
+					temp =
 						XML::Document.string \
 							ret,
 							:options => XML::Parser::Options::NOBLANKS
+
+					doc =
+						XML::Document.new
+
+					doc.root =
+						XML::Node.new "concrete"
+
+					temp.find("/*/*").each do |elem|
+						doc.root << doc.import(elem)
+					end
 
 					doc.save "#{WORK}/concrete/#{host}/#{concrete_name}.xml"
 
