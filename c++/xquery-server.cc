@@ -158,6 +158,8 @@ void compile_xquery (
 		AutoDelete<DynamicContext> static_context (
 			xqilla.createContext ());
 
+		static_context->setProjection (false);
+
 		static_context->setMessageListener (& session);
 
 		static_context->setModuleResolver (& session);
