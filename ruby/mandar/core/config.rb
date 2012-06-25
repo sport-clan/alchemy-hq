@@ -495,82 +495,81 @@ module Mandar::Core::Config
 
 		require "xml"
 
-		start_time = Time.now
+		Mandar.time "dumping data" do
 
-		@data_docs = {}
-		@data_strs = {}
+			@data_docs = {}
+			@data_strs = {}
 
-		FileUtils.remove_entry_secure "#{WORK}/data" if File.directory? "#{WORK}/data"
-		FileUtils.mkdir_p "#{WORK}/data", :mode => 0700
+			FileUtils.remove_entry_secure "#{WORK}/data" if File.directory? "#{WORK}/data"
+			FileUtils.mkdir_p "#{WORK}/data", :mode => 0700
 
-		rows = Mandar.cdb.view("root", "by_type")["rows"]
-		values_by_type = Hash.new
+			rows = Mandar.cdb.view("root", "by_type")["rows"]
+			values_by_type = Hash.new
 
-		legacy = false
+			legacy = false
 
-		rows.each do |row|
+			rows.each do |row|
 
-			if legacy
+				if legacy
 
-				type = row["value"]["mandar_type"]
-				value = row["value"]
+					type = row["value"]["mandar_type"]
+					value = row["value"]
 
-			else
+				else
 
-				type = row["value"]["type"]
-				value = row["value"]["value"]
+					type = row["value"]["type"]
+					value = row["value"]["value"]
 
-				row["id"] =~ /^current\/(.+)$/
-				value["_id"] = $1
+					row["id"] =~ /^current\/(.+)$/
+					value["_id"] = $1
+
+				end
+
+				values_by_type[type] ||= Hash.new
+				values_by_type[type][value["_id"]] = value
 
 			end
 
-			values_by_type[type] ||= Hash.new
-			values_by_type[type][value["_id"]] = value
+			change = staged_change
 
-		end
+			schemas_elem.find("schema").each do |schema_elem|
+				schema_name = schema_elem.attributes["name"]
 
-		change = staged_change
+				values = values_by_type[schema_name] || Hash.new
 
-		schemas_elem.find("schema").each do |schema_elem|
-			schema_name = schema_elem.attributes["name"]
+				data_doc = XML::Document.new
+				data_doc.root = XML::Node.new "data"
 
-			values = values_by_type[schema_name] || Hash.new
-
-			data_doc = XML::Document.new
-			data_doc.root = XML::Node.new "data"
-
-			if change
-				change["items"].each do |key, item|
-					case item["action"]
-					when "create", "update"
-						next unless key =~ /^#{Regexp.quote schema_name}\//
-						values[key] = item["record"]
-					when "delete"
-						values.delete key
-					else
-						raise "Error"
+				if change
+					change["items"].each do |key, item|
+						case item["action"]
+						when "create", "update"
+							next unless key =~ /^#{Regexp.quote schema_name}\//
+							values[key] = item["record"]
+						when "delete"
+							values.delete key
+						else
+							raise "Error"
+						end
 					end
 				end
+
+				sorted_values = values.values.sort { |a,b| a["_id"] <=> b["_id"] }
+				sorted_values.each do |value|
+					data_doc.root << js_to_xml(schemas_elem, schema_elem, value)
+				end
+
+				data_str = data_doc.to_s
+
+				File.open "#{WORK}/data/#{schema_name}.xml", "w" do |f|
+					f.print data_str
+				end
+
+				@data_docs[schema_name] = data_doc
+				@data_strs[schema_name] = data_str
 			end
 
-			sorted_values = values.values.sort { |a,b| a["_id"] <=> b["_id"] }
-			sorted_values.each do |value|
-				data_doc.root << js_to_xml(schemas_elem, schema_elem, value)
-			end
-
-			data_str = data_doc.to_s
-
-			File.open "#{WORK}/data/#{schema_name}.xml", "w" do |f|
-				f.print data_str
-			end
-
-			@data_docs[schema_name] = data_doc
-			@data_strs[schema_name] = data_str
 		end
-
-		end_time = Time.now
-		Mandar.trace "dumping data took #{((end_time - start_time) * 1000).to_i}ms"
 	end
 
 	def self.data_load
@@ -579,29 +578,28 @@ module Mandar::Core::Config
 
 		require "xml"
 
-		start_time = Time.now
+		Mandar.time "loading data" do
 
-		@data_docs = {}
-		@data_strs = {}
+			@data_docs = {}
+			@data_strs = {}
 
-		schemas_elem.find("schema").each do |schema_elem|
-			schema_name = schema_elem.attributes["name"]
+			schemas_elem.find("schema").each do |schema_elem|
+				schema_name = schema_elem.attributes["name"]
 
-			data_path = "#{WORK}/data/#{schema_name}.xml"
-			if File.exist? data_path
-				data_doc = XML::Document.file data_path, :options => XML::Parser::Options::NOBLANKS
-				data_str = data_doc.to_s
-			else
-				data_str = "<data/>"
-				data_doc = XML::Document.string data_str, :options => XML::Parser::Options::NOBLANKS
+				data_path = "#{WORK}/data/#{schema_name}.xml"
+				if File.exist? data_path
+					data_doc = XML::Document.file data_path, :options => XML::Parser::Options::NOBLANKS
+					data_str = data_doc.to_s
+				else
+					data_str = "<data/>"
+					data_doc = XML::Document.string data_str, :options => XML::Parser::Options::NOBLANKS
+				end
+
+				@data_docs[schema_name] = data_doc
+				@data_strs[schema_name] = data_str
 			end
 
-			@data_docs[schema_name] = data_doc
-			@data_strs[schema_name] = data_str
 		end
-
-		end_time = Time.now
-		Mandar.trace "loading data took #{((end_time - start_time) * 1000).to_i}ms"
 	end
 
 	def self.warn_no_config

@@ -30,7 +30,8 @@ class Mandar::Core::Script
 		"    -1, --normal        Show normal log",
 		"    -2, --verbose       Show detailed log",
 		"    -3, --debug         Show debug log",
-		"    -4, --trace         Show trace log",
+		"    -4, --timing        Show timing log",
+		"    -5, --trace         Show trace log",
 		"    --html              Generate HTML output",
 		"",
 		"Deploy command options:",
@@ -57,7 +58,8 @@ class Mandar::Core::Script
 			[ "--normal", "-1", GetoptLong::NO_ARGUMENT ],
 			[ "--verbose", "-2", GetoptLong::NO_ARGUMENT ],
 			[ "--debug", "-3", GetoptLong::NO_ARGUMENT ],
-			[ "--trace", "-4", GetoptLong::NO_ARGUMENT ],
+			[ "--timing", "-4", GetoptLong::NO_ARGUMENT ],
+			[ "--trace", "-5", GetoptLong::NO_ARGUMENT ],
 			[ "--html", GetoptLong::NO_ARGUMENT ],
 
 			[ "--role", GetoptLong::REQUIRED_ARGUMENT ],
@@ -87,7 +89,10 @@ class Mandar::Core::Script
 			case opt
 
 			when "--debug"
-				Mandar.logger.level != :notice and Mandar.die "Only one log level option allowed"
+
+				Mandar.logger.level != :notice \
+					and Mandar.die "Only one log level option allowed"
+
 				Mandar.logger.level = :debug
 
 			when "--mock"
@@ -100,26 +105,48 @@ class Mandar::Core::Script
 				$no_database = true
 
 			when "--quiet"
-				Mandar.logger.level != :notice and Mandar.die "Only one log level option allowed"
+
+				Mandar.logger.level != :notice \
+					and Mandar.die "Only one log level option allowed"
+
 				Mandar.logger.level = :warning
 
 			when "--series"
 				$series = true
 
 			when "--trace"
-				Mandar.logger.level != :notice and Mandar.die "Only one log level option allowed"
+
+				Mandar.logger.level != :notice \
+					and Mandar.die "Only one log level option allowed"
+
 				Mandar.logger.level = :trace
 
+			when "--timing"
+
+				Mandar.logger.level != :notice \
+					and Mandar.die "Only one log level option allowed"
+
+				Mandar.logger.level = :timing
+
 			when "--verbose"
-				Mandar.logger.level != :notice and Mandar.die "Only one log level option allowed"
+
+				Mandar.logger.level != :notice \
+					and Mandar.die "Only one log level option allowed"
+
 				Mandar.logger.level = :detail
 
 			when "--profile"
-				$profile == nil or Mandar.die "Only one --profile option allowed"
+
+				$profile == nil \
+					or Mandar.die "Only one --profile option allowed"
+
 				$profile = arg
 
 			when "--html"
-				Mandar.logger.format == :html and Mandar.die "Only one --html option allowed"
+
+				Mandar.logger.format == :html \
+					and Mandar.die "Only one --html option allowed"
+
 				Mandar.logger.format = :html
 
 			# ---------- deploy

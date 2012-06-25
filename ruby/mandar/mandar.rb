@@ -4,23 +4,55 @@ module Mandar
 		return @logger ||= Mandar::Tools::Logger.new
 	end
 
-	def self.message(text, level, options = {})
+	def self.message text, level, options = {}
 		logger.message text, level, options
 	end
 
-	def self.trace(text, options = {}) logger.message text, :trace, options end
-	def self.debug(text, options = {}) logger.message text, :debug, options end
-	def self.detail(text, options = {}) logger.message text, :detail, options end
-	def self.notice(text, options = {}) logger.message text, :notice, options end
-	def self.warning(text, options = {}) logger.message text, :warning, options end
-	def self.error(text, options = {}) logger.message text, :error, options end
+	def self.trace text, options = {}
+		logger.message text, :trace, options
+	end
 
-	def self.die(text, status = 1)
+	def self.timing text, options = {}
+		logger.message text, :timing, options
+	end
+
+	def self.debug text, options = {}
+		logger.message text, :debug, options
+	end
+
+	def self.detail text, options = {}
+		logger.message text, :detail, options
+	end
+
+	def self.notice text, options = {}
+		logger.message text, :notice, options
+	end
+
+	def self.warning text, options = {}
+		logger.message text, :warning, options
+	end
+
+	def self.error text, options = {}
+		logger.message text, :error, options
+	end
+
+	def self.time text
+		time_start = Time.now
+		begin
+			yield
+		ensure
+			time_end = Time.now
+			timing_ms = ((time_end - time_start) * 1000).to_i
+			Mandar.timing "#{text} took #{timing_ms}ms"
+		end
+	end
+
+	def self.die text, status = 1
 		error text
 		exit status
 	end
 
-	def self.host=(hostname)
+	def self.host= hostname
 		@hostname = hostname
 	end
 

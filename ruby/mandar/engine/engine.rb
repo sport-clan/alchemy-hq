@@ -50,7 +50,7 @@ module Mandar::Engine
 
 				$stdin.reopen "/dev/null", "r"
 				$stdout.reopen "/dev/null", "w"
-				$stderr.reopen "/dev/null", "w"
+				#$stderr.reopen "/dev/null", "w"
 
 				exec \
 					xquery_server,
