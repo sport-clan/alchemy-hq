@@ -22,6 +22,12 @@ fork do
 
 	ctl_rd.close
 
+	# close standard in/out/err
+
+	$stdin.reopen "/dev/null", "r"
+	$stdout.reopen "/dev/null", "w"
+	$stderr.reopen "/dev/null", "w"
+
 	# exit if ssh dies
 
 	Signal.trap "CHLD" do
