@@ -16,10 +16,13 @@ module Mandar::Tools::Cron
 		begin
 
 			caught_exception = nil
-			stdout_saved = $stdout.dup unless is_tty
-			stderr_saved = $stderr.dup unless is_tty
-			$stdout.reopen log, "a" unless is_tty
-			$stderr.reopen log, "a" unless is_tty
+
+			unless is_tty
+				stdout_saved = $stdout.dup unless is_tty
+				stderr_saved = $stderr.dup unless is_tty
+				$stdout.reopen log, "a" unless is_tty
+				$stderr.reopen log, "a" unless is_tty
+			end
 
 			begin
 				yield log
