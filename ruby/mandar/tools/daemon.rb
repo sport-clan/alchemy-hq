@@ -29,7 +29,7 @@ module Mandar::Tools::Daemon
 			begin
 
 				# redirect output to log files
-				$stdin.close
+				$stdin.reopen "/dev/null", "r"
 				$stdout.reopen options[:log_path], "a"
 				$stdout.sync = true
 				$stderr.reopen options[:log_path], "a"

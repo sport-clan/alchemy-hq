@@ -44,17 +44,19 @@ Mandar::Tools::Daemon.start opts do
 				local_root = path
 				remote_root = "ssh://#{remote}.private/#{path}"
 					Mandar::Tools::Daemon.log "Synchronise with #{remote}"
-				cmd = %W[
+				cmd = Mandar.shell_quote %W[
 					sudo -H -u #{site[:user]}
 					unison
 					-batch
 					-terse
 					-prefer #{HOST < remote ? local_root : remote_root}
 					#{local_root} #{remote_root}
-				].join " "
-				Mandar::Tools::Daemon.log "Executing: #{cmd}"
-				system cmd
-				time = 5 + rand(10)
+				]
+				puts "Executing: #{cmd}"
+				unless system cmd
+					Mandar::Tools::Daemon.log "Returned error code #{$?.exitstatus}"
+				end
+				time = 7 + rand(7)
 				Mandar::Tools::Daemon.log "(sleeping for #{time} seconds)"
 				sleep time
 			end
