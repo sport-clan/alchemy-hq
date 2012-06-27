@@ -318,7 +318,12 @@ module Mandar::Core::Config
 		return change
 	end
 
-	def self.stager_start(deploy_mode, deploy_role, deploy_mock)
+	def self.stager_start deploy_mode_1, deploy_role_1, deploy_mock_1
+
+		# attempt to work around segfaults
+		deploy_mode = deploy_mode_1
+		deploy_role = deploy_role_1
+		deploy_mock = deploy_mock_1
 
 		[ :unstaged, :staged, :rollback ].include? deploy_mode \
 			or raise "Invalid mode: #{deploy_mode}"
@@ -330,6 +335,9 @@ module Mandar::Core::Config
 		} [deploy_mode]
 
 		# control differences between staged deploy and rollback
+
+		# attempt to work around segfaults
+		change_pending_state = nil
 
 		unless deploy_mode == :unstaged
 			change_pending_state = {
@@ -432,9 +440,14 @@ module Mandar::Core::Config
 
 					# find our changes
 
-					change = locks["changes"][deploy_role]
-					change or raise "Internal error"
-					change["state"] == change_pending_state or raise "Internal error"
+					change =
+						locks["changes"][deploy_role]
+
+					change \
+						or raise "Internal error"
+
+					change["state"] == change_pending_state \
+						or raise "Internal error"
 
 					# update change state
 

@@ -110,6 +110,15 @@ module Mandar
 		return @deploy_dir
 	end
 
+	def self.remote_command= remote_command
+		@remote_command = remote_command
+	end
+
+	def self.remote_command
+		@remote_command or raise "No remote_command specified"
+		return @remote_command
+	end
+
 	# escape a string or strings for use as shell arguments
 	def self.shell_quote(str)
 

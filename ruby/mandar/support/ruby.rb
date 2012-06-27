@@ -13,13 +13,13 @@ module Mandar::Support::Ruby
 		unless @gem_sources[gem_source_ruby]
 			Mandar.time "gem#{gem_source_ruby} sources --list" do
 				@gem_sources[gem_source_ruby] =
-					%x[ gem#{gem_source_ruby} sources --list ].split("\n")[2..-1] || []
+					%x[ env -i gem#{gem_source_ruby} sources --list ].split("\n")[2..-1] || []
 			end
 		end
 
 		unless @gem_sources[gem_source_ruby].include? gem_source_url
 			Mandar.notice "adding gem source #{gem_source_url} for ruby #{gem_source_ruby}"
-			system "nice gem#{gem_source_ruby} sources --quiet --add #{gem_source_url}" or raise "Error" unless $mock
+			system "nice env -i gem#{gem_source_ruby} sources --quiet --add #{gem_source_url}" or raise "Error" unless $mock
 			@gem_sources[gem_source_ruby] << gem_source_url
 		end
 	end
@@ -37,7 +37,7 @@ module Mandar::Support::Ruby
 		unless @gem_packages[gem_ruby]
 			Mandar.time "gem#{gem_ruby} list" do
 				@gem_packages[gem_ruby] = {}
-				%x[ gem#{gem_ruby} list ].split("\n").each do |line|
+				%x[ env -i gem#{gem_ruby} list ].split("\n").each do |line|
 					line =~ /^(\S+) \(([0-9]+(?:\.[0-9]+)*(?:, [0-9]+(?:\.[0-9]+)*)*)\)/ \
 						or raise "didn't understand output of gem list: #{line}"
 					name, vers = $1, $2
@@ -56,7 +56,7 @@ module Mandar::Support::Ruby
 				"ruby #{gem_ruby}"
 
 			unless $mosk
-				system "gem#{gem_ruby} install #{gem_name} --version " +
+				system "env -i gem#{gem_ruby} install #{gem_name} --version " +
 						"#{gem_version}" \
 					or raise "Error"
 			end
