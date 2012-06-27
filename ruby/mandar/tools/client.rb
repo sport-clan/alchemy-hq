@@ -23,6 +23,10 @@ module Mandar::Tools::Client
 			client_config_elem.find_first \
 				"server [@name = #{server_name_xpath}]"
 
+		server_elem \
+			or raise "<server name=\"#{server_name}\"> not found in " +
+				"etc/client-config.xml"
+
 		@hq_client =
 			Mandar::Tools::MandarClient.new \
 				server_elem.attributes["url"],

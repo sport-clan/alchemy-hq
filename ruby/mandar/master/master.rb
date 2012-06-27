@@ -98,22 +98,22 @@ module Mandar::Master
 	end
 
 	def self.fix_perms()
+
 		Mandar.debug "fixing permissions"
 
-		start_time = Time.now
+		Mandar.time "fixing permissions" do
 
-		# everything should only be owner writable but world readable
-		system Mandar.shell_quote %W[
-			chmod --recursive u=rwX,og=rX #{CONFIG}
-		] or raise "Error"
+			# everything should only be owner writable but world readable
+			system Mandar.shell_quote %W[
+				chmod --recursive u=rwX,og=rX #{CONFIG}
+			] or raise "Error"
 
-		# with the exception of .work which is only owner readable
-		system Mandar.shell_quote %W[
-			chmod --recursive u=rwX,og= #{CONFIG}/.work
-		]
+			# with the exception of .work which is only owner readable
+			system Mandar.shell_quote %W[
+				chmod --recursive u=rwX,og= #{CONFIG}/.work
+			]
 
-		end_time = Time.now
-		Mandar.trace "fixing permissions took #{((end_time - start_time) * 1000).to_i}"
+		end
 
 	end
 
@@ -179,7 +179,8 @@ module Mandar::Master
 		system rsync_cmd or raise "Error #{$?.exitstatus} executing #{rsync_cmd}"
 
 		end_time = Time.now
-		Mandar.trace "send to #{host_name} took #{((end_time - start_time) * 1000).to_i}ms"
+		timing_ms = ((end_time - start_time) * 1000).to_i
+		Mandar.timing "send to #{host_name} took #{timing_ms}ms"
 	end
 
 	def self.run_on_host(host_name, cmd, redirect = "")

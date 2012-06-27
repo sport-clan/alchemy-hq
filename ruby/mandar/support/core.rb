@@ -200,13 +200,26 @@ module Mandar::Support::Core
 		end
 	end
 
-	def self.diff(src, dest)
+	def self.diff src, dest
 
 		# output diff
+
 		exists = File.exists? dest
-		ret = shell_real "diff --unified=3 --ignore-space-change #{exists ? dest : "/dev/null"} #{src}"
-		html = "<div class=\"mandar-diff\">\n" if Mandar.logger.format == :html
+
+		ret = shell_real Mandar.shell_quote %W[
+			diff
+			--unified=3
+			--ignore-space-change
+			#{exists ? dest : "/dev/null"}
+			#{src}
+		]
+
+		if Mandar.logger.format == :html
+			html = "<div class=\"mandar-diff\">\n"
+		end
+
 		ret[:output].each do |line|
+
 			line_type = case line
 				when /^---/; :minus_minus_minus
 				when /^\+\+\+/; :plus_plus_plus
@@ -215,19 +228,35 @@ module Mandar::Support::Core
 				when /^\+/; :plus
 				else :else
 			end
-			div_class = "mandar-diff-#{line_type.to_s.gsub("_","-")}" if Mandar.logger.format == :html
-			html += "<div class=\"#{div_class}\">#{CGI::escapeHTML line}</div>\n" if Mandar.logger.format == :html
-			Mandar.detail line, :colour => Mandar::Tools::Logger::DIFF_COLOURS[line_type] unless Mandar.logger.format == :html
+
+			if Mandar.logger.format == :html
+				div_class = "mandar-diff-#{line_type.to_s.gsub("_","-")}"
+				html += "<div class=\"#{div_class}\">#{CGI::escapeHTML line}" +
+					"</div>\n"
+			else
+				Mandar.detail line, \
+					:colour => Mandar::Tools::Logger::DIFF_COLOURS[line_type]
+			end
 		end
-		html += "</div>" if Mandar.logger.format == :html
-		Mandar.message html, :detail, :html => true if Mandar.logger.format == :html
+
+		if Mandar.logger.format == :html
+			html += "</div>"
+			Mandar.message html, :detail, :html => true
+		end
 	end
 
-	def self.diff(src, dest)
+	def self.diff src, dest
+
 		dest = "/dev/null" unless File.exists? dest
+
 		ret = shell_real "diff --unified=3 --ignore-space-change #{dest} #{src}"
-		html = "<div class=\"mandar-diff\">\n" if $html
+
+		if Mandar.logger.format == :html
+			html = "<div class=\"mandar-diff\">\n"
+		end
+
 		ret[:output].each do |line|
+
 			line_type = case line
 				when /^---/; :minus_minus_minus
 				when /^\+\+\+/; :plus_plus_plus
@@ -236,12 +265,22 @@ module Mandar::Support::Core
 				when /^\+/; :plus
 				else :else
 			end
-			div_class = "mandar-diff-#{line_type.to_s.gsub("_","-")}" if $html
-			html += "<div class=\"#{div_class}\">#{CGI::escapeHTML line}</div>\n" if $html
-			Mandar.detail line, :colour => Mandar::Tools::Logger::DIFF_COLOURS[line_type] unless $html
+
+			if Mandar.logger.format == :html
+				div_class = "mandar-diff-#{line_type.to_s.gsub("_","-")}"
+				html += "<div class=\"#{div_class}\">#{CGI::escapeHTML line}" +
+					"</div>\n"
+			else
+				Mandar.detail line, \
+					:colour => Mandar::Tools::Logger::DIFF_COLOURS[line_type]
+			end
 		end
-		html += "</div>" if $html
-		Mandar.message html, :detail, :html => true if $html
+
+		if Mandar.logger.format == :html
+			html += "</div>"
+			Mandar.message html, :detail, :html => true
+		end
+
 	end
 
 	def self.shell(cmd, options = {})
@@ -252,7 +291,8 @@ module Mandar::Support::Core
 		return ret[:status] == 0
 	end
 
-	def self.shell_real(cmd, options = {})
+	def self.shell_real cmd, options = {}
+
 		options[:level] ||= :detail
 
 		Mandar.debug "shell #{cmd}"

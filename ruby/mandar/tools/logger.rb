@@ -28,6 +28,7 @@ class Mandar::Tools::Logger
 
 	MESSAGE_TYPES = [
 		:trace,
+		:timing,
 		:debug,
 		:detail,
 		:notice,

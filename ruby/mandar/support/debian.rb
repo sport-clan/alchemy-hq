@@ -100,7 +100,8 @@ module Mandar::Debian
 
 			@debconf = {}
 			apt_install "debconf-utils"
-			a = Time.now
+
+			Mandar.time "debconf-get-selections" do
 
 			`debconf-get-selections` \
 				.split("\n") \
@@ -111,8 +112,7 @@ module Mandar::Debian
 					@debconf[question] = { :type => type, :value => value }
 				end
 
-			b = Time.now
-			Mandar.debug "debconf-get-selections took #{((b-a)*1000).to_i}ms"
+			end
 		end
 
 		Mandar.debug "opening pipe to debconf-set-selections"

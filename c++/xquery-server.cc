@@ -32,6 +32,7 @@ using namespace std;
 XQilla xqilla;
 
 struct Session :
+	public MessageListener,
 	public ModuleResolver,
 	public xercesc::XMLEntityResolver {
 
@@ -84,6 +85,22 @@ struct Session :
 			(XMLByte *) module_text.data (),
 			module_text.size (),
 			resource_id->getSystemId ());
+	}
+
+	virtual void warning (
+			const XMLCh * message,
+			const LocationInfo * location) {
+
+		cerr << "WARN: " << UTF8 (message) << "\n";
+	}
+
+	virtual void trace (
+			const XMLCh * label,
+			const Sequence & sequence,
+			const LocationInfo * location,
+			const DynamicContext * context) {
+
+		cerr << "TRACE: " << UTF8 (label) << "\n";
 	}
 };
 
@@ -140,6 +157,10 @@ void compile_xquery (
 
 		AutoDelete<DynamicContext> static_context (
 			xqilla.createContext ());
+
+		static_context->setProjection (false);
+
+		static_context->setMessageListener (& session);
 
 		static_context->setModuleResolver (& session);
 

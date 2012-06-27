@@ -11,10 +11,10 @@ module Mandar::Support::Ruby
 		@gem_sources ||= {}
 
 		unless @gem_sources[gem_source_ruby]
-			a = Time.now
-			@gem_sources[gem_source_ruby] = %x[ gem#{gem_source_ruby} sources --list ].split("\n")[2..-1] || []
-			b = Time.now
-			Mandar.debug "gem#{gem_source_ruby} sources --list took #{((b-a)*1000).to_i}ms"
+			Mandar.time "gem#{gem_source_ruby} sources --list" do
+				@gem_sources[gem_source_ruby] =
+					%x[ gem#{gem_source_ruby} sources --list ].split("\n")[2..-1] || []
+			end
 		end
 
 		unless @gem_sources[gem_source_ruby].include? gem_source_url
@@ -35,25 +35,34 @@ module Mandar::Support::Ruby
 		@gem_packages ||= {}
 
 		unless @gem_packages[gem_ruby]
-			a = Time.now
-			@gem_packages[gem_ruby] = {}
-			%x[ gem#{gem_ruby} list ].split("\n").each do |line|
-				line =~ /^(\S+) \(([0-9]+(?:\.[0-9]+)*(?:, [0-9]+(?:\.[0-9]+)*)*)\)/ \
-					or raise "didn't understand output of gem list: #{line}"
-				name, vers = $1, $2
-				@gem_packages[gem_ruby][name] = {}
-				vers.split(/, /).each do |ver|
-					@gem_packages[gem_ruby][name][ver] = true
+			Mandar.time "gem#{gem_ruby} list" do
+				@gem_packages[gem_ruby] = {}
+				%x[ gem#{gem_ruby} list ].split("\n").each do |line|
+					line =~ /^(\S+) \(([0-9]+(?:\.[0-9]+)*(?:, [0-9]+(?:\.[0-9]+)*)*)\)/ \
+						or raise "didn't understand output of gem list: #{line}"
+					name, vers = $1, $2
+					@gem_packages[gem_ruby][name] = {}
+					vers.split(/, /).each do |ver|
+						@gem_packages[gem_ruby][name][ver] = true
+					end
 				end
 			end
-			b = Time.now
-			Mandar.debug "gem#{gem_ruby} list took #{((b-a)*1000).to_i}ms"
 		end
 
-		unless @gem_packages[gem_ruby][gem_name] && @gem_packages[gem_ruby][gem_name][gem_version]
-			Mandar.notice "installing gem #{gem_name}-#{gem_version} for ruby #{gem_ruby}"
-			system "gem#{gem_ruby} install #{gem_name} --version #{gem_version}" or raise "Error" unless $mock
+		unless @gem_packages[gem_ruby][gem_name] \
+				&& @gem_packages[gem_ruby][gem_name][gem_version]
+
+			Mandar.notice "installing gem #{gem_name}-#{gem_version} for " +
+				"ruby #{gem_ruby}"
+
+			unless $mosk
+				system "gem#{gem_ruby} install #{gem_name} --version " +
+						"#{gem_version}" \
+					or raise "Error"
+			end
+
 			@gem_packages[gem_ruby][gem_name] ||= {}
+
 			@gem_packages[gem_ruby][gem_name][gem_version] = true
 		end
 	end

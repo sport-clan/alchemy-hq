@@ -37,10 +37,8 @@ module Mandar::Engine::Concrete
 		end
 
 		end_time = Time.now
-
 		time_ms = ((end_time - start_time) * 1000).to_i
-
-		Mandar.trace "loading concrete sources took #{time_ms}ms"
+		Mandar.timing "loading concrete sources took #{time_ms}ms"
 
 		return @concretes = concretes
 	end
@@ -88,141 +86,159 @@ module Mandar::Engine::Concrete
 
 				Mandar.debug "rebuilding concrete config #{concrete_name}"
 
-				# compile xquery
-				# TODO bug?
-				#xquery = Mandar::Engine.zorba.compileQuery(concrete[:source])
+				Mandar.time "rebuilding concrete config #{concrete_name}" do
 
-				# setup abstract
+					# compile xquery
+					# TODO bug?
+					#xquery = Mandar::Engine.zorba.compileQuery(concrete[:source])
 
-				doc = XML::Document.new
-				doc.root = XML::Node.new "abstract"
+					# setup abstract
 
-				concrete[:in].each do |abstract_name|
-					unless result = abstract_results[abstract_name]
-						Mandar.debug "No abstract result for " +
-							"#{abstract_name}, requested by #{concrete_name}"
-						next
-					end
-					result[:doc].root.each do |elem|
-						doc.root << doc.import(elem)
-					end
-				end
+					doc = XML::Document.new
+					doc.root = XML::Node.new "abstract"
 
-				case concrete[:type]
-
-					when "xquery"
-
-						xquery_session.set_library_module \
-							"abstract.xml",
-							doc.to_s
-
-					when "xslt"
-
-						xslt2_client.set_document \
-							"abstract.xml", \
-							doc.to_s
-
-					else
-						raise "Error"
-				end
-
-				# compile
-
-				case concrete[:type]
-
-					when "xquery"
-
-						begin
-							xquery_session.compile_xquery \
-								concrete[:source]
-						rescue => e
-							Mandar.error e.to_s
-							raise "error compiling #{concrete[:path]}"
+					concrete[:in].each do |abstract_name|
+						unless result = abstract_results[abstract_name]
+							Mandar.debug "No abstract result for " +
+								"#{abstract_name}, requested by #{concrete_name}"
+							next
 						end
-
-					when "xslt"
-
-						xslt2_client.compile_xslt concrete[:path]
-
-					else
-						raise "Error"
-
-				end
-
-				# process
-
-				hosts.each do |host|
-
-					Mandar.debug "rebuilding concrete config " +
-						"#{concrete_name} for #{host}"
-
-					# set hostname
+						result[:doc].root.each do |elem|
+							doc.root << doc.import(elem)
+						end
+					end
 
 					case concrete[:type]
 
 						when "xquery"
 
 							xquery_session.set_library_module \
-								"host-name.xml",
-								"<host-name value=\"#{host}\"/>"
+								"abstract.xml",
+								doc.to_s
 
 						when "xslt"
 
 							xslt2_client.set_document \
-								"host-name.xml", \
-								"<host-name value=\"#{host}\"/>"
+								"abstract.xml", \
+								doc.to_s
 
 						else
 							raise "Error"
-
 					end
 
-					# perform trasnformation
+					# compile
 
 					case concrete[:type]
 
 						when "xquery"
 
 							begin
-								ret =
-									xquery_session.run_xquery \
-										"<xml/>"
+								xquery_session.compile_xquery \
+									concrete[:source]
 							rescue => e
 								Mandar.error e.to_s
-								raise "error running #{concrete[:path]}"
+								raise "error compiling #{concrete[:path]}"
 							end
 
 						when "xslt"
 
-							ret =
-								xslt2_client.execute_xslt
+							xslt2_client.compile_xslt concrete[:path]
+
+						else
+							raise "Error"
+
 					end
 
-					# save doc
+					# process
 
-					doc =
-						XML::Document.string \
-							ret,
-							:options => XML::Parser::Options::NOBLANKS
+					hosts.each do |host|
 
-					doc.save "#{WORK}/concrete/#{host}/#{concrete_name}.xml"
+						Mandar.debug "rebuilding concrete config " +
+							"#{concrete_name} for #{host}"
 
-				end
+						Mandar.time "rebuilding concrete config " +
+							"#{concrete_name} for #{host}" do
 
-				# clean up
+							# set hostname
 
-				case concrete[:type]
+							case concrete[:type]
 
-					when "xquery"
+								when "xquery"
 
-						# nothing
+									xquery_session.set_library_module \
+										"host-name.xml",
+										"<host-name value=\"#{host}\"/>"
 
-					when "xslt"
+								when "xslt"
 
-						xslt2_client.reset
+									xslt2_client.set_document \
+										"host-name.xml", \
+										"<host-name value=\"#{host}\"/>"
 
-					else
-						raise "Error"
+								else
+									raise "Error"
+
+							end
+
+							# perform trasnformation
+
+							case concrete[:type]
+
+								when "xquery"
+
+									begin
+										ret =
+											xquery_session.run_xquery \
+												"<xml/>"
+									rescue => e
+										Mandar.error e.to_s
+										raise "error running #{concrete[:path]}"
+									end
+
+								when "xslt"
+
+									ret =
+										xslt2_client.execute_xslt
+							end
+
+							# save doc
+
+							temp =
+								XML::Document.string \
+									ret,
+									:options => XML::Parser::Options::NOBLANKS
+
+							doc =
+								XML::Document.new
+
+							doc.root =
+								XML::Node.new "concrete"
+
+							temp.find("/*/*").each do |elem|
+								doc.root << doc.import(elem)
+							end
+
+							doc.save "#{WORK}/concrete/#{host}/#{concrete_name}.xml"
+
+						end
+					end
+
+					# clean up
+
+					case concrete[:type]
+
+						when "xquery"
+
+							# nothing
+
+						when "xslt"
+
+							xslt2_client.reset
+
+						else
+							raise "Error"
+					end
+
 				end
 
 			end
@@ -234,10 +250,8 @@ module Mandar::Engine::Concrete
 		end
 
 		end_time = Time.now
-
 		time_ms = ((end_time - start_time) * 1000).to_i
-
-		Mandar.trace "rebuilding concrete config took #{time_ms}ms"
+		Mandar.timing "rebuilding concrete config took #{time_ms}ms"
 
 	end
 
