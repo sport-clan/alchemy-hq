@@ -1,16 +1,32 @@
 module Mandar::Master
 
-	def self.connect(host_name)
+	def self.connect host_name
+
 		return if Mandar.cygwin?
 
-		abstract = Mandar::Core::Config.abstract
+		abstract =
+			Mandar::Core::Config.abstract
 
-		host_elem = abstract["mandar-host"].find_first("mandar-host[@name='#{host_name}']") \
-			or raise "No such host: #{host_name}"
-		host_hostname = host_elem.attributes["hostname"] or raise "No hostname for host #{host_name}"
-		host_ip = host_elem.attributes["ip"] or raise "No IP address for host #{host_name}"
-		host_ssh_host_key = host_elem.attributes["ssh-host-key"] or raise "No host key for host #{host_name}"
-		host_ssh_key_name = host_elem.attributes["ssh-key-name"] or raise "No key name for host #{host_name}"
+		host_elem =
+			abstract["mandar-host"] \
+				.find_first("mandar-host[@name='#{host_name}']") \
+					or raise "No such host: #{host_name}"
+
+		host_hostname =
+			host_elem.attributes["hostname"] \
+				or raise "No hostname for host #{host_name}"
+
+		host_ip =
+			host_elem.attributes["ip"] \
+				or raise "No IP address for host #{host_name}"
+
+		host_ssh_host_key =
+			host_elem.attributes["ssh-host-key"] \
+				or raise "No host key for host #{host_name}"
+
+		host_ssh_key_name =
+			host_elem.attributes["ssh-key-name"] \
+				or raise "No key name for host #{host_name}"
 
 		FileUtils.mkdir_p "#{WORK}/ssh"
 		run_path = "#{WORK}/ssh/#{host_name}"
@@ -18,6 +34,7 @@ module Mandar::Master
 		pid_path = "#{run_path}.pid"
 
 		# setup ssh host keys
+
 		system "ssh-keygen -R #{host_hostname} 2>/dev/null"
 		system "ssh-keygen -R #{host_ip} 2>/dev/null"
 		FileUtils.mkdir_p "#{ENV["HOME"]}/.ssh"
@@ -26,8 +43,12 @@ module Mandar::Master
 			f.print "#{host_ip} #{host_ssh_host_key}\n"
 		end
 
-		ssh_key_elem = abstract["mandar-ssh-key"].find_first("*[@name='#{host_ssh_key_name}']")
-		ssh_key = ssh_key_elem.find_first("private").content
+		ssh_key_elem =
+			abstract["mandar-ssh-key"] \
+				.find_first("*[@name='#{host_ssh_key_name}']")
+
+		ssh_key =
+			ssh_key_elem.find_first("private").content
 
 		unless File.exists? socket_path
 			Mandar.notice "connecting to #{host_name}"
@@ -37,6 +58,9 @@ module Mandar::Master
 				ssh_key_file.puts ssh_key
 				ssh_key_file.flush
 
+				identity_path =
+					$ssh_identity || ssh_key_file.path
+
 				# and execute ssh process
 				ssh_args = %W[
 					#{MANDAR}/etc/ssh-wrapper
@@ -44,7 +68,7 @@ module Mandar::Master
 					ssh -MNqa
 					root@#{host_hostname}
 					-S #{socket_path}
-					-i #{ssh_key_file.path}
+					-i #{identity_path}
 					-o ServerAliveInterval=10
 					-o ServerAliveCountMax=3
 					-o ConnectTimeout=10

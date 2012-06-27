@@ -68,6 +68,8 @@ class Mandar::Core::Script
 			[ "--fork", GetoptLong::NO_ARGUMENT ],
 			[ "--pid-file", GetoptLong::REQUIRED_ARGUMENT ],
 			[ "--log-file", GetoptLong::REQUIRED_ARGUMENT ],
+
+			[ "--ssh-identity", GetoptLong::REQUIRED_ARGUMENT ],
 		])
 
 		$no_config = false
@@ -82,6 +84,8 @@ class Mandar::Core::Script
 		$console_fork = false
 		$console_pid_file = nil
 		$console_log_file = nil
+
+		$ssh_identity = nil
 
 		opts.each do |opt, arg|
 			case opt
@@ -153,6 +157,13 @@ class Mandar::Core::Script
 			when "--log-file"
 				$console_log_file and Mandar.die "Only one --log-file option allowed"
 				$console_log_file = arg
+
+			# ---------- ssh
+
+			when "--ssh-identity"
+				$ssh_identity \
+					and Mandar.die "Only one --ssh-identity option allowed"
+				$ssh_identity = arg
 
 			# ----------
 

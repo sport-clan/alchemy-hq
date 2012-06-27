@@ -7,7 +7,7 @@ module Mandar::Support::Service
 			return ret if command == "status"
 			return true if ret
 			system "cat #{tmp.path}"
-			raise "Error #{name}ing #{command}"
+			raise "Error #{command}ing #{name}"
 		end
 	end
 
