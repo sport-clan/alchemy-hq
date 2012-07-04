@@ -114,7 +114,15 @@ module Mandar::Support::Ruby
 
 				result[:output].each do |line|
 
-					next if line =~ /^Now using system ruby\.$/
+					case line
+
+						when /^Now using system ruby\.$/
+							next
+
+						when /^$/
+							next
+
+					end
 
 					line =~ /^
 						(\S+) \s \( (
