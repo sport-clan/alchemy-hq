@@ -29,16 +29,30 @@ module Mandar::Deploy::Control
 		end
 
 		# sort services according to dependencies
+
 		service_order = []
+
 		while service_deps.length > 0
+
 			progress = false
+
+			service_deps =
+				Hash[service_deps.sort]
+
 			service_deps.each do |service, deps|
+
 				next if (deps - service_deps.keys).length < deps.length
+
 				service_order << service
 				service_deps.delete service
+
 				progress = true
+
 			end
-			throw "Unable to resolve service dependencies" unless progress
+
+			progress \
+				or raise "Unable to resolve service dependencies"
+
 		end
 
 		# invoke services in specified order
