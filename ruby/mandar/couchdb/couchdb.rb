@@ -86,7 +86,7 @@ module Mandar::CouchDB
 		end
 
 		def http_request(method, path, request_string)
-			Mandar.debug "couchdb #{method} #{path} #{request_string}"
+			Mandar.trace "couchdb #{method} #{path} #{request_string}"
 			# TODO reuse connections
 			Net::HTTP.start @hostname, @port do |http|
 				request = Net::HTTPGenericRequest.new(method, true, true, path)
