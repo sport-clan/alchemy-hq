@@ -11,7 +11,7 @@ module Mandar::Engine::Concrete
 		Dir.new("#{CONFIG}/concrete").each do |filename|
 
 			filename_regex =
-				/^([a-z0-9]+(?:-[a-z0-9]+)*)\.(xslt|xquery)$/
+				/^([a-z0-9]+(?:-[a-z0-9]+)*)\.(xquery)$/
 
 			next unless filename =~ filename_regex
 
@@ -51,8 +51,6 @@ module Mandar::Engine::Concrete
 			if xquery_client
 				xquery_session = xquery_client.session
 			end
-
-			xslt2_client = Mandar::Engine.xslt2_client
 
 			load_source
 
@@ -112,45 +110,18 @@ module Mandar::Engine::Concrete
 						end
 					end
 
-					case concrete[:type]
-
-						when "xquery"
-
-							xquery_session.set_library_module \
-								"abstract.xml",
-								doc.to_s
-
-						when "xslt"
-
-							xslt2_client.set_document \
-								"abstract.xml", \
-								doc.to_s
-
-						else
-							raise "Error"
-					end
+					xquery_session.set_library_module \
+						"abstract.xml",
+						doc.to_s
 
 					# compile
 
-					case concrete[:type]
-
-						when "xquery"
-
-							begin
-								xquery_session.compile_xquery \
-									concrete[:source]
-							rescue => e
-								Mandar.error e.to_s
-								raise "error compiling #{concrete[:path]}"
-							end
-
-						when "xslt"
-
-							xslt2_client.compile_xslt concrete[:path]
-
-						else
-							raise "Error"
-
+					begin
+						xquery_session.compile_xquery \
+							concrete[:source]
+					rescue => e
+						Mandar.error e.to_s
+						raise "error compiling #{concrete[:path]}"
 					end
 
 					# process
@@ -165,44 +136,19 @@ module Mandar::Engine::Concrete
 
 							# set hostname
 
-							case concrete[:type]
-
-								when "xquery"
-
-									xquery_session.set_library_module \
-										"host-name.xml",
-										"<host-name value=\"#{host}\"/>"
-
-								when "xslt"
-
-									xslt2_client.set_document \
-										"host-name.xml", \
-										"<host-name value=\"#{host}\"/>"
-
-								else
-									raise "Error"
-
-							end
+							xquery_session.set_library_module \
+								"host-name.xml",
+								"<host-name value=\"#{host}\"/>"
 
 							# perform trasnformation
 
-							case concrete[:type]
-
-								when "xquery"
-
-									begin
-										ret =
-											xquery_session.run_xquery \
-												"<xml/>"
-									rescue => e
-										Mandar.error e.to_s
-										raise "error running #{concrete[:path]}"
-									end
-
-								when "xslt"
-
-									ret =
-										xslt2_client.execute_xslt
+							begin
+								ret =
+									xquery_session.run_xquery \
+										"<xml/>"
+							rescue => e
+								Mandar.error e.to_s
+								raise "error running #{concrete[:path]}"
 							end
 
 							# save doc
@@ -225,22 +171,6 @@ module Mandar::Engine::Concrete
 							doc.save "#{WORK}/concrete/host/#{host}/concrete/#{concrete_name}.xml"
 
 						end
-					end
-
-					# clean up
-
-					case concrete[:type]
-
-						when "xquery"
-
-							# nothing
-
-						when "xslt"
-
-							xslt2_client.reset
-
-						else
-							raise "Error"
 					end
 
 				end

@@ -19,7 +19,7 @@ module Mandar::Engine::Abstract
 				#{Regexp.quote "#{CONFIG}/abstract/"}
 				(
 					(.+)
-					\. (xslt|xquery)
+					\. (xquery)
 				)
 			$/x
 
@@ -141,8 +141,6 @@ module Mandar::Engine::Abstract
 		abstract_name = abstract[:name]
 		abstract_type = abstract[:type]
 
-		xslt2_client = Mandar::Engine.xslt2_client
-
 		Mandar.debug "rebuilding abstract #{abstract_name}"
 		Mandar.time "rebuilding abstract #{abstract_name}" do
 
@@ -166,57 +164,26 @@ module Mandar::Engine::Abstract
 
 			end
 
-			case abstract_type
-
-				when "xquery"
-					xquery_session.set_library_module "abstract.xml", doc.to_s
-
-				when "xslt"
-					xslt2_client.set_document "abstract.xml", doc.to_s
-
-				else
-					raise "Error"
-			end
+			xquery_session.set_library_module \
+				"abstract.xml",
+				doc.to_s
 
 			# perform query
 
-			case abstract_type
+			begin
 
-				when "xquery"
+				xquery_session.compile_xquery \
+					abstract[:source]
 
-					begin
+				abstract[:str] = \
+					xquery_session.run_xquery \
+						"<xml/>"
 
-						xquery_session.compile_xquery \
-							abstract[:source]
-
-						abstract[:str] = \
-							xquery_session.run_xquery \
-								"<xml/>"
-
-					rescue => e
-						Mandar.error e.to_s
-						Mandar.error "deleting #{WORK}"
-						FileUtils.rm_rf "#{WORK}"
-						raise "error compiling #{abstract[:path]}"
-					end
-
-				when "xslt"
-
-					begin
-						xslt2_client.compile_xslt abstract[:path]
-					rescue => e
-						Mandar.error e.to_s
-						Mandar.error "deleting #{WORK}"
-						FileUtils.rm_rf "#{WORK}"
-						raise "error compiling #{abstract[:path]}"
-					end
-
-					abstract[:str] = xslt2_client.execute_xslt
-					xslt2_client.reset
-
-				else
-					raise "Error"
-
+			rescue => e
+				Mandar.error e.to_s
+				Mandar.error "deleting #{WORK}"
+				FileUtils.rm_rf "#{WORK}"
+				raise "error compiling #{abstract[:path]}"
 			end
 
 			# delete and/or create
