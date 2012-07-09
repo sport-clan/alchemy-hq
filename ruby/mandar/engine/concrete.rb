@@ -70,7 +70,6 @@ module Mandar::Engine::Concrete
 			hosts.each do |host|
 				FileUtils.mkdir "#{WORK}/concrete/host/#{host}"
 				FileUtils.mkdir "#{WORK}/concrete/host/#{host}/concrete"
-				FileUtils.mkdir "#{WORK}/concrete/host/#{host}/abstract"
 			end
 
 			# load xquery modules
@@ -186,6 +185,46 @@ module Mandar::Engine::Concrete
 		end_time = Time.now
 		time_ms = ((end_time - start_time) * 1000).to_i
 		Mandar.timing "rebuilding concrete config took #{time_ms}ms"
+
+		# write concrete config
+
+		Mandar.notice "writing concrete config"
+
+		Mandar.time "writing concrete config" do
+
+			# create output documents for each host
+
+			concrete_docs = {}
+			hosts.each do |host|
+				doc = XML::Document.new
+				doc.root = XML::Node.new "concrete"
+				concrete_docs[host] = doc
+			end
+
+			# sort tasks into appropriate host documents
+
+			abstract_results["task"][:doc] \
+					.find("/*/task") \
+					.each do |task_elem|
+
+				host = task_elem.attributes["host"]
+				doc = concrete_docs[host]
+				next unless doc
+
+				doc.root << doc.import(task_elem)
+
+			end
+
+			# write out new documents
+
+			concrete_docs.each do |host, concrete_doc|
+
+				concrete_doc.save \
+					"#{WORK}/concrete/host/#{host}/tasks.xml"
+
+			end
+
+		end
 
 	end
 
