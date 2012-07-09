@@ -66,9 +66,13 @@ module Mandar::Engine::Concrete
 				if File.directory? "#{WORK}/concrete"
 
 			FileUtils.mkdir "#{WORK}/concrete"
+			FileUtils.mkdir "#{WORK}/concrete/host"
+			FileUtils.mkdir "#{WORK}/concrete/class"
 
 			hosts.each do |host|
-				FileUtils.mkdir "#{WORK}/concrete/#{host}"
+				FileUtils.mkdir "#{WORK}/concrete/host/#{host}"
+				FileUtils.mkdir "#{WORK}/concrete/host/#{host}/concrete"
+				FileUtils.mkdir "#{WORK}/concrete/host/#{host}/abstract"
 			end
 
 			# load xquery modules
@@ -218,7 +222,7 @@ module Mandar::Engine::Concrete
 								doc.root << doc.import(elem)
 							end
 
-							doc.save "#{WORK}/concrete/#{host}/#{concrete_name}.xml"
+							doc.save "#{WORK}/concrete/host/#{host}/concrete/#{concrete_name}.xml"
 
 						end
 					end

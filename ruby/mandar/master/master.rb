@@ -180,9 +180,11 @@ module Mandar::Master
 				--rsh=#{rsh_cmd}
 				--timeout=30
 
-				--include=/.work/concrete
-				--include=/.work/concrete/#{host_name}
+				--include=/.work/concrete/host/#{host_name}
+				--exclude=/.work/concrete/host/*
+				--include=/.work/concrete/host
 				--exclude=/.work/concrete/*
+				--include=/.work/concrete
 				--exclude=/.work/*
 				--include=/.work
 

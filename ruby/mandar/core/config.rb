@@ -6,7 +6,7 @@ module Mandar::Core::Config
 	def self.data_docs() @data_docs end
 	def self.data_strs() @data_strs end
 
-	def self.reload()
+	def self.reload_now
 		mandar true
 		service true
 	end
@@ -76,33 +76,39 @@ module Mandar::Core::Config
 	def self.service(reload = false)
 		(@service_lock ||= Mutex.new).synchronize do
 			return @service if @service unless reload
-			dir = "#{WORK}/concrete/#{Mandar.host}"
+			dir = "#{WORK}/concrete/host/#{Mandar.host}"
 			return @service = load_and_merge(dir, "service")
 		end
 	end
 
-	def self.load_and_merge(dir, name)
+	def self.load_and_merge dir, name
 
 		# create document
+
 		ret = XML::Document.new
 		ret.root = XML::Node.new name
 
 		# scan directory
-		if File.directory? dir
-			Dir.new(dir).each do |file|
-				next unless file =~ /^([^.].*)\.xml$/
 
-				# load xml
-				XML::default_line_numbers = true
-				doc = XML::Document.string File.read("#{dir}/#{file}"), :options =>XML::Parser::Options::NOBLANKS
+		Dir.glob "#{dir}/**/*.xml" do |file|
 
-				# merge it in
-				doc.root.find("*").each do |elem|
-					new_elem = ret.import(elem)
-					new_elem.attributes["loaded-from"] = file
-					ret.root << new_elem
-				end
+			# load xml
+
+			XML::default_line_numbers = true
+
+			doc = \
+				XML::Document.string \
+					File.read(file),
+					:options => XML::Parser::Options::NOBLANKS
+
+			# merge it in
+
+			doc.root.find("*").each do |elem|
+				new_elem = ret.import(elem)
+				new_elem.attributes["loaded-from"] = file
+				ret.root << new_elem
 			end
+
 		end
 
 		return ret
@@ -496,7 +502,7 @@ module Mandar::Core::Config
 	end
 
 	def self.schemas_elem
-		return @schemas_elem if @schemas_elem && ! reload
+		return @schemas_elem if @schemas_elem
 		schemas_doc = XML::Document.file "#{WORK}/schema.xml", :options =>XML::Parser::Options::NOBLANKS
 		@schemas_elem = schemas_doc.root
 		return @schemas_elem
