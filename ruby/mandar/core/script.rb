@@ -369,7 +369,7 @@ class Mandar::Core::Script
 					end
 				end
 
-				File.open("#{CONFIG}/console-config.xml", "w") { |f| f.puts(doc.to_s) }
+				File.open("#{CONFIG}/etc/console-config.xml", "w") { |f| f.puts(doc.to_s) }
 
 				Mandar.notice "done"
 

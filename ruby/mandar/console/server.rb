@@ -25,7 +25,7 @@ class Mandar::Console::Server
 
 		app_ctx = {}
 
-		config_doc = XML::Document.file "#{CONFIG}/console-config.xml"
+		config_doc = XML::Document.file "#{CONFIG}/etc/console-config.xml"
 		config = config_doc.root
 		app_ctx[:config] = config
 
