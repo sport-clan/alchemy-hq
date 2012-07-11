@@ -289,7 +289,8 @@ module Mandar::Master
 			Mandar.notice "deploy #{host}"
 			begin
 				if host == "local"
-					Mandar::Deploy::Control.deploy Mandar::Core::Config.service.find("local")
+					Mandar::Deploy::Control.deploy \
+						Mandar::Core::Config.service.find("task[@host='local']")
 				else
 					Mandar::Master.send_to host
 					args = %W[ server-deploy #{host} ]
@@ -346,7 +347,7 @@ module Mandar::Master
 					if host == "local"
 
 						Mandar::Deploy::Control.deploy \
-							Mandar::Core::Config.service.find("local")
+							Mandar::Core::Config.service.find("task[@host='local']")
 
 					else
 
