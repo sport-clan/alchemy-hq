@@ -2,8 +2,6 @@ module Mandar::Master
 
 	def self.connect host_name
 
-		return if Mandar.cygwin?
-
 		abstract =
 			Mandar::Core::Config.abstract
 
@@ -337,8 +335,6 @@ module Mandar::Master
 
 	def self.deploy_parallel hosts
 
-		Mandar.notice "performing deployments in parallel"
-
 		# fix perms first
 		fix_perms
 
@@ -347,7 +343,8 @@ module Mandar::Master
 		max_threads =
 			(Mandar::Core::Config.mandar.attributes["threads"] || 10).to_i
 
-		Mandar.debug "running #{max_threads} threads"
+		Mandar.notice \
+			"performing deployments in parallel, #{max_threads} threads"
 
 		queue = SizedQueue.new max_threads
 
