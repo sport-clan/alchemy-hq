@@ -350,6 +350,26 @@ module Mandar::Support::Core
 		return group =~ /^\d+$/ ? group.to_i : Etc.getgrnam(group).gid
 	end
 
+	Mandar::Deploy::Commands.register self, :sub_task
+
+	def self.command_sub_task referring_sub_task_elem
+
+		sub_task_name =
+			referring_sub_task_elem.attributes["name"]
+
+		referred_sub_task =
+			$sub_tasks_by_task[sub_task_name]
+
+		referred_sub_task \
+			or raise "No such sub-task: #{sub_task_name}"
+
+		Mandar::Deploy::Commands.perform \
+			referred_sub_task
+
+	end
+
+	# TODO move these
+
 	Mandar::Deploy::Commands.register self, :auto_clean
 	Mandar::Deploy::Commands.register self, :chdir
 	Mandar::Deploy::Commands.register self, :clean

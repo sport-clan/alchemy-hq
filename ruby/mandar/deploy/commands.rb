@@ -13,9 +13,7 @@ module Mandar::Deploy::Commands
 			command_name = elem.name.gsub("-", "_").to_sym
 			command = @commands[command_name]
 			unless command
-				loaded_from = Mandar::Core::Config.loaded_from(parent_elem)
-				location = "#{loaded_from}:#{elem.line_num}"
-				Mandar.die "No such command <#{elem.name}> at #{location}"
+				Mandar.die "No such command <#{elem.name}>"
 			end
 			target = command[:target]
 			target.send "command_#{command_name}", elem

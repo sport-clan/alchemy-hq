@@ -76,7 +76,13 @@ class Mandar::Tools::MandarClient
 		return response
 	end
 
-	def stager_cancel
+	def rollback
+		status, response = call "POST", "/stager/rollback", {}
+		raise "error" unless status == 200
+		return response
+	end
+
+	def cancel
 		status, response = call "POST", "/stager/cancel", {}
 		raise "error" unless status == 200
 		return response

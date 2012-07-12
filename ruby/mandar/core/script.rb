@@ -253,62 +253,105 @@ class Mandar::Core::Script
 				Mandar::Core::Config.rebuild_concrete hosts
 
 			when "deploy"
+
 				Mandar.host = "local"
 
 				# check args
+
 				$deploy_role or Mandar.die "must specify --role in deploy mode"
 
 				# message about mock
+
 				Mandar.warning "running in mock deployment mode" if $mock
 
 				# begin staged/rollback deploy
 
-				Mandar::Core::Config.stager_start $deploy_mode, $deploy_role, $mock
+				Mandar.time "transform", :detail do
 
-				# rebuild config
+					Mandar::Core::Config.stager_start \
+						$deploy_mode,
+						$deploy_role,
+						$mock
 
-				Mandar::Core::Config.rebuild_abstract
+					# rebuild config
 
-				abstract = Mandar::Core::Config.abstract
+					Mandar::Core::Config.rebuild_abstract
 
-				# determine list of hosts to deploy to
+					abstract =
+						Mandar::Core::Config.abstract
 
-				hosts = process_hosts ARGV[1..-1]
+					# determine list of hosts to deploy to
 
-				# reduce list of hosts on various criteria
+					hosts = process_hosts ARGV[1..-1]
 
-				hosts = hosts.select do |host|
-					host_elem = abstract["mandar-host"].find_first("mandar-host[@name='#{host}']")
-					case
-					when host == "local"
-						true
-					when ! host_elem
-						Mandar.die "No such host #{host}"
-					when ! host_elem.attributes["skip"].to_s.empty?
-						Mandar.debug "skipping host #{host} because #{host_elem.attributes["skip"]}"
-						false
-					when host_elem.attributes["no-deploy"] != "yes"
-						true
-					when $force
-						Mandar.warning "deploying to no-deploy host #{host}"
-						true
-					else
-						Mandar.warning "skipping no-deploy host #{host}"
-						false
+					# reduce list of hosts on various criteria
+
+					hosts = hosts.select do |host|
+						host_elem = abstract["deploy-host"].find_first("deploy-host[@name='#{host}']")
+						case
+						when host == "local"
+							true
+						when ! host_elem
+							Mandar.die "No such host #{host}"
+						when ! host_elem.attributes["skip"].to_s.empty?
+							Mandar.debug "skipping host #{host} because #{host_elem.attributes["skip"]}"
+							false
+						when host_elem.attributes["no-deploy"] != "yes"
+							true
+						when $force
+							Mandar.warning "deploying to no-deploy host #{host}"
+							true
+						else
+							Mandar.warning "skipping no-deploy host #{host}"
+							false
+						end
 					end
+
+					# rebuild concrete config
+
+					Mandar::Core::Config.rebuild_concrete hosts
+
 				end
 
-				# rebuild concrete config
-				Mandar::Core::Config.rebuild_concrete hosts
+				Mandar.time "deploy", :detail do
 
-				# and deploy
-				Mandar::Master.deploy hosts
+					# and deploy
+
+					Mandar::Master.deploy hosts
+
+				end
 
 			when "server-deploy"
-				system "test -h /mandar && rm /mandar"
-				system "test -h /alchemy-hq || ln -s #{Mandar.deploy_dir}/alchemy-hq /alchemy-hq"
-				File.open("/etc/mandar-hostname", "w") { |f| f.puts ARGV[1] }
-				Mandar::Deploy::Control.deploy Mandar::Core::Config.service.find("task")
+
+				require "hq/deploy"
+
+				# create /alchemy-hq link
+
+				# TODO does this belong here?
+
+				# TODO do this with ruby, not bash
+
+				system \
+					"test -h /alchemy-hq " +
+					"|| ln -s #{Mandar.deploy_dir}/alchemy-hq /alchemy-hq"
+
+				# remove obsolete mandar-hostname file
+
+				# TODO remove this
+
+				File.unlink "/etc/mandar-hostname" \
+					if File.exist? "/etc/mandar-hostname"
+
+				# write hostname
+
+				File.open "/etc/hq-hostname", "w" do |f|
+					f.puts ARGV[1]
+				end
+
+				# and perform the requested deployment
+
+				HQ::Deploy::Slave.go \
+					ARGV[2]
 
 			when "action"
 				Mandar.host = "local"
@@ -380,7 +423,7 @@ class Mandar::Core::Script
 					end
 				end
 
-				File.open("#{CONFIG}/console-config.xml", "w") { |f| f.puts(doc.to_s) }
+				File.open("#{CONFIG}/etc/console-config.xml", "w") { |f| f.puts(doc.to_s) }
 
 				Mandar.notice "done"
 

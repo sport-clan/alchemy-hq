@@ -36,15 +36,41 @@ module Mandar
 		logger.message text, :error, options
 	end
 
-	def self.time text
-		time_start = Time.now
+	def self.time text, level = :timing
+
+		time_start =
+			Time.now
+
 		begin
+
 			yield
+
 		ensure
-			time_end = Time.now
-			timing_ms = ((time_end - time_start) * 1000).to_i
-			Mandar.timing "#{text} took #{timing_ms}ms"
+
+			time_end =
+				Time.now
+
+			timing_ms =
+				((time_end - time_start) * 1000).to_i
+
+			timing_str =
+				case timing_ms
+					when (0...1000)
+						"%dms" % [ timing_ms ]
+					when (1000...10000)
+						"%.2fs" % [ timing_ms.to_f / 1000 ]
+					when (10000...100000)
+						"%.1fs" % [ timing_ms.to_f / 1000 ]
+					else
+						"%ds" % [ timing_ms / 1000 ]
+				end
+
+			message \
+				"#{text} took #{timing_str}",
+				level
+
 		end
+
 	end
 
 	def self.die text, status = 1
@@ -61,9 +87,9 @@ module Mandar
 		# cache hostname
 		return @hostname if @hostname
 
-		# read it from /etc/mandar-hostname
-		if File.exists?("/etc/mandar-hostname")
-			return @hostname = File.read("/etc/mandar-hostname").strip
+		# read it from /etc/hq-hostname
+		if File.exists?("/etc/hq-hostname")
+			return @hostname = File.read("/etc/hq-hostname").strip
 		end
 
 		# default to reported hostname
@@ -93,14 +119,6 @@ module Mandar
 		end
 	end
 
-	def self.uname()
-		return @uname ||= `uname`
-	end
-
-	def self.cygwin?()
-		return uname =~ /^CYGWIN/
-	end
-
 	def self.deploy_dir=(deploy_dir)
 		@deploy_dir = deploy_dir
 	end
@@ -108,6 +126,15 @@ module Mandar
 	def self.deploy_dir()
 		@deploy_dir or raise "No deploy_dir specified"
 		return @deploy_dir
+	end
+
+	def self.remote_command= remote_command
+		@remote_command = remote_command
+	end
+
+	def self.remote_command
+		@remote_command or raise "No remote_command specified"
+		return @remote_command
 	end
 
 	# escape a string or strings for use as shell arguments
