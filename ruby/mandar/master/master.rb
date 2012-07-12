@@ -300,12 +300,21 @@ module Mandar::Master
 		hosts.each do |host|
 			Mandar.notice "deploy #{host}"
 			begin
+
 				if host == "local"
-					Mandar::Deploy::Control.deploy \
-						Mandar::Core::Config.service.find("task[@host='local']")
+
+					HQ::Deploy::Slave.go \
+						"host/local/deploy.xml"
+
 				else
 					Mandar::Master.send_to host
-					args = %W[ server-deploy host/#{host}/deploy.xml ]
+
+					args = [
+						"server-deploy",
+						host,
+						"host/#{host}/deploy.xml",
+					]
+
 					unless Mandar::Master.run_self_on_host host, args
 						Mandar.error "deploy #{host} failed"
 						error = true
@@ -358,8 +367,8 @@ module Mandar::Master
 				begin
 					if host == "local"
 
-						Mandar::Deploy::Control.deploy \
-							Mandar::Core::Config.service.find("task[@host='local']")
+						HQ::Deploy::Slave.go \
+							"host/local/deploy.xml"
 
 					else
 
@@ -368,7 +377,11 @@ module Mandar::Master
 						Tempfile.open "mandar" do |tmp|
 							begin
 
-								args = %W[ server-deploy host/#{host}/deploy.xml ]
+								args = [
+									"server-deploy",
+									host,
+									"host/#{host}/deploy.xml",
+								]
 
 								unless Mandar::Master.run_self_on_host \
 										host, args, ">#{tmp.path} 2>#{tmp.path}"

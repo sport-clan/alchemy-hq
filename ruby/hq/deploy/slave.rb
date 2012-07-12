@@ -18,11 +18,7 @@ class HQ::Deploy::Slave
 
 	def go
 
-		create_alchemy_hq_link
-
 		read_deploy_xml
-
-		write_hostname
 
 		read_tasks
 		process_tasks
@@ -31,33 +27,6 @@ class HQ::Deploy::Slave
 		sub_tasks_hack
 
 		run_tasks
-
-	end
-
-	def create_alchemy_hq_link
-
-		# TODO does this belong here?
-
-		# TODO do this with ruby, not bash
-
-		system \
-			"test -h /alchemy-hq " +
-			"|| ln -s #{Mandar.deploy_dir}/alchemy-hq /alchemy-hq"
-
-	end
-
-	def write_hostname
-
-		# TODO remove this
-		File.unlink "/etc/mandar-hostname" \
-			if File.exist? "/etc/mandar-hostname"
-
-		File.open "/etc/hq-hostname", "w" do |f|
-
-			f.puts \
-				@deploy_elem.attributes["host"]
-
-		end
 
 	end
 

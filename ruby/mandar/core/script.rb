@@ -297,8 +297,33 @@ class Mandar::Core::Script
 
 				require "hq/deploy"
 
+				# create /alchemy-hq link
+
+				# TODO does this belong here?
+
+				# TODO do this with ruby, not bash
+
+				system \
+					"test -h /alchemy-hq " +
+					"|| ln -s #{Mandar.deploy_dir}/alchemy-hq /alchemy-hq"
+
+				# remove obsolete mandar-hostname file
+
+				# TODO remove this
+
+				File.unlink "/etc/mandar-hostname" \
+					if File.exist? "/etc/mandar-hostname"
+
+				# write hostname
+
+				File.open "/etc/hq-hostname", "w" do |f|
+					f.puts ARGV[1]
+				end
+
+				# and perform the requested deployment
+
 				HQ::Deploy::Slave.go \
-					ARGV[1]
+					ARGV[2]
 
 			when "action"
 				Mandar.host = "local"
