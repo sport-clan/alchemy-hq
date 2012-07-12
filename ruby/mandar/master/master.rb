@@ -343,13 +343,20 @@ module Mandar::Master
 		fix_perms
 
 		# queue is used to enforce maximum threads as configured
-		max_threads = (Mandar::Core::Config.mandar.attributes["threads"] || 10).to_i
+
+		max_threads =
+			(Mandar::Core::Config.mandar.attributes["threads"] || 10).to_i
+
+		Mandar.debug "running #{max_threads} threads"
+
 		queue = SizedQueue.new max_threads
 
 		# lock is used for output to stop things clobbering each other
+
 		lock = Mutex.new
 
-		# threads are collection so they can be waited on
+		# threads are collected so they can be waited on
+
 		threads = []
 
 		# error is set to true if any part fails in any thread

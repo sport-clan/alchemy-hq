@@ -242,61 +242,72 @@ class Mandar::Core::Script
 				Mandar::Core::Config.rebuild_concrete hosts
 
 			when "deploy"
+
 				Mandar.host = "local"
 
 				# check args
+
 				$deploy_role or Mandar.die "must specify --role in deploy mode"
 
 				# message about mock
+
 				Mandar.warning "running in mock deployment mode" if $mock
 
 				# begin staged/rollback deploy
 
-				Mandar::Core::Config.stager_start $deploy_mode, $deploy_role, $mock
-
-				# rebuild config
-
 				Mandar.time "transform", :detail do
+
+					Mandar::Core::Config.stager_start \
+						$deploy_mode,
+						$deploy_role,
+						$mock
+
+					# rebuild config
+
 					Mandar::Core::Config.rebuild_abstract
-				end
 
-				abstract = Mandar::Core::Config.abstract
+					abstract =
+						Mandar::Core::Config.abstract
 
-				# determine list of hosts to deploy to
+					# determine list of hosts to deploy to
 
-				hosts = process_hosts ARGV[1..-1]
+					hosts = process_hosts ARGV[1..-1]
 
-				# reduce list of hosts on various criteria
+					# reduce list of hosts on various criteria
 
-				hosts = hosts.select do |host|
-					host_elem = abstract["deploy-host"].find_first("deploy-host[@name='#{host}']")
-					case
-					when host == "local"
-						true
-					when ! host_elem
-						Mandar.die "No such host #{host}"
-					when ! host_elem.attributes["skip"].to_s.empty?
-						Mandar.debug "skipping host #{host} because #{host_elem.attributes["skip"]}"
-						false
-					when host_elem.attributes["no-deploy"] != "yes"
-						true
-					when $force
-						Mandar.warning "deploying to no-deploy host #{host}"
-						true
-					else
-						Mandar.warning "skipping no-deploy host #{host}"
-						false
+					hosts = hosts.select do |host|
+						host_elem = abstract["deploy-host"].find_first("deploy-host[@name='#{host}']")
+						case
+						when host == "local"
+							true
+						when ! host_elem
+							Mandar.die "No such host #{host}"
+						when ! host_elem.attributes["skip"].to_s.empty?
+							Mandar.debug "skipping host #{host} because #{host_elem.attributes["skip"]}"
+							false
+						when host_elem.attributes["no-deploy"] != "yes"
+							true
+						when $force
+							Mandar.warning "deploying to no-deploy host #{host}"
+							true
+						else
+							Mandar.warning "skipping no-deploy host #{host}"
+							false
+						end
 					end
+
+					# rebuild concrete config
+
+					Mandar::Core::Config.rebuild_concrete hosts
+
 				end
-
-				# rebuild concrete config
-
-				Mandar::Core::Config.rebuild_concrete hosts
-
-				# and deploy
 
 				Mandar.time "deploy", :detail do
+
+					# and deploy
+
 					Mandar::Master.deploy hosts
+
 				end
 
 			when "server-deploy"

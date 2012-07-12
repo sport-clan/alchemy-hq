@@ -119,14 +119,6 @@ module Mandar
 		end
 	end
 
-	def self.uname()
-		return @uname ||= `uname`
-	end
-
-	def self.cygwin?()
-		return uname =~ /^CYGWIN/
-	end
-
 	def self.deploy_dir=(deploy_dir)
 		@deploy_dir = deploy_dir
 	end
