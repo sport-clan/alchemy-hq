@@ -53,7 +53,7 @@ module Mandar::Master
 
 		ssh_key_elem =
 			abstract["mandar-ssh-key"] \
-				.find_first("*[@name='#{host_ssh_key_name}']")
+				.find_first("mandar-ssh-key [@name = '#{host_ssh_key_name}']")
 
 		ssh_key =
 			ssh_key_elem.find_first("private").content
@@ -147,7 +147,7 @@ module Mandar::Master
 
 			host_elem =
 				abstract["deploy-host"] \
-					.find_first("*[@name='#{host_name}']")
+					.find_first("deploy-host [@name = '#{host_name}']")
 
 			host_elem \
 				or raise "No such host #{host_name}"
@@ -233,7 +233,11 @@ module Mandar::Master
 
 	def self.run_on_host host_name, cmd, redirect = ""
 		abstract = Mandar::Core::Config.abstract
-		host_elem = abstract["deploy-host"].find_first("*[@name='#{host_name}']")
+
+		host_elem =
+			abstract["deploy-host"] \
+				.find_first("deploy-host [@name = '#{host_name}']")
+
 		host_hostname = host_elem.attributes["hostname"]
 		ssh_args = %W[
 			ssh -q -T -A
