@@ -61,9 +61,9 @@ module Mandar
 		# cache hostname
 		return @hostname if @hostname
 
-		# read it from /etc/mandar-hostname
-		if File.exists?("/etc/mandar-hostname")
-			return @hostname = File.read("/etc/mandar-hostname").strip
+		# read it from /etc/hq-hostname
+		if File.exists?("/etc/hq-hostname")
+			return @hostname = File.read("/etc/hq-hostname").strip
 		end
 
 		# default to reported hostname

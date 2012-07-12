@@ -267,7 +267,7 @@ class Mandar::Core::Script
 				# reduce list of hosts on various criteria
 
 				hosts = hosts.select do |host|
-					host_elem = abstract["mandar-host"].find_first("mandar-host[@name='#{host}']")
+					host_elem = abstract["deploy-host"].find_first("deploy-host[@name='#{host}']")
 					case
 					when host == "local"
 						true
@@ -294,10 +294,11 @@ class Mandar::Core::Script
 				Mandar::Master.deploy hosts
 
 			when "server-deploy"
-				system "test -h /mandar && rm /mandar"
-				system "test -h /alchemy-hq || ln -s #{Mandar.deploy_dir}/alchemy-hq /alchemy-hq"
-				File.open("/etc/mandar-hostname", "w") { |f| f.puts ARGV[1] }
-				Mandar::Deploy::Control.deploy Mandar::Core::Config.service.find("task")
+
+				require "hq/deploy"
+
+				HQ::Deploy::Slave.go \
+					ARGV[1]
 
 			when "action"
 				Mandar.host = "local"

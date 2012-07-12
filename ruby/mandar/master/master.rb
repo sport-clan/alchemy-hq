@@ -8,8 +8,8 @@ module Mandar::Master
 			Mandar::Core::Config.abstract
 
 		host_elem =
-			abstract["mandar-host"] \
-				.find_first("mandar-host[@name='#{host_name}']")
+			abstract["deploy-host"] \
+				.find_first("deploy-host [@name = '#{host_name}']")
 
 		host_elem \
 			or raise "No such host: #{host_name}"
@@ -148,11 +148,17 @@ module Mandar::Master
 				Mandar::Core::Config.abstract
 
 			host_elem =
-				abstract["mandar-host"] \
+				abstract["deploy-host"] \
 					.find_first("*[@name='#{host_name}']")
 
 			host_elem \
 				or raise "No such host #{host_name}"
+
+			host_class =
+				host_elem.attributes["class"]
+
+			host_class && ! host_class.empty? \
+				or raise "No class for host #{host_name}"
 
 			host_hostname =
 				host_elem.attributes["hostname"]
@@ -166,6 +172,7 @@ module Mandar::Master
 				-o BatchMode=yes
 				-o ConnectTimeout=10
 			]
+
 			rsync_args = %W[
 
 				rsync
@@ -180,11 +187,16 @@ module Mandar::Master
 				--rsh=#{rsh_cmd}
 				--timeout=30
 
-				--include=/.work/concrete/host/#{host_name}
-				--exclude=/.work/concrete/host/*
-				--include=/.work/concrete/host
-				--exclude=/.work/concrete/*
-				--include=/.work/concrete
+				--include=/.work/deploy/host/#{host_name}
+				--exclude=/.work/deploy/host/*
+				--include=/.work/deploy/host
+
+				--include=/.work/deploy/class/#{host_class}
+				--exclude=/.work/deploy/class/*
+				--include=/.work/deploy/class
+
+				--exclude=/.work/deploy/*
+				--include=/.work/deploy
 				--exclude=/.work/*
 				--include=/.work
 
@@ -223,7 +235,7 @@ module Mandar::Master
 
 	def self.run_on_host host_name, cmd, redirect = ""
 		abstract = Mandar::Core::Config.abstract
-		host_elem = abstract["mandar-host"].find_first("*[@name='#{host_name}']")
+		host_elem = abstract["deploy-host"].find_first("*[@name='#{host_name}']")
 		host_hostname = host_elem.attributes["hostname"]
 		ssh_args = %W[
 			ssh -q -T -A
@@ -293,7 +305,7 @@ module Mandar::Master
 						Mandar::Core::Config.service.find("task[@host='local']")
 				else
 					Mandar::Master.send_to host
-					args = %W[ server-deploy #{host} ]
+					args = %W[ server-deploy host/#{host}/deploy.xml ]
 					unless Mandar::Master.run_self_on_host host, args
 						Mandar.error "deploy #{host} failed"
 						error = true
@@ -356,7 +368,7 @@ module Mandar::Master
 						Tempfile.open "mandar" do |tmp|
 							begin
 
-								args = %W[ server-deploy #{host} ]
+								args = %W[ server-deploy host/#{host}/deploy.xml ]
 
 								unless Mandar::Master.run_self_on_host \
 										host, args, ">#{tmp.path} 2>#{tmp.path}"

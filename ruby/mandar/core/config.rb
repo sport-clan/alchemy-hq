@@ -8,7 +8,6 @@ module Mandar::Core::Config
 
 	def self.reload_now
 		mandar true
-		service true
 	end
 
 	def self.mandar(reload = false)
@@ -71,55 +70,6 @@ module Mandar::Core::Config
 			abstract[result_name] = result[:doc].root
 		end
 		return @abstract = abstract
-	end
-
-	def self.service(reload = false)
-		(@service_lock ||= Mutex.new).synchronize do
-			return @service if @service unless reload
-			dir = "#{WORK}/concrete/host/#{Mandar.host}"
-			return @service = load_and_merge(dir, "service")
-		end
-	end
-
-	def self.load_and_merge dir, name
-
-		# create document
-
-		ret = XML::Document.new
-		ret.root = XML::Node.new name
-
-		# scan directory
-
-		Dir.glob "#{dir}/**/*.xml" do |file|
-
-			# load xml
-
-			XML::default_line_numbers = true
-
-			doc = \
-				XML::Document.string \
-					File.read(file),
-					:options => XML::Parser::Options::NOBLANKS
-
-			# merge it in
-
-			doc.root.find("*").each do |elem|
-				new_elem = ret.import(elem)
-				new_elem.attributes["loaded-from"] = file
-				ret.root << new_elem
-			end
-
-		end
-
-		return ret
-	end
-
-	def self.loaded_from(elem)
-		while elem
-			return elem.attributes["loaded-from"] if elem.attributes["loaded-from"]
-			elem = elem.parent
-		end
-		return "unknown"
 	end
 
 	def self.field_to_xml(schemas_elem, fields_elem, value, elem)
@@ -689,16 +639,26 @@ module Mandar::Core::Config
 		end
 	end
 
-	def self.rebuild_concrete(host_names = nil)
+	def self.rebuild_concrete host_names = nil
+
 		return if warn_no_config
+
+		require "hq/deploy"
+
 		unless host_names
 			host_names = [ "local" ]
 			abstract["host"].each do |host_elem|
 				host_names << host_elem.attributes["name"]
 			end
 		end
-		abstract_results = Mandar::Engine::Abstract.results
-		Mandar::Engine::Concrete.rebuild abstract_results, host_names
+
+		deploy_master =
+			HQ::Deploy::Master.new
+
+		deploy_master.write \
+			Mandar::Engine::Abstract.results,
+			host_names
+
 	end
 
 	def self.load_relax_ng(filename)
