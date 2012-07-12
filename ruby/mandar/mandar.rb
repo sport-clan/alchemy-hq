@@ -36,15 +36,41 @@ module Mandar
 		logger.message text, :error, options
 	end
 
-	def self.time text
-		time_start = Time.now
+	def self.time text, level = :timing
+
+		time_start =
+			Time.now
+
 		begin
+
 			yield
+
 		ensure
-			time_end = Time.now
-			timing_ms = ((time_end - time_start) * 1000).to_i
-			Mandar.timing "#{text} took #{timing_ms}ms"
+
+			time_end =
+				Time.now
+
+			timing_ms =
+				((time_end - time_start) * 1000).to_i
+
+			timing_str =
+				case timing_ms
+					when (0...1000)
+						"%dms" % [ timing_ms ]
+					when (1000...10000)
+						"%.2fs" % [ timing_ms.to_f / 1000 ]
+					when (10000...100000)
+						"%.1fs" % [ timing_ms.to_f / 1000 ]
+					else
+						"%ds" % [ timing_ms / 1000 ]
+				end
+
+			message \
+				"#{text} took #{timing_str}",
+				level
+
 		end
+
 	end
 
 	def self.die text, status = 1

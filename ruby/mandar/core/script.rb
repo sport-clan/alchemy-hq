@@ -256,7 +256,9 @@ class Mandar::Core::Script
 
 				# rebuild config
 
-				Mandar::Core::Config.rebuild_abstract
+				Mandar.time "transform", :detail do
+					Mandar::Core::Config.rebuild_abstract
+				end
 
 				abstract = Mandar::Core::Config.abstract
 
@@ -288,10 +290,14 @@ class Mandar::Core::Script
 				end
 
 				# rebuild concrete config
+
 				Mandar::Core::Config.rebuild_concrete hosts
 
 				# and deploy
-				Mandar::Master.deploy hosts
+
+				Mandar.time "deploy", :detail do
+					Mandar::Master.deploy hosts
+				end
 
 			when "server-deploy"
 
