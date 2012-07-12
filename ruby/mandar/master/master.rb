@@ -175,7 +175,7 @@ module Mandar::Master
 
 				rsync
 
-				--checksum
+				--times
 				--copy-links
 				--delete
 				--delete-excluded
