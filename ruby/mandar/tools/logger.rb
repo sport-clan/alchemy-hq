@@ -49,7 +49,6 @@ class Mandar::Tools::Logger
 	def initialize
 		@target = STDOUT
 		@format = :ansi
-		@level = :notice
 	end
 
 	def would_log(type)

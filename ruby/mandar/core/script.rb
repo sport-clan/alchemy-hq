@@ -92,13 +92,6 @@ class Mandar::Core::Script
 		opts.each do |opt, arg|
 			case opt
 
-			when "--debug"
-
-				Mandar.logger.level != :notice \
-					and Mandar.die "Only one log level option allowed"
-
-				Mandar.logger.level = :debug
-
 			when "--mock"
 				$mock = true
 
@@ -108,43 +101,47 @@ class Mandar::Core::Script
 			when "--no-database"
 				$no_database = true
 
+			when "--series"
+				$series = true
+
+			# log level
+
+			when "--debug"
+
+				Mandar.logger.level != nil \
+					and Mandar.die "Only one log level option allowed"
+
+				Mandar.logger.level = :debug
+
 			when "--quiet"
 
-				Mandar.logger.level != :notice \
+				Mandar.logger.level != nil \
 					and Mandar.die "Only one log level option allowed"
 
 				Mandar.logger.level = :warning
 
-			when "--series"
-				$series = true
-
 			when "--trace"
 
-				Mandar.logger.level != :notice \
+				Mandar.logger.level != nil \
 					and Mandar.die "Only one log level option allowed"
 
 				Mandar.logger.level = :trace
 
 			when "--timing"
 
-				Mandar.logger.level != :notice \
+				Mandar.logger.level != nil \
 					and Mandar.die "Only one log level option allowed"
 
 				Mandar.logger.level = :timing
 
 			when "--verbose"
 
-				Mandar.logger.level != :notice \
+				Mandar.logger.level != nil \
 					and Mandar.die "Only one log level option allowed"
 
 				Mandar.logger.level = :detail
 
-			when "--profile"
-
-				$profile == nil \
-					or Mandar.die "Only one --profile option allowed"
-
-				$profile = arg
+			# log format
 
 			when "--html"
 
@@ -153,52 +150,117 @@ class Mandar::Core::Script
 
 				Mandar.logger.format = :html
 
-			# ---------- deploy
+			# profile
+
+			when "--profile"
+
+				$profile == nil \
+					or Mandar.die "Only one --profile option allowed"
+
+				$profile = arg
+
+			# role
 
 			when "--role"
+
 				$deploy_role and Mandar.die "Only one --role option allowed"
+
 				$deploy_role = arg
 
+			# mode
+
 			when "--staged"
-				$deploy_mode == :unstaged or Mandar.die "Only one --staged and/or --rollback option allowed"
+
+				$deploy_mode == :unstaged \
+					or Mandar.die "Only one --staged and/or --rollback " +
+						"option allowed"
+
 				$deploy_mode = :staged
 
 			when "--rollback"
-				$deploy_mode == :unstaged or Mandar.die "Only one --staged and/or --rollback option allowed"
+
+				$deploy_mode == :unstaged \
+					or Mandar.die "Only one --staged and/or --rollback " +
+						"option allowed"
+
 				$deploy_mode = :rollback
 
 			when "--force"
-				$force and Mandar.die "Online one --force option allowed"
+
+				$force \
+					and Mandar.die "Online one --force option allowed"
+
 				$force = true
 
-			# ---------- console
+			# console
 
 			when "--fork"
-				$console_fork and Mandar.die "Only one --fork option allowed"
+
+				$console_fork \
+					and Mandar.die "Only one --fork option allowed"
+
 				$console_fork = true
 
 			when "--pid-file"
-				$console_pid_file and Mandar.die "Only one --pid-file option allowed"
+
+				$console_pid_file \
+					and Mandar.die "Only one --pid-file option allowed"
+
 				$console_pid_file = arg
 
 			when "--log-file"
-				$console_log_file and Mandar.die "Only one --log-file option allowed"
+
+				$console_log_file \
+					and Mandar.die "Only one --log-file option allowed"
+
 				$console_log_file = arg
 
-			# ---------- ssh
+			# ssh
 
 			when "--ssh-identity"
+
 				$ssh_identity \
 					and Mandar.die "Only one --ssh-identity option allowed"
+
 				$ssh_identity = arg
 
-			# ----------
+			# default
 
 			else
 				raise "Internal error: unrecognised argument #{opt}"
 
 			end
 		end
+
+		if File.exist? "#{CONFIG}/etc/hq-config.xml"
+
+			hq_config =
+				Mandar::Core::Config.mandar
+
+			# set default logging level
+
+			default_log_level_str =
+				hq_config.attributes["default-log-level"]
+
+			default_log_level =
+				default_log_level_str ?
+					default_log_level_str.to_sym : :notice
+
+			Mandar.logger.level ||=
+				default_log_level
+
+			# set default profile
+
+			$profile ||=
+				hq_config.attributes["default-profile"]
+
+			# set deafult role
+
+			$deploy_role ||=
+				hq_config.attributes["default-role"]
+
+		end
+
 	end
 
 	def main()
