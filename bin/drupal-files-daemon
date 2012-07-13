@@ -20,7 +20,7 @@ Mandar::Tools::Daemon.start opts do
 
 	# find relevant sites and other members
 	Mandar::Tools::Daemon.log "Reading config from /zattikka/etc/drupal-files-daemon-config.xml"
-	HOST = File.read("/etc/mandar-hostname").chop
+	HOST = File.read("/etc/hq-hostname").chop
 	CONFIG = XML::Document.file("/zattikka/etc/drupal-files-daemon-config.xml").root
 	SITES = CONFIG.find("drupal-site[count(host) > 1]").map do |site_elem| {
 		:name => site_elem.attributes["name"],
