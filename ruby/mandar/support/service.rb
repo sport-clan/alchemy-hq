@@ -3,7 +3,13 @@ module Mandar::Support::Service
 	def self.service(name, command)
 		Tempfile.open "mandar" do |tmp|
 			return false if command == "status" && ! File.exists?("/etc/init.d/#{name}")
-			ret = system "/etc/init.d/#{name} #{command} >#{tmp.path}"
+
+			# TODO swap these, service is more natural
+			#cmd = "service #{name} #{command} >#{tmp.path}"
+			cmd = "/etc/init.d/#{name} #{command} >#{tmp.path}"
+
+			ret = system cmd
+
 			return ret if command == "status"
 			return true if ret
 			system "cat #{tmp.path}"

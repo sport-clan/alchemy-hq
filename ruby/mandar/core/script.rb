@@ -574,9 +574,21 @@ class Mandar::Core::Script
 				end
 
 			when "run"
+
 				Mandar.host = "local"
-				hosts = process_hosts([ ARGV[1] ])
-				Mandar::Master.run_command hosts, ARGV[2..-1].join(" ")
+
+				sep = ARGV.index ""
+				sep or raise "Error"
+
+				raw_hosts = ARGV[1...sep]
+				cmd_args = ARGV[(sep+1)..-1]
+
+				processed_hosts =
+					process_hosts raw_hosts
+
+				Mandar::Master.run_command \
+					processed_hosts,
+					cmd_args.join(" ")
 
 			when "server-run"
 				Mandar::Support::Core.shell ARGV[1]

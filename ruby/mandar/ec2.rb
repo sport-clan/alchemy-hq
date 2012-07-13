@@ -67,6 +67,6 @@ end
 
 require "mandar/ec2/actions.rb"
 require "mandar/ec2/ec2loadbalancer.rb"
-require "mandar/ec2/reports.rb"
 require "mandar/ec2/securitygroups.rb"
+require "mandar/ec2/reports.rb"
 require "mandar/ec2/utils.rb"

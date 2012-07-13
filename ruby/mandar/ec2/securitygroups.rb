@@ -166,7 +166,7 @@ module Mandar::EC2::SecurityGroups
 						allow_source = "0.0.0.0/0"
 					elsif allow_source =~ /^([a-z][-a-z0-9]*)$/
 						allow_source = "#{$1}"
-					elsif allow_source =~ /^([a-z][-a-z0-9]*)\/([a-z][-a-z0-9]*)$/
+					elsif allow_source =~ /^([0-9]{12})\/([a-z][-a-z0-9]*)$/
 						allow_source = "#{$1}/#{$2}"
 					else
 						raise "Invalid allow source: #{allow_source}"
@@ -247,10 +247,22 @@ module Mandar::EC2::SecurityGroups
 
 					temp_key = key.clone
 
-					temp_key[:source] =
+					other_group_name =
 						perm_group_elem \
 							.find_first("a:groupName") \
 							.content
+
+					user_id_elem =
+						perm_group_elem \
+							.find_first("a:userId")
+
+					user_id =
+						user_id_elem ?
+							user_id_elem.content : nil
+
+					temp_key[:source] =
+						user_id ?
+							"#{user_id}/#{other_group_name}" : other_group_name
 
 					ret [group_name] [temp_key] = true
 
@@ -332,14 +344,19 @@ module Mandar::EC2::SecurityGroups
 
 			options = {
 				:group_name => group_name,
-				:ip_protocol => rule[:protocol],
-				:from_port => rule[:from_port],
-				:to_port => rule[:to_port],
+				:ip_permissions => [],
 			}
 
 			if rule[:source] =~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\/[0-9]+/
 
-				options[:cidr_ip] = rule[:source]
+				options[:ip_permissions] << {
+					:ip_protocol => rule[:protocol],
+					:from_port => rule[:from_port],
+					:to_port => rule[:to_port],
+					:ip_ranges => [
+						{ :cidr_ip => rule[:source] },
+					],
+				}
 
 			elsif rule[:source] =~ /^[a-z]+(?:-[a-z]+)*$/
 
@@ -349,7 +366,25 @@ module Mandar::EC2::SecurityGroups
 				rule[:to_port] == "-1" \
 					or raise "Error"
 
-				options[:source_security_group_name] = rule[:source]
+				options[:ip_permissions] << {
+					:ip_protocol => rule[:protocol],
+					:from_port => rule[:from_port],
+					:to_port => rule[:to_port],
+					:groups => [
+						{ :group_name => rule[:source] },
+					],
+				}
+
+			elsif rule[:source] =~ /^([0-9]{12})\/([a-z][-a-z0-9]*)$/
+
+				options[:ip_permissions] << {
+					:ip_protocol => rule[:protocol],
+					:from_port => rule[:from_port],
+					:to_port => rule[:to_port],
+					:groups => [
+						{ :user_id => $1, :group_name => $2 },
+					],
+				}
 
 			else
 				raise "invalid rule source: #{rule[:source]}"
