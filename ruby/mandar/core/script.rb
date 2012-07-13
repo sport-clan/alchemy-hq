@@ -232,6 +232,8 @@ class Mandar::Core::Script
 			end
 		end
 
+		# default from config file
+
 		if File.exist? "#{CONFIG}/etc/hq-config.xml"
 
 			hq_config =
@@ -244,7 +246,7 @@ class Mandar::Core::Script
 
 			default_log_level =
 				default_log_level_str ?
-					default_log_level_str.to_sym : :notice
+					default_log_level_str.to_sym : nil
 
 			Mandar.logger.level ||=
 				default_log_level
@@ -260,6 +262,11 @@ class Mandar::Core::Script
 				hq_config.attributes["default-role"]
 
 		end
+
+		# fall back defaults
+
+		Mandar.logger.level ||=
+			:notice
 
 	end
 
