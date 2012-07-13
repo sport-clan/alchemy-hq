@@ -2,6 +2,40 @@ module Mandar::Master
 
 	def self.connect host_name
 
+		abstract =
+			Mandar::Core::Config.abstract
+
+		host_elem =
+			abstract["deploy-host"] \
+				.find_first("deploy-host [@name = '#{host_name}']")
+
+		host_elem \
+			or raise "No such host: #{host_name}"
+
+		host_hostname =
+			host_elem.attributes["hostname"]
+
+		host_hostname \
+			or raise "No hostname for host #{host_name}"
+
+		host_ip =
+			host_elem.attributes["ip"]
+
+		host_ip \
+			or raise "No IP address for host #{host_name}"
+
+		host_ssh_host_key =
+			host_elem.attributes["ssh-host-key"]
+
+		host_ssh_host_key \
+			or raise "No host key for host #{host_name}"
+
+		host_ssh_key_name =
+			host_elem.attributes["ssh-key-name"]
+
+		host_ssh_key_name \
+			or raise "No key name for host #{host_name}"
+
 		FileUtils.mkdir_p "#{WORK}/ssh"
 		run_path = "#{WORK}/ssh/#{host_name}"
 		socket_path = "#{run_path}.sock"
@@ -121,12 +155,6 @@ module Mandar::Master
 			host_elem \
 				or raise "No such host #{host_name}"
 
-			host_class =
-				host_elem.attributes["class"]
-
-			host_class && ! host_class.empty? \
-				or raise "No class for host #{host_name}"
-
 			host_hostname =
 				host_elem.attributes["hostname"]
 
@@ -154,15 +182,23 @@ module Mandar::Master
 				--rsh=#{rsh_cmd}
 				--timeout=30
 
-				--include=/.work/deploy/host/#{host_name}
-				--exclude=/.work/deploy/host/*
-				--include=/.work/deploy/host
+			]
 
-				--include=/.work/deploy/class/#{host_class}
-				--exclude=/.work/deploy/class/*
-				--include=/.work/deploy/class
+			host_elem.find("include").each do |include_elem|
 
-				--exclude=/.work/deploy/*
+				include_name =
+					include_elem.attributes["name"]
+
+				rsync_args += %W[
+					--include=/.work/deploy/#{include_name}
+				]
+
+			end
+
+			rsync_args += %W[
+
+				--exclude=/.work/deploy/*/*
+				--include=/.work/deploy/*
 				--include=/.work/deploy
 				--exclude=/.work/*
 				--include=/.work

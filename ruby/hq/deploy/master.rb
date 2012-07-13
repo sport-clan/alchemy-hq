@@ -35,8 +35,10 @@ class HQ::Deploy::Master
 				host_class =
 					deploy_host_elem.attributes["class"]
 
-				class_names << host_class \
-					unless class_names.include? host_class
+				if host_class
+					class_names << host_class \
+						unless class_names.include? host_class
+				end
 
 				deploy_doc =
 					XML::Document.new
@@ -83,6 +85,8 @@ class HQ::Deploy::Master
 
 			[ "task", "sub-task" ].each do |type|
 
+				next unless abstract_results[type]
+
 				abstract_results[type][:doc] \
 						.find("/*/#{type}") \
 						.each do |task_elem|
@@ -99,7 +103,9 @@ class HQ::Deploy::Master
 						when class_name
 							doc = class_docs[class_name]
 						else
-							raise "Error"
+							raise "<#{type} name=\"" +
+								task_elem.attributes["name"] +
+								"\"> has no host or class"
 					end
 
 					next unless doc
