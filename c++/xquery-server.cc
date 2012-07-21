@@ -23,10 +23,6 @@
 #include <xercesc/framework/MemBufInputSource.hpp>
 #include <xercesc/util/XMLEntityResolver.hpp>
 
-// zero mq library
-
-#include <zmq.hpp>
-
 using namespace std;
 
 XQilla xqilla;
@@ -178,7 +174,7 @@ void compile_xquery (
 
 	} catch (XQException & error) {
 
-		cout << UTF8 (error.getError ()) << "\n";
+		cerr << UTF8 (error.getError ()) << "\n";
 
 		set_error (reply, error);
 
@@ -244,7 +240,7 @@ void run_xquery (
 
 	} catch (XQException & error) {
 
-		cout << UTF8 (error.getError ()) << "\n";
+		cerr << UTF8 (error.getError ()) << "\n";
 
 		set_error (reply, error);
 
@@ -294,7 +290,7 @@ string handle_request (
 
 	if (! parsingSuccessful) {
 
-		std::cout << "Failed to parse request\n"
+		cerr << "Failed to parse request\n"
 			<< reader.getFormattedErrorMessages ();
 
 		exit (1);
@@ -337,7 +333,7 @@ string handle_request (
 
 	} else {
 
-		cout << "Invalid function name: " << request_name << "\n";
+		cerr << "Invalid function name: " << request_name << "\n";
 
 		exit (1);
 	}
@@ -351,48 +347,27 @@ string handle_request (
 
 int main (int argc, char * argv []) {
 
-	if (argc != 2) {
-		cout << "Syntax error\n";
-		return EXIT_FAILURE;
-	}
-
-	// setup
-
-	zmq::context_t context (1);
-	zmq::socket_t socket (context, ZMQ_REP);
-
-	socket.bind (argv [1]);
-
-	cout << "Ready\n";
-
 	while (true) {
 
-		// get request
+		// read request
 
-		zmq::message_t request;
+		int request_len;
+		cin >> request_len;
 
-		socket.recv (& request);
-
-		string request_string (
-			(const char *) request.data (),
-			request.size ());
+		char request_buf [request_len];
+		cin.read (request_buf, request_len);
+		string request_string (request_buf, request_len);
 
 		// handle
 
 		string reply_string =
-			handle_request (
-				request_string);
+			handle_request (request_string);
 
 		// send reply
 
-		zmq::message_t reply (reply_string.size ());
+		cout << reply_string.size () << "\n";
 
-		memcpy (
-			reply.data (),
-			reply_string.data (),
-			reply_string.size ());
-
-		socket.send (reply);
+		cout << reply_string;
 	}
 
 	return EXIT_SUCCESS;

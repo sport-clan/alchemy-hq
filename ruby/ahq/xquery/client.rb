@@ -6,17 +6,12 @@ end
 
 class Ahq::Xquery::Client
 
-	def initialize url
+	def initialize req_wr, resp_rd
 
 		@state = :error
 
-		require "yaml"
-		require "zmq"
-
-		@zmq_context = ZMQ::Context.new 1
-
-		@zmq_socket = @zmq_context.socket ZMQ::REQ
-		@zmq_socket.connect url
+		@req_wr = req_wr
+		@resp_rd = resp_rd
 
 		@state = :open
 
@@ -29,11 +24,8 @@ class Ahq::Xquery::Client
 
 		@state = :error
 
-		@zmq_socket.close if @zmq_socket
-		@zmq_socket = nil
-
-		@zmq_context.close if @zmq_context
-		@zmq_context = nil
+		@req_wr.close
+		@resp_rd.close
 
 		@state = :closed
 
@@ -61,12 +53,16 @@ class Ahq::Xquery::Client
 		# send request
 
 		request_string = JSON.dump request
-		@zmq_socket.send request_string
+
+		@req_wr.puts request_string.length + 1
+		@req_wr.puts request_string
 
 		# receive reply
 
-		reply_string = @zmq_socket.recv
-		return YAML.load reply_string
+		reply_len = @resp_rd.gets.to_i
+		reply_string = @resp_rd.read reply_len
+
+		return JSON.parse reply_string
 
 	end
 

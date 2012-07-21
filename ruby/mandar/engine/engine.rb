@@ -1,21 +1,15 @@
 module Mandar::Engine
 
-	def self.xquery_server_start
-
-		return if @xquery_server_started
+	def self.xquery_client
 
 		mandar = Mandar::Core::Config.mandar
 		xquery_config = mandar.find_first "xquery"
 
 		return false unless xquery_config
 
-		xquery_port =
-			xquery_config.attributes["port"]
-
-		@xquery_url =
-			"tcp://127.0.0.1:#{xquery_port}"
-
-		rd, wr = IO.pipe
+		ctl_rd, ctl_wr = IO.pipe
+		req_rd, req_wr = IO.pipe
+		resp_rd, resp_wr = IO.pipe
 
 		xquery_server = "#{MANDAR}/c++/xquery-server"
 
@@ -26,50 +20,47 @@ module Mandar::Engine
 
 			at_exit { exit! }
 
-			rd.close
+			ctl_rd.close
 
 			pid = fork do
 
-				at_exit { exit! }
-
-				$stdin.reopen "/dev/null", "r"
-				$stdout.reopen "/dev/null", "w"
+				$stdin.reopen req_rd
+				$stdout.reopen resp_wr
 				#$stderr.reopen "/dev/null", "w"
 
-				exec \
-					xquery_server,
-					@xquery_url
+				req_rd.close
+				resp_wr.close
+
+				exec xquery_server
+
 			end
 
-			wr.puts pid
-			wr.close
+			ctl_wr.puts pid
 
 			exit!
+
 		end
 
-		wr.close
-		pid = rd.gets.strip.to_i
-		rd.close
+		ctl_wr.close
+		req_rd.close
+		resp_wr.close
+
+		pid = ctl_rd.gets.strip.to_i
+		ctl_rd.close
 
 		at_exit do
 			Process.kill "TERM", pid
 		end
 
-		@xquery_server_started = true
-
-	end
-
-	def self.xquery_client
-
-		xquery_server_start
-
 		require "ahq/xquery/client"
 
-		xquery_client = \
+		xquery_client =
 			Ahq::Xquery::Client.new \
-				@xquery_url
+				req_wr,
+				resp_rd
 
 		return xquery_client
+
 	end
 
 end

@@ -1,6 +1,6 @@
 OBJECTS = xquery-server.o
 
-LIBS = -l zmq -l jsoncpp -l xqilla -l xerces-c
+LIBS = -l jsoncpp -l xqilla -l xerces-c
 
 all: xquery-server
 
