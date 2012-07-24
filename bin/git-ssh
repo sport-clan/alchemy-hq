@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
 
 USER_AT_HOST, COMMAND = ARGV
 

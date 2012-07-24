@@ -26,7 +26,7 @@ module Mandar::Grapher::Daemon
 	class DiskSpaceGrapher
 
 		def initialize(name, path)
-			require "filesystem"
+			require "sys/filesystem"
 			@name = name
 			@path = path
 		end
@@ -39,7 +39,7 @@ module Mandar::Grapher::Daemon
 			stat = FileSystem.stat @path
 			sink.submit @name, [
 				stat.block_size * (stat.blocks - stat.blocks_free),
-				stat.block_size * stat.blocks_avail,
+				stat.block_size * stat.blocks_available,
 				stat.block_size * (stat.blocks_free - stat.blocks_avail),
 			]
 		end
