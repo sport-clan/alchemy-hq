@@ -1,18 +1,32 @@
 module Mandar::Support::Service
 
-	def self.service(name, command)
+	def self.service name, command
+
 		Tempfile.open "mandar" do |tmp|
-			return false if command == "status" && ! File.exists?("/etc/init.d/#{name}")
 
-			cmd = "service #{name} #{command} >#{tmp.path}"
+			return false \
+				if command == "status" \
+					&& ! File.exists?("/etc/init.d/#{name}")
 
-			ret = system cmd
+			command_line =
+				"service #{name} #{command} >#{tmp.path}"
 
-			return ret if command == "status"
-			return true if ret
+			ret =
+				Mandar::Support::Core.shell \
+					command_line
+
+			return ret \
+				if command == "status"
+
+			return true \
+				if ret
+
 			system "cat #{tmp.path}"
+
 			raise "Error #{command}ing #{name}"
+
 		end
+
 	end
 
 	Mandar::Deploy::Commands.register self, :reload
