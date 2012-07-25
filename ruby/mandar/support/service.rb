@@ -4,9 +4,7 @@ module Mandar::Support::Service
 		Tempfile.open "mandar" do |tmp|
 			return false if command == "status" && ! File.exists?("/etc/init.d/#{name}")
 
-			# TODO swap these, service is more natural
-			#cmd = "service #{name} #{command} >#{tmp.path}"
-			cmd = "/etc/init.d/#{name} #{command} >#{tmp.path}"
+			cmd = "service #{name} #{command} >#{tmp.path}"
 
 			ret = system cmd
 
