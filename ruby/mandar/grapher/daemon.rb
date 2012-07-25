@@ -36,11 +36,11 @@ module Mandar::Grapher::Daemon
 		end
 
 		def run(sink)
-			stat = FileSystem.stat @path
+			stat = Sys::Filesystem.stat @path
 			sink.submit @name, [
 				stat.block_size * (stat.blocks - stat.blocks_free),
 				stat.block_size * stat.blocks_available,
-				stat.block_size * (stat.blocks_free - stat.blocks_avail),
+				stat.block_size * (stat.blocks_free - stat.blocks_available),
 			]
 		end
 	end

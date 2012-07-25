@@ -84,7 +84,7 @@ module Mandar::Debian
 
 		apt_cmd =
 			Mandar.shell_quote \
-				%W[ apt-get -y remove ] + names_to_remove
+				%W[ apt-get -y purge ] + names_to_remove
 
 		unless $mock
 			system "#{apt_cmd}" \
