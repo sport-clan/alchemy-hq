@@ -11,9 +11,14 @@ module Mandar::Support::Service
 			command_line =
 				"service #{name} #{command} >#{tmp.path}"
 
+			log_level =
+				command == "status" ?
+					:debug : :detail
+
 			ret =
 				Mandar::Support::Core.shell \
-					command_line
+					command_line,
+					:level => log_level
 
 			return ret \
 				if command == "status"
