@@ -164,34 +164,98 @@ module Mandar::Support::PHP
 		end
 	end
 
-	Mandar::Deploy::Commands.register self, :pecl
+	Mandar::Deploy::Commands.register self, :pecl_install
+	Mandar::Deploy::Commands.register self, :pecl_purge
 
-	def self.command_pecl(pecl_elem)
+	def self.command_pecl_install pecl_install_elem
 
-		pecl_package = pecl_elem.attributes["package"]
-		pecl_version = pecl_elem.attributes["version"]
+		pecl_install_package = pecl_install_elem.attributes["package"]
+		pecl_install_version = pecl_install_elem.attributes["version"]
 
-		return if pecl_packages[pecl_package] == pecl_version
+		@pecl_installed ||= {}
 
-		puts "installing #{pecl_package} #{pecl_version} from pecl"
+		raise "Multiple versions for pecl package #{pecl_install_package}" \
+			if @pecl_installed[pecl_install_package]
+
+		@pecl_installed[pecl_install_package] = pecl_install_version
+
+		return if pecl_packages[pecl_install_package] == pecl_install_version
+
+		Mandar.notice "installing pecl package #{pecl_install_package} " +
+			"#{pecl_install_version}"
+
 		Mandar::Deploy::Flag.auto
-		system "pecl install --force #{pecl_package}-#{pecl_version}" or raise "Error" unless $mock
+
+		unless $mock
+
+			install_args = [
+				"pecl",
+				"install",
+				"--force",
+				"#{pecl_install_package}-#{pecl_install_version}",
+			]
+
+			install_cmd =
+				Mandar.shell_quote install_args
+
+			system install_cmd \
+				or raise "Error"
+
+		end
+
+	end
+
+	def self.command_pecl_purge pecl_purge_elem
+
+		@pecl_installed ||= {}
+
+		to_remove = pecl_packages.keys - @pecl_installed.keys
+
+		return if to_remove.empty?
+
+		Mandar::Deploy::Flag.auto
+
+		to_remove.each do |package|
+
+			Mandar.notice "removing pecl package #{package}"
+
+			next if $mock
+
+			remove_args = [
+				"pecl",
+				"uninstall",
+				"#{package}",
+			]
+
+			remove_cmd =
+				Mandar.shell_quote remove_args
+
+			system remove_cmd \
+				or raise "Error"
+
+		end
+
 	end
 
 	NAME_RE = /[a-z][a-z0-9]*(?:-[a-z][a-z0-9]*)*/
 	VER_RE = /[0-9]+(?:\.[0-9]+)*/
 
-	def self.pecl_packages(force = false)
+	def self.pecl_packages force = false
 
 		# use saved value after first run
+
 		return @pecl_packages if @pecl_packages && ! force
 
 		# install required package php-pear
+
 		Mandar::Debian.apt_install "php-pear"
 
 		# run "pecl list" and iterate output
+
 		pecl_packages = {}
+
 		%x[ pecl list ].split("\n").each do |line|
+
 			case line
 
 			when /^INSTALLED PACKAGES, CHANNEL .+:$/,
@@ -204,18 +268,22 @@ module Mandar::Support::PHP
 			when /^(#{NAME_RE})\s+(#{VER_RE})\s+(#{NAME_RE})$/
 
 				# save
+
 				pecl_packages[$1] = $2
 
 			else
 
 				# error
+
 				raise "Invalid output from 'pecl list': \"#{line}\""
 
 			end
 		end
 
 		# return
+
 		return @pecl_packages = pecl_packages
+
 	end
 
 end
