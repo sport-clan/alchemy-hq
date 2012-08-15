@@ -351,29 +351,67 @@ class Mandar::Core::Script
 
 					# determine list of hosts to deploy to
 
-					hosts = process_hosts ARGV[1..-1]
+					requested_hosts = ARGV[1..-1]
+
+					hosts = process_hosts requested_hosts
 
 					# reduce list of hosts on various criteria
 
 					hosts = hosts.select do |host|
-						host_elem = abstract["deploy-host"].find_first("deploy-host[@name='#{host}']")
+
+						host_xp =
+							Mandar::Tools::Escape.xpath host
+
+						query =
+							"deploy-host [@name = #{host_xp}]"
+
+						host_elem =
+							abstract["deploy-host"].find_first query
+
 						case
+
 						when host == "local"
+
 							true
+
 						when ! host_elem
+
 							Mandar.die "No such host #{host}"
+
 						when ! host_elem.attributes["skip"].to_s.empty?
-							Mandar.debug "skipping host #{host} because #{host_elem.attributes["skip"]}"
+
+							message = "skipping host #{host} because " +
+								"#{host_elem.attributes["skip"]}"
+
+							if requested_hosts.include? host
+								Mandar.warning message
+							else
+								Mandar.debug message
+							end
+
 							false
+
 						when host_elem.attributes["no-deploy"] != "yes"
+
+							message = "skipping host #{host} because it is " +
+								"set to no-deploy"
+
 							true
+
 						when $force
+
 							Mandar.warning "deploying to no-deploy host #{host}"
+
 							true
+
 						else
+
 							Mandar.warning "skipping no-deploy host #{host}"
+
 							false
+
 						end
+
 					end
 
 					# rebuild concrete config
