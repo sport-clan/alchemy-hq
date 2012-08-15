@@ -198,7 +198,7 @@ module Mandar::Support::PHP
 			install_cmd =
 				Mandar.shell_quote install_args
 
-			system install_cmd \
+			Mandar::Support::Core.shell install_cmd \
 				or raise "Error"
 
 		end
@@ -230,7 +230,7 @@ module Mandar::Support::PHP
 			remove_cmd =
 				Mandar.shell_quote remove_args
 
-			system remove_cmd \
+			Mandar::Support::Core.shell remove_cmd \
 				or raise "Error"
 
 		end
