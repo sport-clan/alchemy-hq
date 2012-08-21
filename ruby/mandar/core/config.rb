@@ -591,15 +591,24 @@ module Mandar::Core::Config
 	def self.rebuild_abstract
 		return if warn_no_config
 
+		# ensure work dir exists
+
+		if File.exist? "#{WORK}/error-flag"
+			Mandar.warning "removing work directory due to previous error"
+			FileUtils.rm_rf WORK
+		end
+		FileUtils.mkdir_p WORK
+
 		# ensure schema doc exists and remember it
+
 		schema_file = "#{WORK}/schema.xml"
 		unless File.exists? schema_file
 			Mandar.trace "writing schema.xml (empty)"
-			FileUtils.mkdir_p WORK
 			File.open schema_file, "w" do |f|
 				f.print "<schemas/>"
 			end
 		end
+
 		old_schema_data = File.read(schema_file)
 
 		# process abstract config, repeat until schema and rules are consistent

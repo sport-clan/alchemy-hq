@@ -539,6 +539,10 @@ class Mandar::Core::Script
 
 			when "clean"
 				Mandar::Master.disconnect_all
+				if File.directory? WORK
+					Mandar.notice "removing #{WORK}"
+					FileUtils.remove_entry_secure WORK
+				end
 
 			when "unlock"
 

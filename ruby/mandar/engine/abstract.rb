@@ -183,8 +183,7 @@ module Mandar::Engine::Abstract
 			rescue => e
 				Mandar.error e.to_s
 				Mandar.detail e.backtrace
-				Mandar.error "deleting #{WORK}"
-				FileUtils.rm_rf "#{WORK}"
+				FileUtils.touch "#{WORK}/error-flag"
 				raise "error compiling #{abstract[:path]}"
 			end
 

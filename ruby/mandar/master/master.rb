@@ -108,10 +108,6 @@ module Mandar::Master
 				Process.kill 15, pid
 			end
 		end
-		if File.directory? WORK
-			Mandar.notice "removing #{WORK}"
-			FileUtils.remove_entry_secure WORK
-		end
 	end
 
 	def self.fix_perms
