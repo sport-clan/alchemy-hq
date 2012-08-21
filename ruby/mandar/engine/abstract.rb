@@ -154,7 +154,8 @@ module Mandar::Engine::Abstract
 				result = @results[in_name]
 
 				unless result
-					Mandar.warning "No abstract result for #{in_name}, requested by #{abstract_name}"
+					Mandar.debug "No abstract result for #{in_name}, " \
+						+ "requested by #{abstract_name}"
 					next
 				end
 
