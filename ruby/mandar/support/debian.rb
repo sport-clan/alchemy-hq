@@ -51,9 +51,17 @@ module Mandar::Debian
 
 		Mandar.notice "installing #{names_to_install_str}"
 
-		apt_cmd = Mandar.shell_quote(%W[ apt-get -y install ] + names_to_install)
+		apt_cmd =
+			Mandar.shell_quote \
+				[
+					"apt-get",
+					"--assume-yes",
+					"--no-install-recommends",
+					"install",
+				] + names_to_install
 
-		full_cmd = "DEBIAN_FRONTEND=noninteractive #{apt_cmd}"
+		full_cmd =
+			"DEBIAN_FRONTEND=noninteractive #{apt_cmd}"
 
 		unless $mock
 			Mandar::Support::Core.shell full_cmd \

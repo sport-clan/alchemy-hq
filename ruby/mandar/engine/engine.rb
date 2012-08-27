@@ -7,6 +7,8 @@ module Mandar::Engine
 
 		return false unless xquery_config
 
+		Mandar.debug "starting xquery server"
+
 		ctl_rd, ctl_wr = IO.pipe
 		req_rd, req_wr = IO.pipe
 		resp_rd, resp_wr = IO.pipe

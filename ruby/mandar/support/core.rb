@@ -622,17 +622,31 @@ module Mandar::Support::Core
 		Mandar::Deploy::Commands.perform shell_if_elem
 	end
 
-	def self.command_tmpdir(tmpdir_elem)
-		return if $mock
+	def self.tmpdir &proc
+
 		old_dir = Dir.pwd
+
 		begin
+
 			Dir.mktmpdir do |new_dir|
 				Dir.chdir new_dir
-				Mandar::Deploy::Commands.perform tmpdir_elem
+				proc.call
 			end
+
 		ensure
+
 			Dir.chdir old_dir
+
 		end
+
+	end
+
+	def self.command_tmpdir tmpdir_elem
+
+		tmpdir do
+			Mandar::Deploy::Commands.perform tmpdir_elem
+		end
+
 	end
 
 end
