@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+require "./settings"
+
 require "pp"
 require "xml"
 

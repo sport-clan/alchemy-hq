@@ -15,7 +15,7 @@ class Mandar::Console::GrapherIndex
 			console_print "<td>#{graph_name}</td>\n"
 			config.find("grapher-scale").each do |scale_elem|
 				scale_name = scale_elem.attributes["name"]
-				console_print "<td><a href=\"grapher/graph/#{graph_name}/#{scale_name}\">#{scale_name}</td>\n"
+				console_print "<td><a href=\"https://grapher.zattikka.com/graph/#{graph_name}/#{scale_name}\">#{scale_name}</td>\n"
 			end
 			console_print "</tr>\n"
 		end
