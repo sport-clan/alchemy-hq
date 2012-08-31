@@ -383,6 +383,7 @@ module Mandar::Support::Core
 	Mandar::Deploy::Commands.register self, :shell
 	Mandar::Deploy::Commands.register self, :shell_if
 	Mandar::Deploy::Commands.register self, :tmpdir
+	Mandar::Deploy::Commands.register self, :touch
 	Mandar::Deploy::Commands.register self, :unpack
 
 	def self.command_auto_clean(auto_clean_elem)
@@ -646,6 +647,17 @@ module Mandar::Support::Core
 		tmpdir do
 			Mandar::Deploy::Commands.perform tmpdir_elem
 		end
+
+	end
+
+	def self.command_touch touch_elem
+
+		touch_name =
+			touch_elem.attributes["name"]
+
+		Mandar.notice "touching #{touch_name}"
+
+		FileUtils.touch touch_name
 
 	end
 
