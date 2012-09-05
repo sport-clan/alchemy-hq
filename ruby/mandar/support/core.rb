@@ -373,6 +373,7 @@ module Mandar::Support::Core
 	Mandar::Deploy::Commands.register self, :auto_clean
 	Mandar::Deploy::Commands.register self, :chdir
 	Mandar::Deploy::Commands.register self, :chmod
+	Mandar::Deploy::Commands.register self, :chown
 	Mandar::Deploy::Commands.register self, :clean
 	Mandar::Deploy::Commands.register self, :delete
 	Mandar::Deploy::Commands.register self, :dir
@@ -430,6 +431,46 @@ module Mandar::Support::Core
 			"chmod",
 			recurse ? [ "--recursive" ] : [],
 			mode,
+			name,
+		].flatten
+
+		Mandar::Support::Core.shell \
+			Mandar.shell_quote(args)
+
+	end
+
+	def self.command_chown chown_elem
+
+		chown_name =
+			chown_elem.attributes["name"]
+
+		chown_user =
+			chown_elem.attributes["user"]
+
+		chown_group =
+			chown_elem.attributes["group"]
+
+		chown_recurse =
+			case chown_elem.attributes["recurse"]
+				when "yes" then true
+				when "no" then false
+				else raise "Error"
+			end
+
+		chown \
+			chown_name,
+			chown_user,
+			chown_group,
+			chown_recurse
+
+	end
+
+	def self.chown name, user, group, recurse
+
+		args = [
+			"chown",
+			recurse ? [ "--recursive" ] : [],
+			"#{user}:#{group}",
 			name,
 		].flatten
 
