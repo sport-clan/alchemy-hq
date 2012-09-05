@@ -137,6 +137,7 @@ module Mandar::Support::RRD
 				--end #{graph_spec[:end]}
 				--width #{graph_spec[:width]}
 				--height #{graph_spec[:height]}
+				--slope-mode
 				--rigid
 			] + graph_spec[:data].map { |data|
 				%W[
