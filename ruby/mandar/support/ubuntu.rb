@@ -77,6 +77,8 @@ module Mandar::Ubuntu
 
 		end
 
+		Mandar::Deploy::Flag.clear restart_flag
+
 	end
 
 	def self.command_initctl_auto auto_elem
