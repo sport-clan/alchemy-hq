@@ -1,10 +1,12 @@
 #!/usr/bin/env ruby
 
+require "hq/tools"
+
 module HQ::Tools::Lock
 
 	def self.lock_simple filename
 
-		# create a lock file
+		# create a lock file, will raise EEXIST if it exists
 
 		mode = File::WRONLY | File::CREAT | File::EXCL
 		File.open filename, mode do |file|
@@ -14,18 +16,24 @@ module HQ::Tools::Lock
 			file.flock File::LOCK_EX | File::LOCK_NB \
 				or raise "Cannot obtain lock"
 
-			# write our pid
+			begin
 
-			file.puts $$
-			file.flush
+				# write our pid
 
-			# yield
+				file.puts $$
+				file.flush
 
-			yield
+				# yield
 
-			# delete lock file
+				yield
 
-			File.unlink filename
+			ensure
+
+				# delete lock file
+
+				File.unlink filename
+
+			end
 
 		end
 
@@ -33,7 +41,7 @@ module HQ::Tools::Lock
 
 	def self.lock_remove filename
 
-		# file already exists, try locking that
+		# open existing lock file
 
 		File.open filename, File::WRONLY do |file|
 
