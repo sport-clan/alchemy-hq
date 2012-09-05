@@ -4,6 +4,7 @@ module Mandar::Support::Dist
 	Mandar::Deploy::Commands.register self, :fetch
 	Mandar::Deploy::Commands.register self, :rsync
 	Mandar::Deploy::Commands.register self, :untar
+	Mandar::Deploy::Commands.register self, :unzip
 
 	def self.command_build build_elem
 
@@ -88,6 +89,21 @@ module Mandar::Support::Dist
 			"--gunzip",
 			"--no-same-owner",
 			"--no-same-permissions",
+		]
+
+		Mandar::Support::Core.shell \
+			Mandar.shell_quote(args)
+
+	end
+
+	def self.command_unzip unzip_elem
+
+		unzip_archive =
+			unzip_elem.attributes["archive"]
+
+		args = [
+			"unzip",
+			unzip_archive,
 		]
 
 		Mandar::Support::Core.shell \

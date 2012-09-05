@@ -372,6 +372,7 @@ module Mandar::Support::Core
 
 	Mandar::Deploy::Commands.register self, :auto_clean
 	Mandar::Deploy::Commands.register self, :chdir
+	Mandar::Deploy::Commands.register self, :chmod
 	Mandar::Deploy::Commands.register self, :clean
 	Mandar::Deploy::Commands.register self, :delete
 	Mandar::Deploy::Commands.register self, :dir
@@ -399,6 +400,42 @@ module Mandar::Support::Core
 		chdir_dir = chdir_elem.attributes["dir"]
 
 		Dir.chdir chdir_dir unless $mock
+	end
+
+	def self.command_chmod chmod_elem
+
+		chmod_mode =
+			chmod_elem.attributes["mode"]
+
+		chmod_name =
+			chmod_elem.attributes["name"]
+
+		chmod_recurse =
+			case chmod_elem.attributes["recurse"]
+				when "yes" then true
+				when "no" then false
+				else raise "Error"
+			end
+
+		chmod \
+			chmod_mode,
+			chmod_name,
+			chmod_recurse
+
+	end
+
+	def self.chmod mode, name, recurse
+
+		args = [
+			"chmod",
+			recurse ? [ "--recursive" ] : [],
+			mode,
+			name,
+		].flatten
+
+		Mandar::Support::Core.shell \
+			Mandar.shell_quote(args)
+
 	end
 
 	def self.command_delete(delete_elem)
