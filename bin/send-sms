@@ -39,16 +39,45 @@ class SendSmsUtil
 		@config = config_doc.root
 	end
 
-	def find_provider
-		@config.find("route").each do |route|
-			prefix = route.attributes["prefix"]
-			route_provider = route.attributes["provider"]
-			next unless @opts[:to] =~ /^#{prefix}/
-			@provider = @config.find_first "provider [@name = #{xp route_provider}]"
-			raise "Invalid provider specified in route: #{route_provider}" unless @provider
-			return
+	def get_route number
+
+		partial_number = number
+
+		while true
+
+			lookup =
+				partial_number == "" ? "default" : partial_number
+
+			routes =
+				@config.find("route [@prefix = #{xp lookup}]")
+
+			return routes[0] \
+				unless routes.empty?
+
+			raise "No route for #{number}" \
+				if partial_number == ""
+
+			partial_number =
+				partial_number[0...-1]
+
 		end
-		raise "No provider found for destination #{@opts[:to]}"
+
+	end
+
+	def find_provider
+
+		route =
+			get_route @opts[:to]
+
+		route_provider =
+			route.attributes["provider"]
+
+		@provider =
+			@config.find_first "provider [@name = #{xp route_provider}]"
+
+		raise "Invalid provider specified in route: #{route_provider}" \
+			unless @provider
+
 	end
 
 	def send_sms
