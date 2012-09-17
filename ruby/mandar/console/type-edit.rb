@@ -6,29 +6,92 @@ class Mandar::Console::TypeEdit
 
 	def handle
 
-		forbidden unless is_admin
+		# decode path
 
-		type_name, part_id = get_vars["id"].split("/", 2)
-		id = get_vars["id"] if part_id
+		type_name, part_id =
+			get_vars["id"].split("/", 2)
 
-		type = config.find_first("schema[@name=#{xp type_name}]")
+		if part_id
+			id =
+				get_vars["id"]
+		end
+
+		# lookup schema
+
+		type =
+			config.find_first("schema[@name=#{xp type_name}]")
 
 		# load object from database
-		exist = id ? true : false
-		row = exist ? stager.get(id, console_user) : {} or raise "Not found"
-pp row
+
+		exist =
+			id ? true : false
+
+		row =
+			exist ? stager.get(id, console_user) : {}
+
+		raise "Not found" \
+			unless row
+
+		# check permissions
+
+		can_read_write =
+			can \
+				[ "super", "*" ],
+				[ "read-write", "*" ],
+				[ "read-write", type_name ]
+
+		can_read_only =
+			can_read_write || can(
+				[ "read-only", "*" ],
+				[ "read-only", type_name ])
+
+		forbidden \
+			unless can_read_only
+
+		forbidden \
+			if request_method == :post && ! can_read_write
+
+		forbidden \
+			if ! exist && ! can_read_write
 
 		# apply updates from post
+
 		if request_method == :post
 
-			locks = locks_man.load
-			my_change = locks_man.my_change locks, console_user, true
+			locks =
+				locks_man.load
 
-			post_vars["rev"] == row["_rev"] or raise "Revision mismatch!"
+			my_change =
+				locks_man.my_change \
+					locks,
+					console_user,
+					true
+
+			post_vars["rev"] == row["_rev"] \
+				or raise "Revision mismatch!"
+
 			%W[ stage done ].include? my_change["state"] \
 				or raise "Can't update records while a deploy is in progress"
-			row = update_field_struct type, type.find_first("id"), "id", post_vars, row unless exist
-			row = update_field_struct type, type.find_first("fields"), "field", post_vars, row
+
+			unless exist
+
+				row =
+					update_field_struct \
+						type,
+						type.find_first("id"),
+						"id",
+						post_vars,
+						row
+
+			end
+
+			row =
+				update_field_struct \
+					type,
+					type.find_first("fields"), \
+					"field", \
+					post_vars, \
+					row
 
 			if post_vars["create"]
 				row["mandar_type"] = type_name
@@ -72,17 +135,39 @@ pp row
 
 				buttons_0: buttons_0 = {
 					_type: :buttonset,
-					update: exist ? make_submit("update", "save changes") : nil,
-					delete: exist ? make_submit("delete", "delete") : nil,
-					create: ! exist ? make_submit("create", "create") : nil,
+
+					update: exist && can_read_write ?
+						make_submit("update", "save changes") : nil,
+
+					delete: exist && can_read_write ?
+						make_submit("delete", "delete") : nil,
+
+					create: ! exist ?
+						make_submit("create", "create") : nil,
 				},
 
 				rev: make_hidden("rev", row["_rev"], 0),
 
 				fields: {
 					_type: :fields,
-					id: create_field_struct_contents(type, type.find_first("id"), "id", row, 0, exist),
-					fields: create_field_struct_contents(type, type.find_first("fields"), "field", row, 0, false),
+
+					id:
+						create_field_struct_contents(
+							type,
+							type.find_first("id"),
+							"id",
+							row,
+							0,
+							exist),
+
+					fields:
+						create_field_struct_contents(
+							type,
+							type.find_first("fields"),
+							"field",
+							row,
+							0,
+							! can_read_write),
 				},
 
 				buttons_1: buttons_0,
@@ -93,27 +178,79 @@ pp row
 
 # ======================================== list field
 
-	def create_field_list type_elem, field_elem, path, value, depth, readonly
-		field_name = field_elem.attributes["name"]
-		field_max = field_elem.attributes["max"]
-		value = [] unless value.is_a? Array
-		return [
-			value.map_with_index { |item, i|
-				item_path = "#{path}-#{i}"
-				{
-					head: make_generic_field(field_name, depth, {
-						add: make_submit("#{item_path}--add", "add #{field_elem.attributes["name"]}"),
-						remove: make_submit("#{item_path}--remove", "remove #{field_name}"),
-					}),
-					struct: create_field_struct_contents(type_elem, field_elem, item_path, item, depth + 1, readonly),
-				}
-			},
-			! field_max || value.length < field_max.to_i ?
-				make_generic_field("...", depth, {
-					add: make_submit("#{path}--add", "add #{field_elem.attributes["name"]}")
-				})  : nil,
-			make_hidden("#{path}--count", value.length, depth),
-		]
+	def create_field_list \
+			type_elem,
+			field_elem,
+			path,
+			value,
+			depth,
+			readonly
+
+		field_name =
+			field_elem.attributes["name"]
+
+		field_max =
+			field_elem.attributes["max"]
+
+		value = [] \
+			unless value.is_a? Array
+
+		ret = []
+
+		value.each_with_index do |item, i|
+
+			item_path =
+				"#{path}-#{i}"
+
+			ret <<
+				make_generic_field(
+					field_name,
+					depth,
+					readonly ? {} : {
+						add:
+							make_submit(
+								"#{item_path}--add",
+								"add #{field_elem.attributes["name"]}"),
+						remove:
+							make_submit(
+								"#{item_path}--remove",
+								"remove #{field_name}"),
+					})
+
+			ret <<
+				create_field_struct_contents(
+					type_elem,
+					field_elem,
+					item_path,
+					item,
+					depth + 1,
+					readonly)
+
+		end
+
+		if ! readonly && (! field_max || value.length < field_max)
+
+			ret <<
+				make_generic_field(
+					"...",
+					depth,
+					{
+						add:
+							make_submit(
+								"#{path}--add",
+								"add #{field_elem.attributes["name"]}")
+					})
+
+		end
+
+		ret <<
+			make_hidden(
+				"#{path}--count",
+				value.length,
+				depth)
+
+		return ret
+
 	end
 
 	def update_field_list type_elem, field_elem, path, form, value
@@ -188,15 +325,55 @@ pp row
 		}
 	end
 
-	def create_field_struct_contents type_elem, fields_elem, path, value, depth, readonly
-		value = {} unless value.is_a? Hash
+	def create_field_struct_contents \
+			type_elem,
+			fields_elem,
+			path,
+			value,
+			depth,
+			readonly
+
+		value = {} \
+			unless value.is_a? Hash
+
 		return {
 			fields: fields_elem.find("* [name() != 'option']").to_a.map { |field_elem|
-				field_type = field_elem.name
-				field_name = field_elem.attributes["name"]
-				field_path = "#{path}-#{field_name}"
-				field_value = value ? value[field_name] : nil
-				send "create_field_#{field_type.gsub ?-, ?_}", type_elem, field_elem, field_path, field_value, depth, readonly
+
+				field_type =
+					field_elem.name
+
+				field_name =
+					field_elem.attributes["name"]
+
+				field_path =
+					"#{path}-#{field_name}"
+
+				field_value =
+					value ? value[field_name] : nil
+
+				if field_elem.attributes["secret"] == "yes" && readonly
+
+					create_field_text \
+						type_elem,
+						field_elem,
+						field_path,
+						"********",
+						depth,
+						readonly
+
+				else
+
+					send \
+						"create_field_#{field_type.gsub ?-, ?_}",
+						type_elem,
+						field_elem,
+						field_path,
+						field_value,
+						depth,
+						readonly
+
+				end
+
 			},
 			options: fields_elem.find_first("option") ? {
 				content: value && value["content"] && ! value["content"].empty? ?
@@ -209,26 +386,66 @@ pp row
 						option_ref = option_elem.attributes["ref"]
 						schema_option_elem = config.find_first("schema-option [@name = '#{option_ref}']")
 						schema_option_elem or raise "Can't find <schema-option name=\"#{option_ref}\">"
-						schema_option_props_elem = schema_option_elem.find_first("props")
+						schema_option_props_elem =
+							schema_option_elem.find_first("props")
+
 						[
-							make_hidden("#{item_path}--type", item_type, depth),
-							make_generic_field(item_type, depth, {
-								adds: fields_elem.find("option").to_a.map { |option_elem|
-									option_name = option_elem.attributes["name"]
-									make_submit("#{path}--add-#{option_name}-#{i}", "add #{option_name}")
-								},
-								remove: make_submit("#{item_path}--remove", "remove #{item_type}"),
-							}),
-							struct: create_field_struct_contents(type_elem, schema_option_props_elem, item_path, item["value"], depth + 1, readonly),
+
+							make_hidden(
+								"#{item_path}--type",
+								item_type,
+								depth),
+
+							make_generic_field(
+								item_type,
+								depth,
+								readonly ? nil : {
+									adds:
+										fields_elem.find("option").to_a.map { |option_elem|
+											option_name =
+												option_elem.attributes["name"]
+											make_submit(
+												"#{path}--add-#{option_name}-#{i}",
+												"add #{option_name}")
+										},
+									remove:
+										make_submit(
+											"#{item_path}--remove",
+											"remove #{item_type}"),
+								}),
+
+							struct:
+								create_field_struct_contents(
+									type_elem,
+									schema_option_props_elem,
+									item_path,
+									item["value"],
+									depth + 1,
+									readonly),
+
 						]
+
 				} : nil,
-				adds: make_generic_field("...", depth, {
-					buttons: fields_elem.find("option").to_a.map { |option_elem|
-						option_name = option_elem.attributes["name"]
-						make_submit("#{path}--add-#{option_name}", "add #{option_name}")
-					},
-				}),
-				count: make_hidden("#{path}--count", value && value["content"] && value["content"].size || 0, depth),
+
+				adds: readonly ? nil :
+
+					make_generic_field(
+						"...",
+						depth,
+						{
+							buttons:
+								fields_elem.find("option").to_a.map { |option_elem|
+									option_name = option_elem.attributes["name"]
+									make_submit("#{path}--add-#{option_name}", "add #{option_name}")
+								},
+						}),
+
+				count:
+					make_hidden(
+						"#{path}--count",
+						value && value["content"] && value["content"].size || 0,
+						depth),
+
 			} : nil,
 		}
 	end

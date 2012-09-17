@@ -1,6 +1,6 @@
 module Mandar::Console::Table
 
-	def console_table type_elem, values, links = {}
+	def console_table type_elem, values, show_secrets, links = {}
 
 		ret = {
 			_type: :table,
@@ -29,14 +29,41 @@ module Mandar::Console::Table
 			row = {}
 
 			type_elem.find("table/col").each do |col_elem|
-				col_name = col_elem.attributes["name"]
-				field_elem = type_elem.find_first("(id|fields)/*[@name=#{xp col_name}]")
+
+				col_name =
+					col_elem.attributes["name"]
+
+				field_elem =
+					type_elem.find_first("(id|fields)/*[@name=#{xp col_name}]")
+
 				next unless field_elem
-				row[col_name.to_s.to_sym] = case field_elem.name
-					when "ts-update" then to_ymd_hms value[col_name]
-					when "bool" then value[col_name] ? "yes" : "no"
-					else value[col_name]
+
+				is_secret =
+					field_elem.attributes["secret"] == "yes"
+
+				if is_secret && ! show_secrets
+
+					row[col_name.to_s.to_sym] =
+						"********"
+
+				else
+
+					row[col_name.to_s.to_sym] =
+						case field_elem.name
+
+							when "ts-update"
+								to_ymd_hms value[col_name]
+
+							when "bool"
+								value[col_name] ? "yes" : "no"
+
+							else
+								value[col_name]
+
+						end
+
 				end
+
 			end
 
 			links.each do |link_name, link_fn|

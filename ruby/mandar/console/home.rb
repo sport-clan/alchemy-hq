@@ -10,9 +10,19 @@ class Mandar::Console::Home
 			_title: "Home",
 		}
 
-		all_schemas = config.find("schema").to_a
-		my_schemas = all_schemas.select { |schema| can([ "record-type", schema.attributes["name"] ]) }
-		my_schemas.sort! { |a, b| a.attributes["name"] <=> b.attributes["name"] }
+		all_schemas =
+			config.find("schema").to_a
+
+		my_schemas =
+			all_schemas.select do |schema|
+				can \
+					[ "record-type", schema.attributes["name"] ],
+					[ "read-only", "*" ]
+			end
+
+		my_schemas.sort! do |a, b|
+			a.attributes["name"] <=> b.attributes["name"]
+		end
 
 		unless my_schemas.empty?
 

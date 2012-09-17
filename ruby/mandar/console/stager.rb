@@ -164,7 +164,6 @@ class Mandar::Console::Stager
 			row["_id"] =~ /^current\/(.+)$/
 			value["_id"] = $1
 			value["_rev"] = row["_rev"]
-			pp value
 			return value
 		else
 			return nil

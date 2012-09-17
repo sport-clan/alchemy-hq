@@ -125,9 +125,14 @@ class Mandar::Console::Password
 					_heading: "Search results",
 				}
 
-				page[:search_results][:data] = console_table type_elem, matching_values, {
-					"change password" => lambda { |value| "/password?search=search&name=#{u value["name"]}" },
-				}
+				page[:search_results][:data] =
+					console_table \
+						type_elem,
+						matching_values,
+						false,
+						{ "change password" => lambda { |value|
+							"/password?search=search&name=#{u value["name"]}"
+						} }
 
 			end
 		end

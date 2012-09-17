@@ -70,6 +70,7 @@ module Mandar::Console::Forms
 	end
 
 	def make_generic_field label, depth, content
+		content ||= {}
 		return {
 			_type: :generic_field,
 			_label: label,
