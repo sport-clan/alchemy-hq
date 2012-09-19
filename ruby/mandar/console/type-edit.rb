@@ -228,7 +228,7 @@ class Mandar::Console::TypeEdit
 
 		end
 
-		if ! readonly && (! field_max || value.length < field_max)
+		if ! readonly && (! field_max || value.length < field_max.to_i)
 
 			ret <<
 				make_generic_field(
