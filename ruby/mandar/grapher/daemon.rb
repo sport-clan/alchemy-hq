@@ -79,6 +79,138 @@ module Mandar::Grapher::Daemon
 
 	end
 
+	class DiskIoGrapher
+
+		# columns, according to iostats.txt in the linux kernel. diff means we
+		# are interested in the change over time, value means we just use
+		# whatever the latest value is
+
+		COLS = [
+			[ :reads_completed, :diff ],
+			[ :reads_merged, :diff ],
+			[ :sectors_read, :diff ],
+			[ :millis_spent_reading, :diff ],
+			[ :writes_completed, :diff ],
+			[ :writes_merged, :diff ],
+			[ :sectors_written, :diff ],
+			[ :millis_spent_writing, :diff ],
+			[ :ios_in_progress, :value ],
+			[ :millis_doing_io, :diff ],
+			[ :weighted_millis_doing_io, :diff ],
+		]
+
+		def initialize name, disk
+			@name = name
+			@disk = disk
+		end
+
+		def self.from_elem elem
+			return new \
+				elem.attributes["name"],
+				elem.attributes["disk"]
+		end
+
+		def run sink
+
+			# get current data and time
+
+			@current = read
+			@current_time = Time.now
+
+			# if we have data from a previous run
+
+			if @last
+
+				# work out elapsed time
+
+				@elapsed =
+					@current_time - @last_time
+
+				# and submit if it was close to a second
+
+				if (@elapsed - 1.0).abs < 0.1
+					submit
+				end
+
+			end
+
+			# store current data for next round
+
+			@last = @current
+			@last_time = @current_time
+
+		end
+
+		def submit
+
+			# generate data by iterating columns
+
+			data = (0...(COLS.size)).map do |i|
+
+				# work out the raw value using the specified method
+
+				temp = case COLS[i][1]
+
+					when :diff
+						(@current[i] - @last[i]).to_f * @elapsed
+
+					when :value
+						@current[i]
+
+				end
+
+			end
+
+			# submit the data to the daemon
+
+			sink.submit @name, data
+
+		end
+
+		# return an array with the current totals for each column
+
+		def read
+
+			# initialise an array with zeroes
+
+			ret =
+				(0...(COLS.size)).map { 0 }
+
+			# iterate lines from the diskstats file
+
+			File.new("/proc/diskstats").each \
+				do |line|
+
+					# split columns
+
+					cols =
+						line.strip.split /\s+/
+
+					# ignore irrelevant lines
+
+					next \
+						unless @disk == "all" \
+							|| cols[2] == @disk
+
+					# add this lines data to the totals
+
+					(0...(COLS.size)).each do |i|
+
+						ret[i] +=
+							cols[i + 3].to_i
+
+					end
+
+				end
+
+			# and return
+
+			return ret
+
+		end
+
+	end
+
 	class IfaceGrapher
 
 		COL_COUNT = 16
@@ -219,6 +351,9 @@ module Mandar::Grapher::Daemon
 			when "grapher-daemon-memory"
 				@graphers << MemoryGrapher.from_elem(elem)
 
+			when "grapher-daemon-diskio"
+				@graphers << DiskIoGrapher.from_elem(elem)
+
 			else
 				raise "Unexpected <#{elem.name}> element"
 
@@ -237,7 +372,7 @@ module Mandar::Grapher::Daemon
 				rescue => e
 					log "got error #{e.message}"
 					log e.inspect
-					log e.backtrace.join(" ")
+					log e.backtrace.join("\n")
 				end
 			end
 			time_next += wait
