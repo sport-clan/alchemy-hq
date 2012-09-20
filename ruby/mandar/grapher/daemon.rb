@@ -129,7 +129,7 @@ module Mandar::Grapher::Daemon
 				# and submit if it was close to a second
 
 				if (@elapsed - 1.0).abs < 0.1
-					submit
+					submit sink
 				end
 
 			end
@@ -141,7 +141,7 @@ module Mandar::Grapher::Daemon
 
 		end
 
-		def submit
+		def submit sink
 
 			# generate data by iterating columns
 
