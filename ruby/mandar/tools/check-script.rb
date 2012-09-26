@@ -9,6 +9,7 @@ class Mandar::Tools::CheckScript
 		@critical = false
 		@warning = false
 		@unknown = false
+		@postscript = []
 	end
 
 	def main
@@ -19,6 +20,7 @@ class Mandar::Tools::CheckScript
 			perform_checks
 		rescue => e
 			unknown e.message
+			@postscript << e.backtrace
 		end
 
 		perform_output
@@ -43,6 +45,11 @@ class Mandar::Tools::CheckScript
 			puts "#{@name} OK: #{@messages.join ", "}"
 			@status = 0
 		end
+
+		@postscript.each do |ps|
+			$stderr.puts ps
+		end
+
 	end
 
 	def message string
