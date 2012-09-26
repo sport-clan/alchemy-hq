@@ -276,6 +276,25 @@ class Mandar::Console::TypeEdit
 		return form[path].to_s
 	end
 
+# ======================================== text field
+
+	def create_field_enum type_elem, field_elem, path, value, depth, readonly
+
+		return {
+			_type: :enum_field,
+			_name: path,
+			_label: field_elem.attributes["name"],
+			_value: value,
+			_depth: depth,
+			_readonly: readonly,
+		}
+
+	end
+
+	def update_field_enum type_elem, field_elem, path, form, value
+		return form[path].to_s
+	end
+
 # ======================================== bigtext field
 
 	def create_field_bigtext type_elem, field_elem, path, value, depth, readonly

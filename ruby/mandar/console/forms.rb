@@ -258,4 +258,8 @@ module Mandar::Console::Forms
 		element_close :tr
 	end
 
+	def render_type_enum_field content
+		return render_type_text_field content
+	end
+
 end

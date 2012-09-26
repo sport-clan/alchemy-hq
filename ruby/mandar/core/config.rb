@@ -77,7 +77,7 @@ module Mandar::Core::Config
 		fields_elem.find("* [name() != 'option']").each do |field_elem|
 			field_name = field_elem.attributes["name"]
 			case field_elem.name
-			when "text", "int", "ts-update"
+			when "text", "int", "ts-update", "enum"
 				elem.attributes[field_name] = value[field_name].to_s
 			when "bigtext"
 				prop = XML::Node.new field_name
