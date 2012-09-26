@@ -63,7 +63,7 @@ module Mandar::Tools::Client
 			Mandar::AWS::Client.new \
 				aws_account,
 				aws_endpoint,
-				"2012-05-01"
+				"2012-08-15"
 
 		aws_client.default_prefix = "a"
 
