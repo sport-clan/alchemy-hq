@@ -1,15 +1,9 @@
-require "pp"
 require "tempfile"
-
-require "rubygems"
 
 gem "test-unit"
 require "test/unit"
 
-module Mandar end
-module Mandar::Tools end
-
-require "mandar/tools/getopt"
+require "hq/tools/getopt"
 
 class GetoptTest < Test::Unit::TestCase
 
@@ -17,15 +11,15 @@ class GetoptTest < Test::Unit::TestCase
 	end
 
 	def go expect, args, spec
-		ret, remain = Mandar::Tools::Getopt.process args, spec
+		ret, remain = HQ::Tools::Getopt.process args, spec
 		assert_equal expect, ret
 	end
 
 	def go_error args, spec, message
 		Tempfile.open "getopt-test" do |tmp|
 			$stderr.reopen tmp.path, "w"
-			assert_raise(Mandar::Tools::GetoptError) do
-				Mandar::Tools::Getopt.process args, spec
+			assert_raise HQ::Tools::GetoptError do
+				HQ::Tools::Getopt.process args, spec
 			end
 			$stderr.flush
 			assert_equal "#{$0}: #{message}", File.read(tmp.path).chomp

@@ -5,6 +5,7 @@ script_path = File.readlink(script_path) while File.symlink?(script_path)
 CONFIG = File.expand_path("#{File.dirname(script_path)}/../..")
 $LOAD_PATH.unshift "#{CONFIG}/alchemy-hq/ruby"
 
+require "hq/tools/getopt"
 require "mandar"
 require "net/http"
 require "net/https"
@@ -12,7 +13,7 @@ require "pp"
 require "resolv"
 require "set"
 
-$opts, $args = Mandar::Tools::Getopt.process ARGV, [
+$opts, $args = HQ::Tools::Getopt.process ARGV, [
 	{ :name => :warning, :default => 10, :regex => /[0-9]+(\.[0-9]+)?/, :convert => :to_f },
 	{ :name => :critical, :default => 10, :regex => /[0-9]+(\.[0-9]+)?/, :convert => :to_f },
 	{ :name => :timeout, :default => 10, :regex => /[0-9]+(\.[0-9]+)?/, :convert => :to_f },

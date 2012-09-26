@@ -2,6 +2,7 @@
 
 require "cgi"
 require "fileutils"
+require "hq/tools/getopt"
 require "mandar"
 require "net/http"
 require "pp"
@@ -23,7 +24,7 @@ class SendSmsUtil
 	end
 
 	def parse_args
-		@opts, @args = Mandar::Tools::Getopt.process @args, [
+		@opts, @args = HQ::Tools::Getopt.process @args, [
 			{ :name => :config, :required => true },
 			{ :name => :from, :required => true },
 			{ :name => :to, :required => true },

@@ -1,9 +1,7 @@
 #!/usr/bin/env ruby
 
-require "rubygems"
-
+require "hq/tools/getopt"
 require "json"
-require "mandar"
 require "mongo"
 require "pp"
 
@@ -39,7 +37,7 @@ class AlchemyHQ::Scripts::MongoImportScript
 	end
 
 	def process_args
-		@opts, @args = Mandar::Tools::Getopt.process @args, [
+		@opts, @args = HQ::Tools::Getopt.process @args, [
 			{ name: :hostname, default: "localhost" },
 			{ name: :port, default: 27017, regex: /[1-9][0-9]*/, convert: :to_i },
 			{ name: :database, default: "test" },

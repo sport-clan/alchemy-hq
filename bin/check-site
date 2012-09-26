@@ -5,7 +5,7 @@ script_path = File.readlink(script_path) while File.symlink?(script_path)
 CONFIG = File.expand_path("#{File.dirname(script_path)}/../..")
 $LOAD_PATH.unshift "#{CONFIG}/alchemy-hq/ruby"
 
-require "getoptlong"
+require "hq/tools/getopt"
 require "mandar"
 require "net/http"
 require "net/https"
@@ -21,7 +21,7 @@ class CheckSiteScript < Mandar::Tools::CheckScript
 	end
 
 	def process_args
-		@opts, @args = Mandar::Tools::Getopt.process ARGV, [
+		@opts, @args = HQ::Tools::Getopt.process ARGV, [
 			{ :name => :warning, :required => true, :convert => :to_f },
 			{ :name => :critical, :required => true, :convert => :to_f },
 			{ :name => :url, :required => true },

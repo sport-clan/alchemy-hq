@@ -5,14 +5,14 @@ script_path = File.readlink(script_path) while File.symlink?(script_path)
 CONFIG = File.expand_path("#{File.dirname(script_path)}/../..")
 $LOAD_PATH.unshift "#{CONFIG}/alchemy-hq/ruby"
 
-require "getoptlong"
+require "hq/tools/getopt"
 require "pp"
 require "mandar"
 require "xml"
 
 include Mandar::Tools::Escape
 
-$opts, $args = Mandar::Tools::Getopt.process ARGV, [
+$opts, $args = HQ::Tools::Getopt.process ARGV, [
 	{ :name => :config, :required => :true },
 	{ :name => :host, :required => true, :regex => /[a-z][a-z0-9]*(?:-[a-z0-9]+)*/ },
 	{ :name => :critical, :required => true, :regex => /[1-9][0-9]*/, :convert => :to_i },

@@ -5,10 +5,11 @@ script_path = File.readlink(script_path) while File.symlink?(script_path)
 CONFIG = File.expand_path("#{File.dirname(script_path)}/../..")
 $LOAD_PATH.unshift "#{CONFIG}/alchemy-hq/ruby"
 
+require "hq/tools/getopt"
 require "mandar"
 require "pp"
 
-$opts, $args = Mandar::Tools::Getopt.process ARGV, [
+$opts, $args = HQ::Tools::Getopt.process ARGV, [
 	{ :name => :glob, :required => true },
 	{ :name => :compress_days, :regex => /[1-9][0-9]*/, :convert => :to_i },
 	{ :name => :keep_days, :regex => /[1-9][0-9]*/, :convert => :to_i },

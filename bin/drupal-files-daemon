@@ -7,11 +7,13 @@ MANDAR = File.expand_path("#{File.dirname(script_path)}/..")
 $LOAD_PATH.unshift "#{MANDAR}/ruby"
 
 # load libraries
+
+require "hq/tools/getopt"
 require "mandar"
 require "pp"
 require "xml"
 
-opts, remain = Mandar::Tools::Getopt.process ARGV, [
+opts, remain = HQ::Tools::Getopt.process ARGV, [
 	{ :name => :pid_path, :default => "/var/run/drupal-files-daemon.pid" },
 	{ :name => :log_path, :default => "/var/log/drupal-files-daemon.log" },
 ]
