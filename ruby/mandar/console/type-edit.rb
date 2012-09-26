@@ -276,17 +276,28 @@ class Mandar::Console::TypeEdit
 		return form[path].to_s
 	end
 
-# ======================================== text field
+# ======================================== enum field
 
 	def create_field_enum type_elem, field_elem, path, value, depth, readonly
 
 		return {
+
 			_type: :enum_field,
 			_name: path,
 			_label: field_elem.attributes["name"],
 			_value: value,
 			_depth: depth,
 			_readonly: readonly,
+
+			_options: Hash[
+				field_elem.find("value").to_a.map { |elem|
+					[
+						elem.attributes["name"],
+						elem.attributes["name"],
+					]
+				}
+			]
+
 		}
 
 	end

@@ -259,7 +259,62 @@ module Mandar::Console::Forms
 	end
 
 	def render_type_enum_field content
-		return render_type_text_field content
+
+		render_check content, {
+			name: { type: :string, required: true },
+			label: { type: :string, required: true },
+			value: { type: :string, required: false },
+			depth: { type: :integer, required: true },
+			readonly: { type: :boolean, required: false },
+			options: { type: :map, required: true, from: :string, to: :string },
+		}
+
+		# <tr>
+
+		element_open :tr, { class: "field field-#{content[:_depth]}" }
+
+		# - <td><label></td>
+
+		element_open :td, { class: "field-label", colspan: content[:_depth] + 1 }
+		element_whole :label, {}, content[:_label]
+		element_close :td
+
+		# - <td><div>
+
+		element_open :td, { class: "field-value", colspan: MAX_DEPTH - content[:_depth] + 1 }
+		element_open :div, { class: "input-hack" }
+
+		# - - <select>
+
+		attrs = {}
+		attrs[:name] = content[:_name]
+		attrs[:disabled] = "" if content[:_readonly]
+		element_open :select, attrs
+
+		# - - - <option> ...
+
+		content[:_options].each do |key, value|
+
+			attrs = {}
+			attrs[:value] = key
+			attrs[:selected] = "" if key == content[:_value]
+			element_whole :option, attrs, value
+
+		end
+
+		# - - </select>
+
+		element_close :select
+
+		# - </div> </td>
+
+		element_close :div
+		element_close :td
+
+		# </tr>
+
+		element_close :tr
+
 	end
 
 end
