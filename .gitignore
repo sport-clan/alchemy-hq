@@ -6,3 +6,5 @@
 /.lib
 /c++/xquery-server
 /etc/build.properties
+/results/*
+!/results/index.html
