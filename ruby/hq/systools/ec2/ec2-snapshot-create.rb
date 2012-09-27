@@ -49,8 +49,8 @@ class HQ::SysTools::EC2::Ec2SnapshotCreateScript
 
 		# load state
 
-		current_minute =
-			Time.now.to_i / 60 % 60
+		now =
+			Time.now.utc
 
 		if File.exist? state_filename
 
@@ -59,7 +59,7 @@ class HQ::SysTools::EC2::Ec2SnapshotCreateScript
 
 		else
 
-			state_minute = current_minute
+			state_minute = now.min
 
 			File.open state_filename, "w" do |f|
 				f.print "#{state_minute}\n"
@@ -69,13 +69,16 @@ class HQ::SysTools::EC2::Ec2SnapshotCreateScript
 
 		@exit_code = 0
 
-		return if state_minute == current_minute
+		return if state_minute == now.min
 
 		HQ::Tools::Lock.lock lock_filename do
 
-			while current_minute != state_minute
+			while now.min != state_minute
 
-				do_minute state_minute
+				do_minute \
+					state_minute < now.min ?
+						now.hour : now.hour - 1,
+					state_minute
 
 				state_minute =
 					(state_minute + 1) % 60
@@ -90,7 +93,7 @@ class HQ::SysTools::EC2::Ec2SnapshotCreateScript
 
 	end
 
-	def do_minute minute
+	def do_minute hour, minute
 
 		# iterate accounts
 
@@ -116,7 +119,7 @@ class HQ::SysTools::EC2::Ec2SnapshotCreateScript
 					ec2_region_elem.attributes["endpoint"]
 
 				do_account_region \
-					minute,
+					hour, minute,
 					aws_account_name,
 					access_key_id,
 					secret_access_key,
@@ -130,7 +133,7 @@ class HQ::SysTools::EC2::Ec2SnapshotCreateScript
 	end
 
 	def do_account_region \
-			minute,
+			hour, minute,
 			aws_account_name,
 			access_key_id,
 			secret_access_key,
@@ -175,6 +178,9 @@ class HQ::SysTools::EC2::Ec2SnapshotCreateScript
 			]
 		"
 
+		daily_hour =
+			@config_elem.attributes["daily-hour"].to_i
+
 		@config_elem.find(volumes_xp).each do |volume_elem|
 
 			host =
@@ -186,7 +192,15 @@ class HQ::SysTools::EC2::Ec2SnapshotCreateScript
 			volume_minute =
 				volume_elem.attributes["minute"]
 
-			next unless volume_minute == minute.to_s
+			volume_frequency =
+				volume_elem.attributes["frequency"]
+
+			next \
+				unless volume_minute == minute.to_s
+
+			next \
+				if volume_frequency == "daily" \
+					&& hour != daily_hour
 
 			do_volume \
 				aws_client,

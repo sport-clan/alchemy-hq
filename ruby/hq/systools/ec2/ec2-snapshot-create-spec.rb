@@ -13,7 +13,8 @@ module HQ::SysTools::EC2
 
 				<ec2-snapshots-config
 					lock="lock-file"
-					state="state-file">
+					state="state-file"
+					daily-hour="17">
 
 					<aws-account
 						name="account-1"
@@ -113,9 +114,7 @@ module HQ::SysTools::EC2
 			context "with no args" do
 
 				before :each do
-
 					script.args = []
-
 				end
 
 				it "prints an error" do
@@ -129,11 +128,8 @@ module HQ::SysTools::EC2
 				end
 
 				it "exits with 1" do
-
 					script.main
-
 					script.exit_code.should == 1
-
 				end
 
 			end
@@ -147,7 +143,7 @@ module HQ::SysTools::EC2
 					script.stub(:do_minute)
 
 					Time.stub(:now) do
-						Time.at 1348681527
+						Time.at 1348679727
 					end
 
 					File.stub(:open)
@@ -172,7 +168,8 @@ module HQ::SysTools::EC2
 
 					script.main
 
-					script.instance_variable_get(:@config_elem)
+					script
+						.instance_variable_get(:@config_elem)
 						.should == config_xml.root
 
 				end
@@ -215,7 +212,7 @@ module HQ::SysTools::EC2
 							.and_yield(file)
 
 						file.should_receive(:print)
-							.with("45\n")
+							.with("15\n")
 
 						script.main
 
@@ -267,7 +264,7 @@ module HQ::SysTools::EC2
 
 							File.should_receive(:read)
 								.with("state-file")
-								.and_return("45\n")
+								.and_return("15\n")
 
 						end
 
@@ -298,7 +295,7 @@ module HQ::SysTools::EC2
 
 							File.should_receive(:read)
 								.with("state-file")
-								.and_return("44\n")
+								.and_return("14\n")
 
 						end
 
@@ -316,6 +313,8 @@ module HQ::SysTools::EC2
 
 							script
 								.should_receive(:do_minute)
+								.with(17, 14)
+								.once
 
 							script.main
 
@@ -330,7 +329,7 @@ module HQ::SysTools::EC2
 								.and_yield(file)
 
 							file.should_receive(:print)
-								.with("45\n")
+								.with("15\n")
 
 							script.main
 
@@ -344,7 +343,7 @@ module HQ::SysTools::EC2
 
 							File.should_receive(:read)
 								.with("state-file")
-								.and_return("15\n")
+								.and_return("45\n")
 
 						end
 
@@ -360,9 +359,36 @@ module HQ::SysTools::EC2
 
 						it "calls #do_minute thirty times" do
 
+							# check the hour is set correctly as well
+
 							script
 								.should_receive(:do_minute)
-								.exactly(30).times
+								.with(16, 45)
+								.once
+								.ordered
+
+							script
+								.should_receive(:do_minute)
+								.exactly(13).times
+
+							script
+								.should_receive(:do_minute)
+								.with(16, 59)
+								.once
+
+							script
+								.should_receive(:do_minute)
+								.with(17, 0)
+								.once
+
+							script
+								.should_receive(:do_minute)
+								.exactly(13).times
+
+							script
+								.should_receive(:do_minute)
+								.with(17, 14)
+								.once
 
 							script.main
 
@@ -401,7 +427,7 @@ module HQ::SysTools::EC2
 				script
 					.should_receive(:do_account_region)
 					.with(
-						1,
+						17, 1,
 						"account-1",
 						"access-key-id-1",
 						"secret-access-key-1",
@@ -411,7 +437,7 @@ module HQ::SysTools::EC2
 				script
 					.should_receive(:do_account_region)
 					.with(
-						1,
+						17, 1,
 						"account-1",
 						"access-key-id-1",
 						"secret-access-key-1",
@@ -421,7 +447,7 @@ module HQ::SysTools::EC2
 				script
 					.should_receive(:do_account_region)
 					.with(
-						1,
+						17, 1,
 						"account-2",
 						"access-key-id-2",
 						"secret-access-key-2",
@@ -431,14 +457,14 @@ module HQ::SysTools::EC2
 				script
 					.should_receive(:do_account_region)
 					.with(
-						1,
+						17, 1,
 						"account-2",
 						"access-key-id-2",
 						"secret-access-key-2",
 						"region-2",
 						"endpoint-2")
 
-				script.do_minute 1
+				script.do_minute 17, 1
 
 			end
 
@@ -487,7 +513,7 @@ module HQ::SysTools::EC2
 					.with("a")
 
 				script.do_account_region \
-					1,
+					17, 1,
 					"account-1",
 					"access-key-id-1",
 					"secret-access-key-1",
@@ -496,31 +522,67 @@ module HQ::SysTools::EC2
 
 			end
 
-			it "calls #do_volume for matching volumes" do
+			context "during the daily hour" do
 
-				script
-					.should_receive(:do_volume)
-					.with(aws_client, "host-1", "volume-1")
+				it "calls #do_volume for matching volumes" do
 
-				script
-					.should_receive(:do_volume)
-					.with(aws_client, "host-2", "volume-2")
+					script
+						.should_receive(:do_volume)
+						.with(aws_client, "host-1", "volume-1")
 
-				script
-					.should_not_receive(:do_volume)
-					.with(aws_client, "host-3", "volume-3")
+					script
+						.should_receive(:do_volume)
+						.with(aws_client, "host-2", "volume-2")
 
-				script
-					.should_not_receive(:do_volume)
-					.with(aws_client, "host-4", "volume-4")
+					script
+						.should_not_receive(:do_volume)
+						.with(aws_client, "host-3", "volume-3")
 
-				script.do_account_region \
-					1,
-					"account-1",
-					"access-key-id-1",
-					"secret-access-key-1",
-					"region-1",
-					"endpoint-1"
+					script
+						.should_not_receive(:do_volume)
+						.with(aws_client, "host-4", "volume-4")
+
+					script.do_account_region \
+						17, 1,
+						"account-1",
+						"access-key-id-1",
+						"secret-access-key-1",
+						"region-1",
+						"endpoint-1"
+
+				end
+
+			end
+
+			context "outside the daily hour" do
+
+				it "calls #do_volume for matching volumes" do
+
+					script
+						.should_receive(:do_volume)
+						.with(aws_client, "host-1", "volume-1")
+
+					script
+						.should_not_receive(:do_volume)
+						.with(aws_client, "host-2", "volume-2")
+
+					script
+						.should_not_receive(:do_volume)
+						.with(aws_client, "host-3", "volume-3")
+
+					script
+						.should_not_receive(:do_volume)
+						.with(aws_client, "host-4", "volume-4")
+
+					script.do_account_region \
+						16, 1,
+						"account-1",
+						"access-key-id-1",
+						"secret-access-key-1",
+						"region-1",
+						"endpoint-1"
+
+				end
 
 			end
 
