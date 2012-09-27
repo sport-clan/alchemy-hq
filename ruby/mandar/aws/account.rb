@@ -20,12 +20,17 @@ class Mandar::AWS::Account
 		super
 	end
 
-	def eql?(other)
-		return false unless other.is_a self
+	def == other
 		return false unless name == other.name
 		return false unless access_key_id == other.access_key_id
 		return false unless secret_access_key == other.secret_access_key
 		return false unless user_id == other.user_id
 		return true
 	end
+
+	def eql? other
+		return false unless other.class == self.class
+		return self == other
+	end
+
 end
