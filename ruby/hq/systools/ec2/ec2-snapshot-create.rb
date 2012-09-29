@@ -15,7 +15,7 @@ class HQ::SysTools::EC2::Ec2SnapshotCreateScript
 
 	end
 
-	def debug
+	def debug msg
 
 		return unless $stdin.tty?
 
