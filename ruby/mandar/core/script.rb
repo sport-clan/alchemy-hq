@@ -399,45 +399,48 @@ class Mandar::Core::Script
 
 				# begin staged/rollback deploy
 
-				Mandar.time "transform", :detail do
+				Mandar::Core::Config.stager_start \
+					$deploy_mode,
+					$deploy_role,
+					$mock \
+				do
 
-					Mandar::Core::Config.stager_start \
-						$deploy_mode,
-						$deploy_role,
-						$mock
+					Mandar.time "transform", :detail do
 
-					# rebuild config
+						# rebuild config
 
-					Mandar::Core::Config.rebuild_abstract
+						Mandar::Core::Config.rebuild_abstract
 
-					abstract =
-						Mandar::Core::Config.abstract
+						abstract =
+							Mandar::Core::Config.abstract
 
-					# determine list of hosts to deploy to
+						# determine list of hosts to deploy to
 
-					requested_hosts = ARGV[1..-1]
+						requested_hosts = ARGV[1..-1]
 
-					hosts = process_hosts requested_hosts
+						hosts = process_hosts requested_hosts
 
-					# reduce list of hosts on various criteria
+						# reduce list of hosts on various criteria
 
-					hosts =
-						filter_hosts \
-							hosts,
-							"deploying to",
-							requested_hosts
+						hosts =
+							filter_hosts \
+								hosts,
+								"deploying to",
+								requested_hosts
 
-					# rebuild concrete config
+						# rebuild concrete config
 
-					Mandar::Core::Config.rebuild_concrete hosts
+						Mandar::Core::Config.rebuild_concrete hosts
 
-				end
+					end
 
-				Mandar.time "deploy", :detail do
+					Mandar.time "deploy", :detail do
 
-					# and deploy
+						# and deploy
 
-					Mandar::Master.deploy hosts
+						Mandar::Master.deploy hosts
+
+					end
 
 				end
 

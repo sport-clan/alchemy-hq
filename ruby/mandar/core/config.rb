@@ -274,108 +274,118 @@ module Mandar::Core::Config
 		return change
 	end
 
-	def self.stager_start deploy_mode_1, deploy_role_1, deploy_mock_1
+	def self.stager_start \
+			deploy_mode_1,
+			deploy_role_1,
+			deploy_mock_1,
+			&proc
 
-		# attempt to work around segfaults
-		deploy_mode = deploy_mode_1
-		deploy_role = deploy_role_1
-		deploy_mock = deploy_mock_1
+		begin
 
-		[ :unstaged, :staged, :rollback ].include? deploy_mode \
-			or raise "Invalid mode: #{deploy_mode}"
+			# attempt to work around segfaults
+			deploy_mode = deploy_mode_1
+			deploy_role = deploy_role_1
+			deploy_mock = deploy_mock_1
 
-		mode_text = {
-			:unstaged => "unstaged deploy",
-			:staged => "staged deploy",
-			:rollback => "rollback"
-		} [deploy_mode]
+			[ :unstaged, :staged, :rollback ].include? deploy_mode \
+				or raise "Invalid mode: #{deploy_mode}"
 
-		# control differences between staged deploy and rollback
-
-		# attempt to work around segfaults
-		change_pending_state = nil
-
-		unless deploy_mode == :unstaged
-			change_pending_state = {
-				:staged => "deploy",
+			mode_text = {
+				:unstaged => "unstaged deploy",
+				:staged => "staged deploy",
 				:rollback => "rollback"
 			} [deploy_mode]
-			change_done_state = {
-				:staged => "done",
-				:rollback => "stage"
-			} [deploy_mode]
-			change_start_timestamp = {
-				:staged => "deploy-timestamp",
-				:rollback => "rollback-timestamp",
-			} [deploy_mode]
-			change_done_timestamp = {
-				:staged => "done-timestamp",
-				:rollback => "rollback-done-timestamp",
-			} [deploy_mode]
-		end
 
-		# load locks
+			# control differences between staged deploy and rollback
 
-		locks = Mandar.cdb.get("mandar-locks")
-		locks or raise "Internal error"
+			# attempt to work around segfaults
+			change_pending_state = nil
 
-		# check for concurrent deployment
-
-		locks["deploy"] \
-			and Mandar.die "another deployment is in progress for role #{locks["deploy"]["role"]}"
-
-		# check for concurrent changes
-
-		locks["changes"].each do |role, change|
-			next if change["state"] == "stage"
-			next if change["role"] == deploy_role && deploy_mode != :unstaged
-			Mandar.die "another deployment has uncommited changes for role #{role}"
-		end
-
-		# find our changes
-
-		if deploy_mode != :unstaged
-			change = locks["changes"][deploy_role]
-			change or Mandar.die "no staged changes for #{deploy_role}"
-			[ "stage", "done" ].include? change["state"] \
-				or Mandar.die "pending changes in invalid state #{change["state"]} for role " +
-					"#{deploy_role}"
-		end
-
-		# display confirmation
-
-		Mandar.notice "beginning #{mode_text} for role #{deploy_role}"
-
-		# allocate seq
-
-		lock_seq = locks["next-seq"]
-		locks["next-seq"] += 1
-
-		# create lock
-
-		locks["deploy"] = {
-			"role" => deploy_role,
-			"host" => Socket.gethostname,
-			"timestamp" => Time.now.to_i,
-			"type" => deploy_mode.to_s,
-			"seq" => lock_seq,
-			"mock" => deploy_mock,
-		}
-
-		# update change state
-
-		unless deploy_mock
-			if deploy_mode != :unstaged
-				change["state"] = change_pending_state
-				change[change_start_timestamp] = Time.now.to_i
+			unless deploy_mode == :unstaged
+				change_pending_state = {
+					:staged => "deploy",
+					:rollback => "rollback"
+				} [deploy_mode]
+				change_done_state = {
+					:staged => "done",
+					:rollback => "stage"
+				} [deploy_mode]
+				change_start_timestamp = {
+					:staged => "deploy-timestamp",
+					:rollback => "rollback-timestamp",
+				} [deploy_mode]
+				change_done_timestamp = {
+					:staged => "done-timestamp",
+					:rollback => "rollback-done-timestamp",
+				} [deploy_mode]
 			end
-		end
 
-		# save locks
+			# load locks
 
-		Mandar.cdb.update locks
+			locks = Mandar.cdb.get("mandar-locks")
+			locks or raise "Internal error"
 
-		at_exit do
+			# check for concurrent deployment
+
+			locks["deploy"] \
+				and Mandar.die "another deployment is in progress for role #{locks["deploy"]["role"]}"
+
+			# check for concurrent changes
+
+			locks["changes"].each do |role, change|
+				next if change["state"] == "stage"
+				next if change["role"] == deploy_role && deploy_mode != :unstaged
+				Mandar.die "another deployment has uncommited changes for role #{role}"
+			end
+
+			# find our changes
+
+			if deploy_mode != :unstaged
+				change = locks["changes"][deploy_role]
+				change or Mandar.die "no staged changes for #{deploy_role}"
+				[ "stage", "done" ].include? change["state"] \
+					or Mandar.die "pending changes in invalid state #{change["state"]} for role " +
+						"#{deploy_role}"
+			end
+
+			# display confirmation
+
+			Mandar.notice "beginning #{mode_text} for role #{deploy_role}"
+
+			# allocate seq
+
+			lock_seq = locks["next-seq"]
+			locks["next-seq"] += 1
+
+			# create lock
+
+			locks["deploy"] = {
+				"role" => deploy_role,
+				"host" => Socket.gethostname,
+				"timestamp" => Time.now.to_i,
+				"type" => deploy_mode.to_s,
+				"seq" => lock_seq,
+				"mock" => deploy_mock,
+			}
+
+			# update change state
+
+			unless deploy_mock
+				if deploy_mode != :unstaged
+					change["state"] = change_pending_state
+					change[change_start_timestamp] = Time.now.to_i
+				end
+			end
+
+			# save locks
+
+			Mandar.cdb.update locks
+
+			# yield to caller
+
+			proc.call
+
+		ensure
 
 			# load locks
 
@@ -420,7 +430,9 @@ module Mandar::Core::Config
 			# display confirmation
 
 			Mandar.notice "finished #{mode_text} for role #{deploy_role}"
+
 		end
+
 	end
 
 	def self.js_to_xml(schemas_elem, schema_elem, value)
