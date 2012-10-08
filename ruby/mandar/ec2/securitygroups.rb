@@ -70,6 +70,34 @@ module Mandar::EC2::SecurityGroups
 				existing_group,
 				target_group[:rules]
 		end
+
+		# purge groups
+
+		groups_elem.find("purge-groups").each do |purge_elem|
+
+			purge_pattern =
+				purge_elem.attributes["pattern"]
+
+			regexp =
+				/^#{purge_pattern.gsub "*", ".*"}$/
+
+			existing_groups.each do |group_name, existing_group|
+
+				next \
+					if target_groups.has_key? group_name
+
+				next \
+					unless regexp.match group_name
+
+				delete_security_group \
+					ec2_client,
+					account_name,
+					group_name
+
+			end
+
+		end
+
 	end
 
 	def self.create_security_group \
@@ -98,6 +126,22 @@ module Mandar::EC2::SecurityGroups
 		end
 	end
 
+	def self.delete_security_group \
+			ec2_client,
+			account_name,
+			group_name
+
+		Mandar.notice "deleting security group #{account_name}/#{group_name}"
+
+		unless $mock
+
+			ec2_client.delete_security_group \
+				:group_name => group_name
+
+		end
+
+	end
+
 	def self.decode_groups_elem groups_elem
 
 		ret = {}
@@ -120,6 +164,9 @@ module Mandar::EC2::SecurityGroups
 						:description => group_description,
 						:rules => decode_group_elem(group_elem),
 					}
+
+				when "purge-groups"
+					# do nothing
 
 				else
 					raise "Unexpected element #{elem0name}"
