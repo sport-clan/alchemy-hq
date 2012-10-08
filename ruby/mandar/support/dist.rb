@@ -101,10 +101,17 @@ module Mandar::Support::Dist
 		unzip_archive =
 			unzip_elem.attributes["archive"]
 
+		unzip_dir =
+			unzip_elem.attributes["dir"]
+
 		args = [
 			"unzip",
 			unzip_archive,
 		]
+
+		if unzip_dir
+			args += [ "-d", unzip_dir ]
+		end
 
 		Mandar::Support::Core.shell \
 			Mandar.shell_quote(args)
