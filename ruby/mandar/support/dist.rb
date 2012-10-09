@@ -64,10 +64,46 @@ module Mandar::Support::Dist
 		rsync_to =
 			rsync_elem.attributes["to"]
 
+		rsync_key =
+			rsync_elem.attributes["key"]
+
+		rsync_no_strict_key =
+			rsync_elem.attributes["no-strict-key"] != "yes"
+
 		args = [
 			"rsync",
 			"--archive",
 			"--delete",
+		]
+
+		if rsync_key || rsync_no_strict_key
+
+			ssh_args = [
+				"ssh",
+			]
+
+			if rsync_key
+				ssh_args += [
+					"-i",
+					rsync_key,
+				]
+			end
+
+			if rsync_no_strict_key
+				ssh_args += [
+					"-o",
+					"StrictHostKeyChecking=no",
+				]
+			end
+
+			args += [
+				"--rsh",
+				Mandar.shell_quote(ssh_args),
+			]
+
+		end
+
+		args += [
 			"#{rsync_from}/",
 			"#{rsync_to}/",
 		]
