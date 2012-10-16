@@ -51,7 +51,11 @@ module Mandar::Engine
 		ctl_rd.close
 
 		at_exit do
-			Process.kill "TERM", pid
+			begin
+				Process.kill "TERM", pid
+			rescue Errno::ESRCH
+				# do nothing
+			end
 		end
 
 		require "ahq/xquery/client"
