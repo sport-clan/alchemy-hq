@@ -163,6 +163,8 @@ class HQ::Deploy::Slave
 
 		# TODO should not be sub task specific
 
+		# TODO should check for duplicate task names
+
 		$sub_tasks_by_task = Hash[
 			@tasks_doc.root.find("sub-task").map do |sub_task_elem|
 				[
