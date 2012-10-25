@@ -453,7 +453,7 @@ module Mandar::Support::Core
 		chown_recurse =
 			case chown_elem.attributes["recurse"]
 				when "yes" then true
-				when "no" then false
+				when "no", nil then false
 				else raise "Error"
 			end
 
