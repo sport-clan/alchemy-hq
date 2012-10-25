@@ -16,7 +16,7 @@ module Mandar::Ubuntu
 			Mandar::Support::Core.shell_real \
 				Mandar.shell_quote(status_args)
 
-		raise "Error" \
+		raise "initctl status #{service} returned #{status_ret[:status]}" \
 			unless status_ret[:status] == 0
 
 		status_match =
@@ -34,7 +34,8 @@ module Mandar::Ubuntu
 			end
 
 		restart =
-			Mandar::Deploy::Flag.check restart_flag
+			restart_flag \
+				&& Mandar::Deploy::Flag.check(restart_flag)
 
 		if old_running && restart
 
@@ -77,7 +78,9 @@ module Mandar::Ubuntu
 
 		end
 
-		Mandar::Deploy::Flag.clear restart_flag
+		if restart_flag
+			Mandar::Deploy::Flag.clear restart_flag
+		end
 
 	end
 
