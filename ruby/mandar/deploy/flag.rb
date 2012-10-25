@@ -4,45 +4,72 @@ module Mandar::Deploy::Flag
 
 	# main api
 
+	def self.verify_flag_name name
+
+		name.is_a? String \
+			or raise "Flag name must be a string"
+
+		name.length > 0 \
+			or raise "Flag name must not be empty"
+
+	end
+
 	def self.auto_flag name, &proc
 
-		Mandar::Deploy::Flag.push name
+		verify_flag_name name
+
+		push name
 
 		begin
 			proc.call
 		ensure
-			Mandar::Deploy::Flag.pop name
+			pop name
 		end
 
 	end
 
 	def self.clear_flag name, &proc
 
-		if Mandar::Deploy::Flag.check name
+		verify_flag_name name
+
+		if check name
 			proc.call
 		end
 
-		Mandar::Deploy::Flag.clear name
+		clear name
 
 	end
 
 	def self.set_flag name, value, &proc
 
-		unless Mandar::Deploy::Flag.check name, value
-			Mandar::Deploy::Flag.clear name
+		verify_flag_name name
+
+		unless check name, value
+			clear name
 			proc.call
 		end
 
-		Mandar::Deploy::Flag.set name, value
+		set name, value
 
 	end
 
 	def self.check_flag name, &proc
 
-		if Mandar::Deploy::Flag.check flag_name
+		verify_flag_name name
+
+		if check flag_name
 			proc.call
 		end
 
+	end
+
+	# called by commands when they perform a change
+
+	def self.auto
+		@flag_stack ||= []
+		@flag_stack.each do |flag_name|
+			set flag_name
+		end
 	end
 
 	# commands
@@ -111,7 +138,7 @@ module Mandar::Deploy::Flag
 
 	end
 
-	# core flag logic
+private
 
 	def self.push name
 		@flag_stack ||= []
@@ -123,16 +150,15 @@ module Mandar::Deploy::Flag
 		@flag_stack.pop == name or raise "flag name mismatch"
 	end
 
-	def self.auto
-		@flag_stack ||= []
-		@flag_stack.each do |flag_name|
-			set flag_name
-		end
-	end
-
 	def self.set name, value = ""
 
+		verify_flag_name name
+
+		# set flag in memory
+
 		flags[name] = value
+
+		# and on disk, unless mock is enabled
 
 		unless $mock
 			File.open "#{FLAG_DIR}/#{name}", "w" do |f|
@@ -144,7 +170,13 @@ module Mandar::Deploy::Flag
 
 	def self.clear name
 
+		verify_flag_name name
+
+		# remove the flag from memory
+
 		flags.delete name
+
+		# and on disk, unless mock is enabled
 
 		unless $mock
 			FileUtils.remove_entry_secure "#{FLAG_DIR}/#{name}" \
@@ -154,12 +186,24 @@ module Mandar::Deploy::Flag
 	end
 
 	def self.check name, expect = nil
-		return false unless flags.has_key? name
-		return true if expect == nil
-		return flags[name] == expect
-	end
 
-private
+		verify_flag_name name
+
+		# unset flags always return false
+
+		return false \
+			unless flags.has_key? name
+
+		# set flags return true if we don't care about the value
+
+		return true \
+			if expect == nil
+
+		# otherwise compare the value to the expected
+
+		return flags[name] == expect
+
+	end
 
 	def self.flags
 		return @flags if @flags
