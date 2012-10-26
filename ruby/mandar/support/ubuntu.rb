@@ -1,4 +1,4 @@
-module Mandar::Ubuntu
+module Mandar::Support::Ubuntu
 
 	Mandar::Deploy::Commands.register self, :initctl_auto
 
@@ -37,18 +37,29 @@ module Mandar::Ubuntu
 			restart_flag \
 				&& Mandar::Deploy::Flag.check(restart_flag)
 
-		if old_running && restart
+		if old_running && new_running && restart
 
 			Mandar.notice "restarting #{service}"
 
-			restart_args = [
+			stop_args = [
 				"initctl",
-				"restart",
+				"stop",
 				service
 			]
 
 			Mandar::Support::Core.shell \
-				Mandar.shell_quote(restart_args)
+				Mandar.shell_quote(stop_args)
+
+			sleep 1
+
+			start_args = [
+				"initctl",
+				"start",
+				service
+			]
+
+			Mandar::Support::Core.shell \
+				Mandar.shell_quote(start_args)
 
 		elsif ! old_running && new_running
 
