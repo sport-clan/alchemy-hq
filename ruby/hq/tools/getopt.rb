@@ -125,8 +125,16 @@ module HQ::Tools::Getopt
 			# perform conversions
 			specs.values.each do |spec|
 				next unless ret[spec[:key]].is_a? String
-				next unless spec[:convert].is_a? Symbol
-				ret[spec[:key]] = ret[spec[:key]].send spec[:convert]
+				case spec[:convert]
+				when nil
+					# do nothing
+				when Symbol
+					ret[spec[:key]] = ret[spec[:key]].send spec[:convert]
+				when Method
+					ret[spec[:key]] = spec[:convert].call ret[spec[:key]]
+				else
+					raise "Don't know what to do with #{spec[:convert].class}"
+				end
 			end
 
 			rest = []
