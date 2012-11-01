@@ -20,15 +20,61 @@ class Mandar::Tools::MandarClient
 		return @http
 	end
 
-	def call(method, path, request_data = nil)
-		request_string = request_data ? JSON.generate(request_data) : nil
-		request = Net::HTTPGenericRequest.new(method, true, true, @url.path + path)
-		request.basic_auth @username, @password
-		request.body = request_string
-		request["Content-Type"] = "application/json"
-		response = http.request(request)
-		response_data = response["Content-Type"] == "application/json" ? JSON.parse(response.body) : nil
+	def call method, path, request_data = nil
+
+		# prepare request
+
+		request_string =
+			request_data ? JSON.generate(request_data) : nil
+
+		request =
+			Net::HTTPGenericRequest.new \
+				method,
+				true,
+				true,
+				@url.path + path
+
+		request.basic_auth \
+			@username,
+			@password
+
+		request.body =
+			request_string
+
+		request["Content-Type"] =
+			"application/json"
+
+		# send request
+
+		response =
+			nil
+
+		3.times do
+
+			begin
+
+				response =
+					http.request request
+
+				break
+
+			rescue EOFError
+
+				next
+
+			end
+
+		end
+
+		# process response
+
+		response_data =
+			response["Content-Type"] == "application/json" \
+				? JSON.parse(response.body)
+				: nil
+
 		return response.code.to_i, response_data
+
 	end
 
 	def stager_get type, id = nil
