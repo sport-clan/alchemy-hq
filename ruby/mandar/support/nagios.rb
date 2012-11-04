@@ -25,11 +25,13 @@ module Mandar::Nagios
 
 	def self.format_nagios_objects(file_elem, f)
 
+		require "hq/tools/table"
+
 		f.print "#\n"
 		f.print "# This file is generated. Please do not edit.\n"
 		f.print "#\n"
 
-		table = Mandar::Tools::Table.new
+		table = HQ::Tools::Table.new
 
 		file_elem.find("*").each do |elem0|
 			case elem0.name

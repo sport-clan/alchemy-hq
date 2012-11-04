@@ -25,7 +25,9 @@ module Mandar::Bind
 
 	def self.format_bind_zone(file_elem, f)
 
-		table = Mandar::Tools::Table.new
+		require "hq/tools/table"
+
+		table = HQ::Tools::Table.new
 
 		last_rec_name = nil
 		file_elem.find("*").each do |elem|

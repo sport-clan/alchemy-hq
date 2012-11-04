@@ -39,7 +39,9 @@ module Mandar::Deploy::Formats
 
 	def self.format_table(table_elem, f)
 
-		table = Mandar::Tools::Table.new
+		require "hq/tools/table"
+
+		table = HQ::Tools::Table.new
 
 		table_elem.find("*").each do |elem0|
 			case elem0.name

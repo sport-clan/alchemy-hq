@@ -1,11 +1,15 @@
 module Mandar::EC2::Reports
 
 	def self.instances(ec2)
+
+		require "hq/tools/table"
+
 		config = Mandar::Core::Config.config
 
 		ret = ec2.describe_instances
 
-		table = Mandar::Tools::Table.new
+		table = HQ::Tools::Table.new
+
 		table.push [
 			"Res ID",
 			"Inst ID",
@@ -41,9 +45,13 @@ module Mandar::EC2::Reports
 	end
 
 	def self.snapshots_summary(ec2)
+
+		require "hq/tools/table"
+
 		config = Mandar::Core::Config.config
 
-		table = Mandar::Tools::Table.new
+		table = HQ::Tools::Table.new
+
 		table.push [
 			"Volume ID",
 			"#",
