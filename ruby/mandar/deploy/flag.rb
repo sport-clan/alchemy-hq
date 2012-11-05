@@ -28,15 +28,24 @@ module Mandar::Deploy::Flag
 
 	end
 
-	def self.clear_flag name, &proc
+	def self.clear_flag name, glob = false, &proc
 
 		verify_flag_name name
 
-		if check name
+		if glob
+			names = flags.keys.select {
+				|flag|
+				File.fnmatch name, flag
+			}
+		else
+			names = [ name ]
+		end
+
+		if names.any? { |name| check name }
 			proc.call
 		end
 
-		clear name
+		names.each { |name| clear name }
 
 	end
 
@@ -99,10 +108,16 @@ module Mandar::Deploy::Flag
 		flag_name =
 			clear_flag_elem.attributes["name"]
 
+		flag_glob =
+			case clear_flag_elem.attributes["glob"]
+				when "yes" then true
+				when "no", nil then false
+			end
+
 		raise "missing attribute name on <clear-flag>" \
 			unless flag_name
 
-		clear_flag flag_name do
+		clear_flag flag_name, flag_glob do
 			Mandar::Deploy::Commands.perform clear_flag_elem
 		end
 
