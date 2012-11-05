@@ -2,6 +2,9 @@ require "hq/tools"
 
 class HQ::Tools::Table
 
+	attr_accessor :rows
+	attr_accessor :cats
+
 	def initialize
 		@rows = []
 		@cats = {}
