@@ -10,6 +10,8 @@ module HQ::Tools::Getopt
 
 	def self.process argv, easy_specs
 
+		argv = argv.flatten
+
 		# convert easy_specs into specs
 		specs = {}
 		ret = {}

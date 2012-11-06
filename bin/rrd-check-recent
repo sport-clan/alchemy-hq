@@ -1,0 +1,12 @@
+#!/usr/bin/env ruby
+
+$LOAD_PATH.unshift "#{File.expand_path "#{File.dirname $0}/.."}/ruby"
+
+require "hq/systools/rrd/check-recent-script"
+
+include HQ::SysTools::RRD
+
+script = CheckRecentScript.new
+script.args = ARGV
+script.main
+exit script.status
