@@ -1,0 +1,28 @@
+#!/usr/bin/env ruby
+
+require "pp"
+require "tempfile"
+
+temp =
+	Tempfile.open "cron-wrapper-"
+
+child_pid =
+	fork do
+		$stdout.reopen temp
+		$stderr.reopen temp
+		exec *ARGV
+	end
+
+pid, status =
+	Process.wait2 child_pid
+
+unless status.exitstatus == 0
+	File.open temp.path, "r" do
+		|f|
+		while line = f.gets
+			$stderr.puts line
+		end
+	end
+end
+
+exit status.exitstatus
