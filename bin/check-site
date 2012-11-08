@@ -15,6 +15,12 @@ require "set"
 
 class CheckSiteScript < Mandar::Tools::CheckScript
 
+	# custom http class allows us to connect to a different address
+
+	class CustomHTTP < Net::HTTP
+		attr_accessor :conn_address
+	end
+
 	def initialize
 		super
 		@name = "Site"
@@ -60,7 +66,8 @@ class CheckSiteScript < Mandar::Tools::CheckScript
 					req.basic_auth @opts[:username], @opts[:password]
 				end
 
-				http = Net::HTTP.new address, url.port
+				http = CustomHTTP.new url.host, url.port
+				http.conn_address = address
 				http.open_timeout = @opts[:timeout]
 				http.read_timeout = @opts[:timeout]
 				http.use_ssl = url.scheme == "https"
