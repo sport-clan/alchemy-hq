@@ -1,10 +1,6 @@
-module Ahq
-end
+require "hq/xquery"
 
-module Ahq::Xquery
-end
-
-class Ahq::Xquery::Client
+class HQ::XQuery::Client
 
 	def initialize req_wr, resp_rd
 
@@ -36,12 +32,12 @@ class Ahq::Xquery::Client
 		@state == :open \
 			or raise "Invalid state #{@state}"
 
-		require "ahq/xquery/session"
+		require "hq/xquery/session"
 
 		chars = "abcdefghijklmnopqrstuvwxyz"
 		session_id = (0...16).map { chars[rand chars.length] }.join("")
 
-		return Ahq::Xquery::Session.new self, session_id
+		return HQ::XQuery::Session.new self, session_id
 
 	end
 

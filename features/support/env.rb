@@ -1,16 +1,30 @@
 require "yaml"
 require "zmq"
 
-require "ahq/xquery/client"
+HQ_DIR =
+	File.expand_path \
+		"#{File.dirname __FILE__}/../.."
 
 def xquery_client
-	return @xquery_client ||=
-		Ahq::Xquery::Client.new("tcp://localhost:5555")
+
+	return @xquery_client \
+		if @xquery_client
+
+	require "hq/xquery"
+
+	@xquery_client =
+		HQ::XQuery.start \
+			"#{HQ_DIR}/c++/xquery-server"
+
+	return @xquery_client
+
 end
 
 def xquery_session
+
 	return @xquery_session ||=
 		xquery_client.session
+
 end
 
 After do

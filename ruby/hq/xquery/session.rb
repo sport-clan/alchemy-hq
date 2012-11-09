@@ -1,10 +1,6 @@
-module Ahq
-end
+require "hq/xquery"
 
-module Ahq::Xquery
-end
-
-class Ahq::Xquery::Session
+class HQ::XQuery::Session
 
 	def initialize client, session_id
 		@client = client
