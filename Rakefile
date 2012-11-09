@@ -7,7 +7,8 @@ desc "Default: run tests"
 task :default => [ :spec, :features ]
 
 desc "Run specs"
-RSpec::Core::RakeTask.new(:spec) do |task|
+RSpec::Core::RakeTask.new :spec do
+	|task|
 
 	task.pattern = "ruby/**/*-spec.rb"
 
@@ -31,7 +32,10 @@ RSpec::Core::RakeTask.new(:spec) do |task|
 end
 
 desc "Run features"
-Cucumber::Rake::Task.new(:features) do |task|
+Cucumber::Rake::Task.new \
+	:features => :compile_cxx \
+do
+	|task|
 
 	task.cucumber_opts = [
 		"features",
@@ -46,4 +50,9 @@ Cucumber::Rake::Task.new(:features) do |task|
 
 	].join " "
 
+end
+
+desc "Compile C++"
+task :compile_cxx do
+	system "cd #{HQ_DIR}/c++; make"
 end
