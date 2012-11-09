@@ -5,6 +5,9 @@ HQ_DIR =
 	File.expand_path \
 		"#{File.dirname __FILE__}/../.."
 
+$LOAD_PATH.unshift \
+	"#{HQ_DIR}/ruby"
+
 def xquery_client
 
 	return @xquery_client \
