@@ -1,5 +1,4 @@
 require "yaml"
-require "zmq"
 
 HQ_DIR =
 	File.expand_path \
