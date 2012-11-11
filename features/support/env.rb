@@ -29,6 +29,39 @@ def xquery_session
 
 end
 
+def mvcc
+
+	require "hq/engine/mvcc"
+
+	return @mvcc \
+		if @mvcc
+
+	mvcc =
+		HQ::Engine::MVCC.new
+
+	return @mvcc =
+		mvcc
+
+end
+
+def public_api
+
+	require "hq/engine/api"
+
+	return @oublic_api \
+		if @publiC_api
+
+	public_api =
+		HQ::Engine::API.new
+
+	public_api.mvcc =
+		mvcc
+
+	return @public_api =
+		public_api
+
+end
+
 After do
 	if @xquery_client
 		@xquery_client.close
