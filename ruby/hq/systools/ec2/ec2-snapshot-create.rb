@@ -159,22 +159,16 @@ class HQ::SysTools::EC2::Ec2SnapshotCreateScript
 
 		# iterate volumes
 
-		account_xp = "
-			@aws-account = '#{aws_account_name}'
-		"
-
 		zone_names_xp = "
 			.. / ec2-availability-zone [
 				@region = '#{ec2_region_name}'
 			] / @name"
 
-		zone_xp = "
-			@availability-zone = #{zone_names_xp}
-		"
-
 		volumes_xp = "
 			volume [
-				#{account_xp} and #{zone_xp}
+				@aws-account = '#{aws_account_name}'
+				and @availability-zone = #{zone_names_xp}
+				and string (@volume-id)
 			]
 		"
 
