@@ -1,0 +1,108 @@
+#!/usr/bin/env ruby
+
+script_path = $0
+script_path = File.readlink(script_path) while File.symlink?(script_path)
+CONFIG = File.expand_path("#{File.dirname(script_path)}/../..")
+$LOAD_PATH.unshift "#{CONFIG}/alchemy-hq/ruby"
+
+require "json"
+require "net/http"
+require "pp"
+require "uri"
+
+require "hq/tools/getopt"
+require "hq/systools/monitoring/check-script"
+
+def main
+	script = CheckHqScript.new
+	script.args = ARGV
+	script.main
+	exit script.status
+end
+
+class CheckHqScript \
+	< HQ::SysTools::Monitoring::CheckScript
+
+	def initialize
+		super
+		@name = "HQ"
+	end
+
+	def process_args
+
+		@opts, @args =
+			HQ::Tools::Getopt.process ARGV, [
+
+				{ :name => :warning,
+					:required => true,
+					:convert => :to_i },
+
+				{ :name => :critical,
+					:required => true,
+					:convert => :to_i },
+
+				{ :name => :url,
+					:required => true },
+
+				{ :name => :username,
+					:required => true },
+
+				{ :name => :password,
+					:required => true },
+
+			]
+
+		@args.empty? \
+			or raise "Extra args on command line"
+
+	end
+
+	def perform_checks
+
+		uri =
+			URI.parse @opts[:url]
+
+		http =
+			Net::HTTP.new \
+				uri.hostname,
+				uri.port
+
+		http.use_ssl =
+			uri.scheme == "https"
+
+		request =
+			Net::HTTP::Get.new uri.path
+
+		request.basic_auth \
+			@opts[:username],
+			@opts[:password]
+
+		response =
+			http.request request
+
+		status =
+			JSON.parse response.body
+
+		if status["locked"]
+
+			message "locked by #{status["role"]}"
+
+			now = Time.now.to_i
+			age = now - status["timestamp"]
+			message "#{age} seconds"
+
+			if age > @opts[:critical]
+				@critical = true
+			elsif age > @opts[:warning]
+				@warning = true
+			end
+
+		else
+			message "not locked"
+		end
+
+	end
+
+end
+
+main
