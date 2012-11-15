@@ -23,6 +23,7 @@ class HQ::SysTools::Monitoring::CheckScript
 		process_args
 
 		begin
+			prepare
 			perform_checks
 		rescue => e
 			unknown e.message
@@ -31,6 +32,9 @@ class HQ::SysTools::Monitoring::CheckScript
 
 		perform_output
 
+	end
+
+	def prepare
 	end
 
 	def perform_output
