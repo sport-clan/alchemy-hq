@@ -50,6 +50,53 @@ class Mandar::Console::ApiHandler
 			set_content_type "application/json"
 			console_print JSON.dump({})
 
+		when /^\/status$/
+
+			method_not_allowed \
+				unless request_method == :get
+
+			must([ "status", "status" ])
+
+			locks = locks_man.load
+
+			pending_change =
+				locks["changes"].values.find {
+					|change|
+					[
+						"deploy",
+						"rollback",
+						"done",
+					].include? change["state"]
+				}
+
+			if pending_change
+
+				status = {
+					"locked" => true,
+					"role" => pending_change["role"],
+					"timestamp" => [
+						pending_change["timestamp"],
+						pending_change["deploy-timestamp"],
+						pending_change["rollback-timestamp"],
+					].compact.max,
+				}
+
+			else
+
+				status = {
+					"locked" => false,
+					"role" => nil,
+					"timestamp" => nil,
+				}
+
+			end
+
+			# output
+
+			set_content_type "application/json"
+
+			console_print JSON.dump(status)
+
 		else
 			not_found
 
