@@ -62,21 +62,28 @@ class Mandar::Console::Server
 
 		proc_handler = MyProcHandler.new do |req, resp|
 
-			WEBrick::HTTPAuth.basic_auth req, resp, "Config console" do |user, pass|
+			WEBrick::HTTPAuth.basic_auth req, resp, "Config console" do
+				|user, pass|
+
 				if user then
 					role = config.find_first "role[@name=#{xp user}]"
-					expect = role.attributes["password-crypt"]
-					salt = expect.split("$")[2]
-					crypt = pass.crypt "$6$#{salt}$"
-					if crypt == expect
-						req.attributes[:user] = user
-						true
+					if role then
+						expect = role.attributes["password-crypt"]
+						salt = expect.split("$")[2]
+						crypt = pass.crypt "$6$#{salt}$"
+						if crypt == expect
+							req.attributes[:user] = user
+							true
+						else
+							false
+						end
 					else
 						false
 					end
 				else
 					false
 				end
+
 			end
 
 			req_ctx = {}
