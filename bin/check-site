@@ -5,15 +5,18 @@ script_path = File.readlink(script_path) while File.symlink?(script_path)
 CONFIG = File.expand_path("#{File.dirname(script_path)}/../..")
 $LOAD_PATH.unshift "#{CONFIG}/alchemy-hq/ruby"
 
-require "hq/tools/getopt"
-require "mandar"
+#require "mandar"
+
 require "net/http"
 require "net/https"
 require "pp"
 require "resolv"
 require "set"
 
-class CheckSiteScript < Mandar::Tools::CheckScript
+require "hq/systools/monitoring/check-script.rb"
+require "hq/tools/getopt"
+
+class CheckSiteScript < HQ::SysTools::Monitoring::CheckScript
 
 	# custom http class allows us to connect to a different address
 
