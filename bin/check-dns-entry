@@ -5,14 +5,15 @@ script_path = File.readlink(script_path) while File.symlink?(script_path)
 CONFIG = File.expand_path("#{File.dirname(script_path)}/../..")
 $LOAD_PATH.unshift "#{CONFIG}/alchemy-hq/ruby"
 
-require "hq/tools/getopt"
-require "mandar"
 require "net/dns/core_ext"
 require "net/dns"
 require "net/dns/resolver"
 require "pp"
 require "resolv"
 require "set"
+
+require "hq/systools/monitoring/check-script"
+require "hq/tools/getopt"
 
 def main
 	script = CheckDnsEntryScript.new
@@ -23,7 +24,7 @@ end
 
 DNS_PORT = 53
 
-class CheckDnsEntryScript < Mandar::Tools::CheckScript
+class CheckDnsEntryScript < HQ::SysTools::Monitoring::CheckScript
 
 	def initialize
 		super
