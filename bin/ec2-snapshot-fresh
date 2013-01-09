@@ -5,12 +5,15 @@ script_path = File.readlink(script_path) while File.symlink?(script_path)
 CONFIG = File.expand_path("#{File.dirname(script_path)}/../..")
 $LOAD_PATH.unshift "#{CONFIG}/alchemy-hq/ruby"
 
-require "hq/tools/getopt"
+require "time"
 require "pp"
-require "mandar"
 require "xml"
 
-include Mandar::Tools::Escape
+require "hq/aws/client"
+require "hq/tools/escape"
+require "hq/tools/getopt"
+
+include HQ::Tools::Escape
 
 $opts, $args = HQ::Tools::Getopt.process ARGV, [
 	{ :name => :config, :required => :true },
@@ -23,38 +26,61 @@ $opts, $args = HQ::Tools::Getopt.process ARGV, [
 $config = XML::Document.file $opts[:config]
 
 # find host
-host_elem = $config.find_first("volume [@host = #{xp $opts[:host]}]")
-account = host_elem.attributes["aws-account"]
-zone = host_elem.attributes["availability-zone"]
+
+host_elem =
+	$config.find_first("volume [@host = #{esc_xp $opts[:host]}]")
+
+account =
+	host_elem.attributes["aws-account"]
+
+zone =
+	host_elem.attributes["availability-zone"]
 
 # get volume ids
-volume_ids = [ host_elem.attributes["volume-id"] ] + \
+
+volume_ids =
+	[ host_elem.attributes["volume-id"] ] + \
 	host_elem.find("old-volume-id").to_a.map { |elem| elem.attributes["value"] }
 
 # find zone
-zone_elem = $config.find_first("ec2-availability-zone [@name = #{xp zone}]")
-region = zone_elem.attributes["region"]
+
+zone_elem =
+	$config.find_first("ec2-availability-zone [@name = #{esc_xp zone}]")
+
+region =
+	zone_elem.attributes["region"]
 
 # find aws account
-aws_account_elem = $config.find_first("aws-account[@name = #{xp account}]")
-aws_account_elem or raise "AWS account not found: #{account}"
-account = Mandar::AWS::Account.new
-account.name = aws_account_elem.attributes["name"]
-account.access_key_id = aws_account_elem.attributes["access-key-id"]
-account.secret_access_key = aws_account_elem.attributes["secret-access-key"]
+
+aws_account_elem =
+	$config.find_first("aws-account[@name = #{esc_xp account}]")
+
+aws_account_elem \
+	or raise "AWS account not found: #{account}"
 
 # create aws client
-endpoint = "ec2.#{region}.amazonaws.com"
-aws_client = Mandar::AWS::Client.new account, endpoint, "2010-08-31"
+
+aws_client =
+	HQ::AWS::Client.new \
+		:endpoint => "ec2.#{region}.amazonaws.com",
+		:access_key_id => aws_account_elem.attributes["access-key-id"],
+		:secret_access_key => aws_account_elem.attributes["secret-access-key"],
+		:version => "2010-08-31"
+
 aws_client.default_prefix = "a"
 
 # retrieve info
-resp = aws_client.describe_snapshots :filter => { :name => "volume-id", :value => volume_ids }
+
+resp =
+	aws_client.describe_snapshots \
+		:filter => { :name => "volume-id", :value => volume_ids }
 
 # analyse response
+
 latest = nil
 latest_volume_id = nil
 latest_snapshot_id = nil
+
 resp.find("a:snapshotSet / a:item").each do |item_elem|
 	next unless item_elem.find_first("a:status").content == "completed"
 	item_time = Time.parse(item_elem.find_first("a:startTime").content)
