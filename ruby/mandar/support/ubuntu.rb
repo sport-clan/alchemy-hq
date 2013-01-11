@@ -41,6 +41,8 @@ module Mandar::Support::Ubuntu
 
 			Mandar.notice "restarting #{service}"
 
+			# stop it
+
 			stop_args = [
 				"initctl",
 				"stop",
@@ -50,7 +52,13 @@ module Mandar::Support::Ubuntu
 			Mandar::Support::Core.shell \
 				Mandar.shell_quote(stop_args)
 
+			# wait for it to stop
+
+			# TODO wait for status to show stop/waiting properly
+
 			sleep 1
+
+			# start it
 
 			start_args = [
 				"initctl",
