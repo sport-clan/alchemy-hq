@@ -58,7 +58,16 @@ class Mandar::Tools::MandarClient
 
 				break
 
-			rescue EOFError
+			rescue EOFError => e
+
+				$stderr.puts "got error: #{e.message}"
+
+				# reset connection
+
+				http.close
+				@http = nil
+
+				# and try again
 
 				next
 
