@@ -152,4 +152,50 @@ describe HQ::Engine::MVCC do
 
 	end
 
+	context "#data_store" do
+
+		it "stores the provided value in the specified transaction" do
+
+			transaction_id =
+				subject.transaction_begin
+
+			subject.data_store \
+				transaction_id,
+				"record id",
+				"record value"
+
+			transaction =
+				subject.transactions[transaction_id]
+
+			transaction[:changes]["record id"]
+				.should == "record value"
+
+		end
+
+	end
+
+	context "#data_retrieve" do
+
+		it "returns the specified record from the specified transaction" do
+
+			subject.transactions = {
+				"transaction id" => {
+					changes: {
+						"record id" => "record value",
+					}
+				},
+			}
+
+			record_value =
+				subject.data_retrieve \
+					"transaction id",
+					"record id"
+
+			record_value
+				.should == "record value"
+
+		end
+
+	end
+
 end

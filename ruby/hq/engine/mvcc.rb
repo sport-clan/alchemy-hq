@@ -21,6 +21,7 @@ class HQ::Engine::MVCC
 		@transactions[tx_id] =
 			{
 				state: :begun,
+				changes: {},
 			}
 
 		return tx_id
@@ -61,6 +62,31 @@ class HQ::Engine::MVCC
 		}
 
 		return transaction_info
+
+	end
+
+	def data_store \
+		transaction_id,
+		record_id,
+		record_value
+
+		transaction =
+			@transactions[transaction_id]
+
+		transaction[:changes][record_id] =
+			record_value
+
+	end
+
+	def data_retrieve \
+		transaction_id,
+		record_id
+
+		transaction =
+			@transactions[transaction_id]
+
+		return \
+			transaction[:changes][record_id]
 
 	end
 

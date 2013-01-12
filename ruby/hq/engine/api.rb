@@ -16,4 +16,27 @@ class HQ::Engine::API
 		mvcc.transaction_rollback transaction_id
 	end
 
+	def data_store \
+		transaction_id,
+		record_id,
+		record_value
+
+		mvcc.data_store \
+			transaction_id,
+			record_id,
+			record_value
+
+	end
+
+	def data_retrieve \
+		transaction_id,
+		record_id
+
+		return \
+			mvcc.data_retrieve \
+				transaction_id,
+				record_id
+
+	end
+
 end

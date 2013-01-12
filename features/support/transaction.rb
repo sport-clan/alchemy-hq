@@ -26,6 +26,36 @@ When /^I call transaction_rollback$/ do
 
 end
 
+When /^I call data_store$/ do
+
+	@record_id =
+		"record id"
+
+	@record_value = {
+		some_key: "some value",
+		another_key: "another value",
+	}
+
+	public_api.data_store \
+		@transaction_id,
+		@record_id,
+		@record_value
+
+end
+
+Then /^the record is stored in the transaction$/ do
+
+	record_value =
+		public_api.data_retrieve \
+			@transaction_id,
+			@record_id
+
+	record_value
+		.should == @record_value
+
+end
+
+
 Then /^a transaction id is returned$/ do
 
 	@transaction_id.should \

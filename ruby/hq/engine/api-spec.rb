@@ -63,4 +63,49 @@ describe HQ::Engine::API do
 
 	end
 
+	context "#data_store" do
+
+		it "calls mvcc.data_store" do
+
+			mvcc.should_receive(:data_store)
+				.with(
+					"transaction id",
+					"record id",
+					"record value"
+				)
+
+			subject.data_store \
+				"transaction id",
+				"record id",
+				"record value"
+
+		end
+
+	end
+
+	context "#data_retrieve" do
+
+		it "calls mvcc.data_retrieve" do
+
+			mvcc.should_receive(:data_retrieve)
+				.with(
+					"transaction id",
+					"record id"
+				)
+				.and_return(
+					"record value"
+				)
+
+			record_value =
+				subject.data_retrieve \
+					"transaction id",
+					"record id"
+
+			record_value
+				.should == "record value"
+
+		end
+
+	end
+
 end
