@@ -10,7 +10,7 @@ class HQ::Engine::MVCC
 
 	def generate_transaction_id
 		chars = (?a..?z).to_a
-		return (0...16).map { chars.sample }.join
+		return (0...20).map { chars.sample }.join
 	end
 
 	def transaction_begin
@@ -19,18 +19,49 @@ class HQ::Engine::MVCC
 			generate_transaction_id
 
 		@transactions[tx_id] =
-			{}
+			{
+				state: :begun,
+			}
 
 		return tx_id
 
 	end
 
 	def transaction_commit transaction_id
-		@transactions.delete transaction_id
+
+		transaction =
+			@transactions[transaction_id]
+
+		transaction[:state] =
+			:committed
+
 	end
 
 	def transaction_rollback transaction_id
-		@transactions.delete transaction_id
+
+		transaction =
+			@transactions[transaction_id]
+
+		transaction[:state] =
+			:rolled_back
+
+	end
+
+	def get_transaction_info transaction_id
+
+		transaction =
+			@transactions[transaction_id]
+
+		unless transaction
+			return nil
+		end
+
+		transaction_info = {
+			state: transaction[:state],
+		}
+
+		return transaction_info
+
 	end
 
 end

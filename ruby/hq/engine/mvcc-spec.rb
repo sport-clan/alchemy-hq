@@ -32,11 +32,13 @@ describe HQ::Engine::MVCC do
 
 		end
 
-		it "returns a random transaction id" do
+		it "returns a transaction id formed of twenty lower case letters" do
 
-			ret = subject.transaction_begin
+			tx_id =
+				subject.transaction_begin
 
-			ret.should match /^[a-z]{16}$/
+			tx_id.should \
+				match /^[a-z]{20}$/
 
 		end
 
@@ -44,7 +46,7 @@ describe HQ::Engine::MVCC do
 
 	context "#transaction_commit" do
 
-		it "removes the specified transaction" do
+		it "changes the specified transaction's state to :committed" do
 
 			subject.transactions = {
 				"transaction id" => {},
@@ -53,8 +55,11 @@ describe HQ::Engine::MVCC do
 			subject.transaction_commit \
 				"transaction id"
 
-			subject.transactions.keys
-				.should_not include "transaction id"
+			transaction =
+				subject.transactions["transaction id"]
+
+			transaction[:state]
+				.should == :committed
 
 		end
 
@@ -62,7 +67,7 @@ describe HQ::Engine::MVCC do
 
 	context "#transaction_rollback" do
 
-		it "removes the specified transaction" do
+		it "changes the specified transaction's state to :rolled_back" do
 
 			subject.transactions = {
 				"transaction id" => {},
@@ -71,8 +76,77 @@ describe HQ::Engine::MVCC do
 			subject.transaction_rollback \
 				"transaction id"
 
-			subject.transactions.keys
-				.should_not include "transaction id"
+			transaction =
+				subject.transactions["transaction id"]
+
+			transaction[:state]
+				.should == :rolled_back
+
+		end
+
+	end
+
+	context "#get_transaction_info" do
+
+		it "returns nil if the transaction id is invalid" do
+
+			subject.transactions = {
+				"real transaction id" => {},
+			}
+
+			transaction_info =
+				subject.get_transaction_info \
+					"imaginary transaction_id"
+
+			transaction_info.should \
+				be_nil
+
+		end
+
+		it "returns a hash with transaction information if the transaction " +
+			"id is valid" do
+
+			subject.transactions = {
+				"transaction id" => {},
+			}
+
+			transaction_info =
+				subject.get_transaction_info \
+					"transaction id"
+
+			transaction_info.should \
+				be_a Hash
+
+		end
+
+		it "returns a state of :begun for an active transaction" do
+
+			transaction_id =
+				subject.transaction_begin
+
+			transaction_info =
+				subject.get_transaction_info \
+					transaction_id
+
+			transaction_info[:state].should \
+				== :begun
+
+		end
+
+		it "returns a state of :committed for a committed transaction" do
+
+			transaction_id =
+				subject.transaction_begin
+
+			subject.transaction_commit \
+				transaction_id
+
+			transaction_info =
+				subject.get_transaction_info \
+					transaction_id
+
+			transaction_info[:state].should \
+				== :committed
 
 		end
 

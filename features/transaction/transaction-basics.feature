@@ -5,14 +5,15 @@ Feature: Basic transaction management
 
   Scenario: Begin transaction
     When I call transaction_begin
-    Then a transaction should be begun
+    Then a transaction id is returned
+    And a transaction is begun
 
   Scenario: Commit transaction
     Given that I have begun a transaction
     When I call transaction_commit
-    Then the transaction should be committed
+    Then the transaction is committed
 
   Scenario: Rollback transaction
     Given that I have begun a transaction
     When I call transaction_rollback
-    Then the transaction should be rolled back
+    Then the transaction is rolled back
