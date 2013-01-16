@@ -1,9 +1,42 @@
-require "mandar"
-require "mandar/tools"
+require "hq/web"
 
-class HQ::Web::GrapherGraphs
+# TODO get rid of this
+require "mandar"
+
+module HQ::Web::Grapher
+end
+
+class HQ::Web::Grapher::GraphHandler
 
 	include Mandar::Tools::Escape
+
+	def self.get_provider app_elem
+
+		config_elem =
+			app_elem.find_first "config"
+
+		grapher_config_path =
+			config_elem.attributes["path"]
+
+		grapher_config_doc =
+			XML::Document.file grapher_config_path
+
+		grapher_config_elem =
+			grapher_config_doc.root
+
+		return proc do |env, params|
+
+			handler =
+				HQ::Web::Grapher::GraphHandler.new \
+					grapher_config_elem
+
+			handler.handle \
+				env,
+				params
+
+		end
+
+	end
 
 	def initialize config_elem
 		@config_elem = config_elem

@@ -7,7 +7,7 @@ require "xml"
 
 $LOAD_PATH << "hq/ruby"
 
-require "hq/web"
+require "hq/web/container"
 
 def main
 
@@ -19,6 +19,7 @@ def main
 	container = HQ::Web::Container.new
 	container.init "hq-web.xml"
 	run proc { |env| container.handle env }
+
 end
 
 main
