@@ -1,9 +1,6 @@
 *.rnc.rng
 *.o
-/.classes
-/.classes-eclipse
 /.compile-flag
-/.lib
 /c++/xquery-server
 /etc/build.properties
 /results/*
