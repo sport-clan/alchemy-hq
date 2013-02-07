@@ -208,6 +208,8 @@ module Mandar::Master
 
 				--include=/bin
 
+				--include=/ruby
+
 				--include=/scripts
 
 				--include=/#{File.basename $0}
