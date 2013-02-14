@@ -1,10 +1,3 @@
 source "https://rubygems.org"
 
-gem "cucumber"
-gem "json"
-gem "librrd"
-gem "libxml-ruby"
-gem "multi_json"
-gem "rake"
-gem "rspec"
-gem "rspec_junit_formatter"
+gemspec

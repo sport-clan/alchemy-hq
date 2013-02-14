@@ -23,6 +23,15 @@ Gem::Specification.new do
 
 	#spec.extensions = [ "c++/Rakefile" ]
 
+	spec.add_dependency "cucumber", ">= 1.2.1"
+	spec.add_dependency "json", ">= 1.7.7"
+	spec.add_dependency "librrd"
+	spec.add_dependency "libxml-ruby"
+	spec.add_dependency "multi_json"
+	spec.add_dependency "rake", ">= 10.0.3"
+	spec.add_dependency "rspec", ">= 2.12.0"
+	spec.add_dependency "rspec_junit_formatter"
+
 	spec.files = Dir[
 
 		"c++/Makefile",
