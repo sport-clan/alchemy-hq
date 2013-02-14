@@ -128,6 +128,39 @@ module Mandar::Master
 
 		end
 
+		Mandar.debug "copying alchemy-hq"
+
+		Mandar.time "copying alchemy-hq" do
+
+			ahq_spec =
+				Gem::Specification.find_by_name "alchemy-hq"
+
+			rsync_args = [
+
+				"rsync",
+
+				"--times",
+				"--copy-links",
+				"--delete",
+				"--executability",
+				"--perms",
+				"--recursive",
+
+				"#{ahq_spec.gem_dir}/",
+				"#{CONFIG}/alchemy-hq/",
+
+			]
+
+			rsync_cmd =
+				Mandar.shell_quote rsync_args
+
+			Mandar.debug "executing #{rsync_cmd}"
+
+			system rsync_cmd \
+				or raise "Error #{$?.exitstatus} executing #{rsync_cmd}"
+
+		end
+
 	end
 
 	def self.send_to host_name
