@@ -21,7 +21,7 @@ Gem::Specification.new do
 
 	spec.rubyforge_project = "alchemy-hq"
 
-	#spec.extensions = [ "c++/Rakefile" ]
+	spec.extensions = [ "c++/Rakefile" ]
 
 	spec.add_dependency "cucumber", ">= 1.2.1"
 	spec.add_dependency "json", ">= 1.7.7"
