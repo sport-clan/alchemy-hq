@@ -1,3 +1,5 @@
+require "hq"
+
 class Mandar::Console::ConsoleHandler
 
 	include Mandar::Console::Utils
@@ -14,7 +16,7 @@ class Mandar::Console::ConsoleHandler
 
 		when /^\/console\.css$/
 			set_content_type "text/css"
-			css = File.read "#{MANDAR}/etc/console.css"
+			css = File.read "#{HQ::DIR}/etc/console.css"
 			css_new = css.clone
 			css.scan /^DEFINE ([a-z][a-z0-9]*(?:-[a-z][a-z0-9]*)*) (.+)$/ do |name, repl|
 				css_new.gsub! /\b#{name}\b/, repl
