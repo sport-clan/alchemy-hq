@@ -3,6 +3,7 @@ require "hq/tools"
 class HQ::Tools::ThreadPool
 
 	def initialize
+		require "thread"
 		@tasks = Queue.new
 	end
 
