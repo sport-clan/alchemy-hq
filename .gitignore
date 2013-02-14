@@ -1,7 +1,10 @@
 *.rnc.rng
 *.o
+/.bundle
 /.compile-flag
 /c++/xquery-server
 /etc/build.properties
+/gems
 /results/*
 !/results/index.html
+/stubs

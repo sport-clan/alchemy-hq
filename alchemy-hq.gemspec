@@ -31,6 +31,7 @@ Gem::Specification.new do
 	spec.add_dependency "rake", ">= 10.0.3"
 	spec.add_dependency "rspec", ">= 2.12.0"
 	spec.add_dependency "rspec_junit_formatter"
+	spec.add_dependency "simplecov"
 
 	spec.files = Dir[
 

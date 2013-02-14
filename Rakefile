@@ -1,7 +1,8 @@
 require "rspec/core/rake_task"
 require "cucumber/rake/task"
 
-HQ_DIR = File.dirname __FILE__
+HQ_DIR = File.dirname __FILE__ \
+	unless defined? HQ_DIR
 
 desc "Default: run tests"
 task :default => [ :spec, :features ]
