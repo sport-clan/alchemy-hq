@@ -510,19 +510,23 @@ class Mandar::Core::Script
 				abstract = Mandar::Core::Config.abstract
 
 				# create console-config.xml
+
 				doc = XML::Document.new
+
 				doc.root = XML::Node.new "console-config"
-				doc.root.attributes["database-host"] = profile.attributes["database-host"]
-				doc.root.attributes["database-port"] = profile.attributes["database-port"]
-				doc.root.attributes["database-name"] = profile.attributes["database-name"]
-				doc.root.attributes["database-user"] = profile.attributes["database-user"]
-				doc.root.attributes["database-pass"] = profile.attributes["database-pass"]
-				doc.root.attributes["deploy-command"] = "#{CONFIG}/#{File.basename $0}"
-				doc.root.attributes["deploy-profile"] = $profile
-				doc.root.attributes["admin-group"] = mandar.attributes["admin-group"]
-				doc.root.attributes["path-prefix"] = ""
-				doc.root.attributes["http-port"] = "8080"
-				doc.root.attributes["url-prefix"] = "http://localhost:8080"
+
+				doc.root["database-host"] = profile["database-host"]
+				doc.root["database-port"] = profile["database-port"]
+				doc.root["database-name"] = profile["database-name"]
+				doc.root["database-user"] = profile["database-user"]
+				doc.root["database-pass"] = profile["database-pass"]
+				doc.root["deploy-command"] = "#{CONFIG}/.stubs/#{File.basename $0}"
+				doc.root["deploy-profile"] = $profile
+				doc.root["admin-group"] = mandar["admin-group"]
+				doc.root["path-prefix"] = ""
+				doc.root["http-port"] = "8080"
+				doc.root["url-prefix"] = "http://localhost:8080"
+
 				[
 					[ "grapher-config", [ ] ],
 					[ "grapher-graph", "name" ],
@@ -533,20 +537,39 @@ class Mandar::Core::Script
 					[ "schema", "name" ],
 					[ "schema-option", "name" ],
 					[ "permission", [ "type", "subject" ] ],
-				].each do |name, sort_by|
+				].each do
+					|name, sort_by|
+
 					elems = abstract[name].to_a
+
 					sort_by = [ sort_by ].flatten
+
 					elems.sort! do |elem_a, elem_b|
-						sort_a = sort_by.map { |attr_name| elem_a.attributes[attr_name] }
-						sort_b = sort_by.map { |attr_name| elem_a.attributes[attr_name] }
+
+						sort_a = sort_by.map {
+							|attr_name|
+							elem_a.attributes[attr_name]
+						}
+
+						sort_b = sort_by.map {
+							|attr_name|
+							elem_a.attributes[attr_name]
+						}
+
 						sort_a <=> sort_b
+
 					end
+
 					elems.each do |elem|
 						doc.root << doc.import(elem)
 					end
+
 				end
 
-				File.open("#{CONFIG}/etc/console-config.xml", "w") { |f| f.puts(doc.to_s) }
+				File.open "#{CONFIG}/etc/console-config.xml", "w" do
+					|file|
+					file.puts doc.to_s
+				end
 
 				Mandar.notice "done"
 

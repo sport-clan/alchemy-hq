@@ -315,28 +315,33 @@ class Mandar::Console::Stager
 
 		puts "#{full_command} (#{background ? "background" : "foreground"})"
 
-		if background
+		Bundler.with_clean_env do
 
-			# execute in background, return immediately
-			system "#{full_command} >/dev/null 2>/dev/null &"
-			return { }
+			if background
 
-		else
+				# execute in background, return immediately
+				system "#{full_command} >/dev/null 2>/dev/null &"
+				return { }
 
-			# execute in foreground, capture output
-			lines = []
-			IO.popen "#{full_command} 2>&1", "r" do |f|
-				while line = f.gets
-					lines << line.chomp
+			else
+
+				# execute in foreground, capture output
+				lines = []
+				IO.popen "#{full_command} 2>&1", "r" do |f|
+					while line = f.gets
+						lines << line.chomp
+					end
 				end
+
+				# return
+				return {
+					output: lines,
+					status: $?.exitstatus
+				}
 			end
 
-			# return
-			return {
-				output: lines,
-				status: $?.exitstatus
-			}
 		end
+
 	end
 
 	def cancel my_role
