@@ -283,29 +283,87 @@ module Mandar::Support::Core
 
 	end
 
-	def self.shell(cmd, options = {})
-		options[:log] = Mandar.logger.format != :html
+	def self.shell cmd, options = {}
+
+		options[:log] =
+			Mandar.logger.format != :html
+
 		options[:level] ||= :detail
-		ret = shell_real(cmd, options)
-		Mandar.message(([ cmd ] + ret[:output]).join("\n"), options[:level]) if Mandar.logger.format == :html
+
+		ret =
+			shell_real cmd, options
+
+		if Mandar.logger.format == :html
+
+			Mandar.message \
+				[ cmd, *ret[:output]].join("\n"),
+				options[:level]
+
+		end
+
 		return ret[:status] == 0
+
 	end
 
 	def self.shell_real cmd, options = {}
 
 		options[:level] ||= :detail
 
-		Mandar.debug "shell #{cmd}"
+		Mandar.debug [
+			"shell",
+			options[:dir] ? "[dir #{options[:dir]}]" : [],
+			options[:user] ? "[user #{options[:user]}]" : [],
+			cmd
+		].flatten.join " "
 
 		# run the subprocess with output to a pipe and no input
+
 		rd, wr = IO.pipe
+
 		pid = fork do
+
 			rd.close
+
+			# fix stdin/out/err
+
 			$stdout.reopen wr
 			$stderr.reopen wr
+
 			$stdin.reopen File.open("/dev/null", "r")
+
+			# change directory
+
+			Dir.chdir options[:dir] \
+				if options[:dir]
+
+			# change user
+
+			if options[:user]
+
+				user_entry =
+					Etc.getpwnam options[:user]
+
+				user_entry \
+					or raise "User not found"
+
+				Process.initgroups \
+					user_entry.name,
+					user_entry.gid
+
+				Process::GID.change_privilege \
+					user_entry.gid
+
+				Process::UID.change_privilege \
+					user_entry.uid
+
+			end
+
+			# execute the command
+
 			exec "/bin/bash", "-c", cmd
+
 		end
+
 		wr.close
 
 		# read from the pipe while checking if the command has closed
@@ -648,24 +706,36 @@ module Mandar::Support::Core
 		install install_src, install_dst, options
 	end
 
-	def self.command_shell(shell_elem)
-		shell_user = shell_elem.attributes["user"]
+	def self.command_shell shell_elem
+
+		shell_user =
+			shell_elem.attributes["user"]
+
+		shell_dir =
+			shell_elem.attributes["dir"]
 
 		cmd = ""
 
-		shell_cmd = shell_elem.attributes["cmd"]
-		cmd += shell_cmd if shell_cmd
+		shell_cmd =
+			shell_elem.attributes["cmd"]
 
-		shell_elem.find("*").each do |elem|
+		cmd += shell_cmd \
+			if shell_cmd
+
+		shell_elem.find("*").each do
+			|elem|
+
 			case elem.name
 
 				when "env"
+
 					env_name = elem.attributes["name"]
 					env_value = elem.attributes["value"]
 					cmd += " " unless cmd.empty?
 					cmd += "#{env_name}=#{Mandar.shell_quote env_value}"
 
 				when "arg"
+
 					arg_name = elem.attributes["name"]
 					arg_value = elem.attributes["value"]
 					if arg_name
@@ -678,21 +748,31 @@ module Mandar::Support::Core
 					end
 
 				else
-					raise "Invalid element in <shell>: <#{elem.name}>"
-			end
-		end
 
-		if shell_user
-			cmd = Mandar.shell_quote %W[ sudo -u #{shell_user} /bin/bash -c #{cmd} ]
+					raise "Invalid element in <shell>: <#{elem.name}>"
+
+			end
+
 		end
 
 		Mandar::Deploy::Flag.auto
-		shell cmd or raise "Error executing: #{cmd}" unless $mock
+
+		unless $mock
+
+			shell \
+				cmd,
+				:user => shell_user,
+				:dir => shell_dir \
+				or raise "Error executing: #{cmd}"
+
+		end
+
 	end
 
-	def self.command_shell_if(shell_if_elem)
+	def self.command_shell_if shell_if_elem
 
-		shell_if_cmd = shell_if_elem.attributes["cmd"]
+		shell_if_cmd =
+			shell_if_elem.attributes["cmd"]
 
 		return if $mock
 

@@ -26,8 +26,12 @@ require "webrick"
 end
 
 # set MANDAR constant
+
 unless defined? MANDAR
-	MANDAR = File.expand_path "#{__FILE__}/../.."
+
+	MANDAR =
+		File.expand_path "../../..", __FILE__
+
 end
 
 # small additions to standard library
