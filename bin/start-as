@@ -31,6 +31,11 @@ Process::GID.change_privilege \
 Process::UID.change_privilege \
 	user_entry.uid
 
+# setup environment
+
+ENV["HOME"] =
+	user_entry.dir
+
 # execute the command
 
 exec *command

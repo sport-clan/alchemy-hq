@@ -356,6 +356,9 @@ module Mandar::Support::Core
 				Process::UID.change_privilege \
 					user_entry.uid
 
+				ENV["HOME"] =
+					user_entry.dir
+
 			end
 
 			# execute the command
