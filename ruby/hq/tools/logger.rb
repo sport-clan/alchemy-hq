@@ -1,3 +1,5 @@
+require "json"
+
 require "hq/tools"
 
 require "hq/tools/escape"
@@ -322,32 +324,36 @@ class HQ::Tools::Logger
 				stuff[:prefix],
 				"\t</div>\n"
 
-			stuff[:out].print \
-				stuff[:prefix],
-				"\t<div class=\"hq-log-content\">\n"
-
-			stuff[:out].print \
-				stuff[:prefix],
-				"\t\t<div class=\"hq-log-command-output\">\n"
-
-			content["output"].each do
-				|line|
+			if content["output"]
 
 				stuff[:out].print \
 					stuff[:prefix],
-					"\t\t\t<div class=\"hq-log-command-output-line\">",
-					esc_ht(line),
-					"</div>\n"
+					"\t<div class=\"hq-log-content\">\n"
+
+				stuff[:out].print \
+					stuff[:prefix],
+					"\t\t<div class=\"hq-log-command-output\">\n"
+
+				content["output"].each do
+					|line|
+
+					stuff[:out].print \
+						stuff[:prefix],
+						"\t\t\t<div class=\"hq-log-command-output-line\">",
+						esc_ht(line),
+						"</div>\n"
+
+				end
+
+				stuff[:out].print \
+					stuff[:prefix],
+					"\t\t</div>\n"
+
+				stuff[:out].print \
+					stuff[:prefix],
+					"\t</div>\n"
 
 			end
-
-			stuff[:out].print \
-				stuff[:prefix],
-				"\t\t</div>\n"
-
-			stuff[:out].print \
-				stuff[:prefix],
-				"\t</div>\n"
 
 			stuff[:out].print \
 				stuff[:prefix],
@@ -424,10 +430,18 @@ class HQ::Tools::Logger
 
 			ansi_line content["text"], stuff, stuff[:level]
 
-			content["output"].each do
-				|line|
-				ansi_line line, stuff, :normal, "  "
+			if content["output"]
+
+				content["output"].each do
+					|line|
+					ansi_line line, stuff, :normal, "  "
+				end
+
 			end
+
+		when "command-output"
+
+			ansi_line content["text"], stuff, :normal, "  "
 
 		else
 
@@ -498,10 +512,18 @@ class HQ::Tools::Logger
 
 			text_line content["text"], stuff
 
-			content["output"].each do
-				|line|
-				output_text line, stuff, "  "
+			if content["output"]
+
+				content["output"].each do
+					|line|
+					output_text line, stuff, "  "
+				end
+
 			end
+
+		when "command-output"
+
+			text_line content["text"], stuff, "  "
 
 		else
 
@@ -524,7 +546,18 @@ class HQ::Tools::Logger
 
 	end
 
-	def output content, mode = nil
+	def output_raw content, stuff
+
+		data = {
+			mode: stuff[:mode],
+			content: [ content ],
+		}
+
+		stuff[:out].print JSON.dump(data) + "\n"
+
+	end
+
+	def output content, mode = :normal
 
 		raise "Must provide hostname" \
 			unless content["hostname"]
@@ -532,10 +565,13 @@ class HQ::Tools::Logger
 		@targets.each do
 			|target|
 
-			next unless level_includes target[:level], content["level"]
+			next unless level_includes \
+				target[:level],
+				content["level"].to_sym
 
 			stuff = {
-				out: target[:out]
+				out: target[:out],
+				mode: mode,
 			}
 
 			case target[:format]
@@ -551,6 +587,9 @@ class HQ::Tools::Logger
 			when :text
 				next if mode == :complete
 				output_text content, stuff
+
+			when :raw
+				output_raw content, stuff
 
 			else
 				raise "Invalid target format: #{target[:format]}"

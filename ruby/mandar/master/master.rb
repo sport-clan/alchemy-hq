@@ -268,6 +268,7 @@ module Mandar::Master
 	end
 
 	def self.run_on_host host_name, cmd, redirect = ""
+
 		abstract = Mandar::Core::Config.abstract
 
 		host_elem =
@@ -286,17 +287,105 @@ module Mandar::Master
 		Mandar.debug "executing #{ssh_cmd}"
 		tmp = system ssh_cmd
 		return tmp
+
 	end
 
-	def self.run_self_on_host host_name, args, redirect = ""
+	def self.run_self_on_host host_name, args
 
-		cmd = [ "/#{Mandar.deploy_dir}/#{Mandar.remote_command}" ]
+		# build command
 
-		cmd += $passthru_args
+		remote_args = [
+			"/#{Mandar.deploy_dir}/#{Mandar.remote_command}",
+			"--log", "trace:raw",
+			*args,
+		]
 
-		cmd += args
+		remote_cmd =
+			Mandar.shell_quote remote_args
 
-		return run_on_host host_name, cmd, redirect
+		abstract =
+			Mandar::Core::Config.abstract
+
+		host_elem =
+			abstract["deploy-host"] \
+				.find_first("deploy-host [@name = '#{host_name}']")
+
+		host_hostname =
+			host_elem["hostname"]
+
+		ssh_args = [
+			"ssh",
+			"-q",
+			"-T",
+			"-A",
+			"-S", "#{WORK}/ssh/#{host_name}.sock",
+			"-o", "BatchMode=yes",
+			"root@#{host_hostname}",
+			remote_cmd,
+		]
+
+		ssh_cmd =
+			Mandar.shell_quote ssh_args
+
+		# execute it
+
+		Mandar.debug "executing #{ssh_cmd}"
+
+		pipe_read, pipe_write =
+			IO.pipe
+
+		pid = fork do
+
+			pipe_read.close
+
+			$stdin.reopen "/dev/null", "r"
+
+			$stdout.reopen pipe_write
+			$stderr.reopen pipe_write
+
+			exec *ssh_args
+
+		end
+
+		pipe_write.close
+
+		# process output
+
+		while line = pipe_read.gets
+
+			begin
+
+				data =
+					JSON.parse line
+
+			rescue => e
+				puts "INVALID DATA: #{line.strip} (#{e.message})"
+				next
+			end
+
+			begin
+
+				data["content"].each do
+					|item|
+
+					Mandar.logger.output \
+						item,
+						data["mode"].to_sym
+
+				end
+
+			rescue => e
+				puts "Error outputting log message:"
+				pp data
+			end
+
+		end
+
+		# check result and return
+
+		Process.wait pid
+
+		return $?.exitstatus == 0
 
 	end
 
@@ -313,12 +402,18 @@ module Mandar::Master
 		Mandar.notice "performing deployments in series"
 
 		# fix perms first
+
 		fix_perms
 
 		# deploy per host
+
 		error = false
-		hosts.each do |host|
+
+		hosts.each do
+			|host|
+
 			Mandar.notice "deploy #{host}"
+
 			begin
 
 				if host == "local"
@@ -327,6 +422,7 @@ module Mandar::Master
 						"host/local/deploy.xml"
 
 				else
+
 					Mandar::Master.send_to host
 
 					args = [
@@ -339,13 +435,20 @@ module Mandar::Master
 						Mandar.error "deploy #{host} failed"
 						error = true
 					end
+
 				end
+
 			rescue => e
+
 				Mandar.error "deploy #{host} failed: #{e.message}"
 				Mandar.detail "#{e.to_s}\n#{e.backtrace.join("\n")}"
+
 				error = true
+
 				break
+
 			end
+
 		end
 
 		if error
@@ -400,27 +503,22 @@ module Mandar::Master
 
 						Mandar::Master.send_to host
 
-						Tempfile.open "mandar" do |tmp|
-							begin
+						args = [
+							"server-deploy",
+							host,
+							"host/#{host}/deploy.xml",
+						]
 
-								args = [
-									"server-deploy",
-									host,
-									"host/#{host}/deploy.xml",
-								]
+						success =
+							Mandar::Master.run_self_on_host \
+								host,
+								args
 
-								unless Mandar::Master.run_self_on_host \
-										host, args, ">#{tmp.path} 2>#{tmp.path}"
-
-									Mandar.error "deploy #{host} failed"
-									error = true
-								end
-
-							ensure
-								system "cat #{tmp.path}"
-							end
-
+						unless success
+							Mandar.error "deploy #{host} failed"
+							error = true
 						end
+
 					end
 
 				rescue => e
@@ -434,7 +532,9 @@ module Mandar::Master
 				ensure
 					queue.pop
 				end
+
 			end
+
 		end
 
 		# wait for all threads to complete

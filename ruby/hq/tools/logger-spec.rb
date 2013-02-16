@@ -79,7 +79,16 @@ describe HQ::Tools::Logger do
 		}
 	end
 
-	let :sample_command do
+	let :sample_command_without_output do
+		{
+			"type" => "command",
+			"level" => "debug",
+			"hostname" => "hostname",
+			"text" => "text",
+		}
+	end
+
+	let :sample_command_with_output do
 		{
 			"type" => "command",
 			"level" => "debug",
@@ -89,6 +98,15 @@ describe HQ::Tools::Logger do
 				"output 1",
 				"output 2",
 			],
+		}
+	end
+
+	let :sample_command_output do
+		{
+			"type" => "command-output",
+			"level" => "debug",
+			"hostname" => "hostname",
+			"text" => "text",
 		}
 	end
 
@@ -197,9 +215,9 @@ describe HQ::Tools::Logger do
 
 		end
 
-		it "command" do
+		it "command with output" do
 
-			output_for(sample_command).should == [
+			output_for(sample_command_with_output).should == [
 				"|<div class=\"hq-log-item hq-log-item-debug\">\n",
 				"|\t<div class=\"hq-log-head\">\n",
 				"|\t\t<div class=\"hq-log-hostname\">hostname</div>\n",
@@ -210,6 +228,19 @@ describe HQ::Tools::Logger do
 				"|\t\t\t<div class=\"hq-log-command-output-line\">output 1</div>\n",
 				"|\t\t\t<div class=\"hq-log-command-output-line\">output 2</div>\n",
 				"|\t\t</div>\n",
+				"|\t</div>\n",
+				"|</div>\n",
+			].join
+
+		end
+
+		it "command without output" do
+
+			output_for(sample_command_without_output).should == [
+				"|<div class=\"hq-log-item hq-log-item-debug\">\n",
+				"|\t<div class=\"hq-log-head\">\n",
+				"|\t\t<div class=\"hq-log-hostname\">hostname</div>\n",
+				"|\t\t<div class=\"hq-log-text\">text</div>\n",
 				"|\t</div>\n",
 				"|</div>\n",
 			].join
@@ -276,12 +307,28 @@ describe HQ::Tools::Logger do
 
 		end
 
-		it "command" do
+		it "command with output" do
 
-			output_for(sample_command).should == [
+			output_for(sample_command_with_output).should == [
 				"hostname debug: |text\n",
 				"hostname debug: |  output 1\n",
 				"hostname debug: |  output 2\n",
+			].join
+
+		end
+
+		it "command without output" do
+
+			output_for(sample_command_without_output).should == [
+				"hostname debug: |text\n",
+			].join
+
+		end
+
+		it "command-output" do
+
+			output_for(sample_command_output).should == [
+				"hostname debug: |  text\n",
 			].join
 
 		end
@@ -359,13 +406,68 @@ describe HQ::Tools::Logger do
 
 		end
 
-		it "command" do
+		it "command with output" do
 
-			output_for(sample_command).should == [
+			output_for(sample_command_with_output).should == [
 				ansi_line(:cyan, "|text"),
 				ansi_line(:normal, "|  output 1"),
 				ansi_line(:normal, "|  output 2"),
 			].join
+
+		end
+
+		it "command without output" do
+
+			output_for(sample_command_without_output).should == [
+				ansi_line(:cyan, "|text"),
+			].join
+
+		end
+
+		it "command-output" do
+
+			output_for(sample_command_output).should == [
+				ansi_line(:normal, "|  text"),
+			].join
+
+		end
+
+	end
+
+	context "#output_raw" do
+
+		def output_for content
+
+			string_io =
+				StringIO.new
+
+			subject.output_raw \
+				content,
+				{ out: string_io, mode: :mode }
+
+			return string_io.string
+
+		end
+
+		it "outputs JSON" do
+
+			json = output_for(sample_log_with_content)
+
+			JSON.parse(json).should == {
+				"mode" => "mode",
+				"content" => [
+					{
+						"type" => "log",
+						"level" => "debug",
+						"hostname" => "hostname",
+						"text" => "text",
+						"content" => [
+							"content 1",
+							"content 2",
+						],
+					},
+				],
+			}
 
 		end
 

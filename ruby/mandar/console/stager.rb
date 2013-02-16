@@ -299,7 +299,12 @@ class Mandar::Console::Stager
 
 	def deploy my_role, command, profile, mode = :unstaged, mock = false, background = true
 
-		raise "Invalid deploy mode #{mode}" unless [ :unstaged, :staged, :rollback ].include? mode
+		raise "Invalid deploy mode #{mode}" \
+			unless [
+				:unstaged,
+				:staged,
+				:rollback
+			].include? mode
 
 		# work out command to execute
 		args = %W[
@@ -307,11 +312,10 @@ class Mandar::Console::Stager
 			--profile #{profile}
 			--role #{my_role}
 		]
-		args += [ "--log" ]
-		args += %W[ --log detail:html ] unless background
-		args += %W[ --mock ] if mock
-		args += %W[ --staged ] if mode == :staged
-		args += %W[ --rollback ] if mode == :rollback
+		args += [ "--log", "detail:html" ] unless background
+		args += [ "--mock" ] if mock
+		args += [ "--staged" ] if mode == :staged
+		args += [ "--rollback" ] if mode == :rollback
 		full_command = "#{command} #{Mandar.shell_quote args}"
 
 		puts "#{full_command} (#{background ? "background" : "foreground"})"

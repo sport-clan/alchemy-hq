@@ -18,7 +18,8 @@ module Mandar::Support::Service
 			ret =
 				Mandar::Support::Core.shell \
 					command_line,
-					:level => log_level
+					:level => log_level,
+					:log => command != "status"
 
 			return ret \
 				if command == "status"

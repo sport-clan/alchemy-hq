@@ -121,8 +121,6 @@ class Mandar::Core::Script
 					format || :ansi,
 					level || hq_config["default-log-level"] || :detail
 
-				$passthru_args << [ "--log", arg ]
-
 			when "--role"
 
 				$deploy_role and Mandar.die "Only one --role option allowed"

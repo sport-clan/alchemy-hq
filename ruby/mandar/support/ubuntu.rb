@@ -14,7 +14,8 @@ module Mandar::Support::Ubuntu
 
 		status_ret =
 			Mandar::Support::Core.shell_real \
-				Mandar.shell_quote(status_args)
+				Mandar.shell_quote(status_args),
+				:log => false
 
 		raise "initctl status #{service} returned #{status_ret[:status]}" \
 			unless status_ret[:status] == 0

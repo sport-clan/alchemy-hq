@@ -252,18 +252,37 @@ module Mandar::Support::Core
 
 	def self.shell cmd, options = {}
 
-		options[:level] ||= :detail
+		options[:log] = true \
+			unless options.has_key? :log
+
+		options[:level] = :detail \
+			unless options.has_key :level
+
+		if options[:log]
+
+			Mandar.logger.output({
+				"type" => "command",
+				"level" => options[:level].to_s,
+				"hostname" => Mandar.host,
+				"text" => cmd,
+			}, :partial)
+
+		end
 
 		ret =
 			shell_real cmd, options
 
-		Mandar.logger.output({
-			"type" => "command",
-			"level" => options[:level].to_s,
-			"hostname" => Mandar.host,
-			"text" => cmd,
-			"output" => ret[:output],
-		}, :complete)
+		if options[:log]
+
+			Mandar.logger.output({
+				"type" => "command",
+				"level" => options[:level].to_s,
+				"hostname" => Mandar.host,
+				"text" => cmd,
+				"output" => ret[:output],
+			}, :complete)
+
+		end
 
 		return ret[:status] == 0
 
@@ -271,7 +290,11 @@ module Mandar::Support::Core
 
 	def self.shell_real cmd, options = {}
 
-		options[:level] ||= :detail
+		options[:log] = true \
+			unless options.has_key? :log
+
+		options[:level] = :detail \
+			unless options.has_key :level
 
 		Mandar.debug [
 			"shell",
@@ -334,24 +357,45 @@ module Mandar::Support::Core
 		wr.close
 
 		# read from the pipe while checking if the command has closed
+
 		output = []
 		buf = ""
+
 		while true
+
 			if select([rd], nil, nil, 1)
+
 				if rd.eof?
 					Process.wait(pid)
 					break
 				end
+
 				data = rd.read_nonblock(1024)
 				buf += data
+
 				while buf.index("\n")
+
 					line, buf = buf.split("\n", 2)
-					Mandar.message line, options[:level] if options[:log]
+
+					if options[:log]
+
+						Mandar.logger.output({
+							"type" => "command-output",
+							"level" => options[:level].to_s,
+							"hostname" => Mandar.host,
+							"text" => line,
+						}, :partial)
+
+					end
+
 					output << line
+
 				end
+
 			else
 				break if Process.wait(pid, Process::WNOHANG)
 			end
+
 		end
 
 		# and return
