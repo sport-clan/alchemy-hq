@@ -2,6 +2,8 @@
 *.o
 /.bundle
 /.compile-flag
+/.gems
+/.stubs
 /c++/xquery-server
 /etc/build.properties
 /gems

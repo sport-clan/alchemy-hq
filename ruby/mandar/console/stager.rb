@@ -307,7 +307,8 @@ class Mandar::Console::Stager
 			--profile #{profile}
 			--role #{my_role}
 		]
-		args += %W[ --html --verbose ] unless background
+		args += [ "--log" ]
+		args += %W[ --log detail:html ] unless background
 		args += %W[ --mock ] if mock
 		args += %W[ --staged ] if mode == :staged
 		args += %W[ --rollback ] if mode == :rollback

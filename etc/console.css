@@ -236,35 +236,36 @@ section.data-types .list-div {
 
 /* -------------------- log output */
 
-.mandar-log-item {
+.hq-log-item {
 	margin: 2px 0px;
 	background: #eee;
 }
-.mandar-log-hostname {
+.hq-log-hostname {
 	display: inline;
 }
-.mandar-log-plain {
+.hq-log-plain {
 	display: inline;
 	font-family: "monospace", monospace;
 	white-space: pre;
 }
-.mandar-log-item-trace { color: #909; }
-.mandar-log-item-debug { color: #099; }
-.mandar-log-item-detail { color: #000; }
-.mandar-log-item-notice { color: #090; }
-.mandar-log-item-warning { color: #990; }
-.mandar-log-item-error { color: #900; }
-.mandar-log-hostname { color: #009; }
+.hq-log-item-trace { color: #909; }
+.hq-log-item-debug { color: #099; }
+.hq-log-item-detail { color: #000; }
+.hq-log-item-notice { color: #090; }
+.hq-log-item-warning { color: #990; }
+.hq-log-item-error { color: #900; }
+.hq-log-hostname { color: #009; }
 
-.mandar-log-item-trace { display: none; }
-.mandar-log-item-debug { display: none; }
+.hq-log-item-trace { display: none; }
+.hq-log-item-debug { display: none; }
 
-.mandar-diff * {
+.hq-log-diff * {
 	font-family: "monospace", monospace;
 	white-space: pre;
 }
-.mandar-diff-plus-plus-plus { color: #c0c; }
-.mandar-diff-minus-minus-minus { color: #c0c; }
-.mandar-diff-at-at { color: #c0c; }
-.mandar-diff-plus { color: #33e; }
-.mandar-diff-minus { color: #e00; }
+.hq-log-diff-plus-plus-plus { color: #c0c; }
+.hq-log-diff-minus-minus-minus { color: #c0c; }
+.hq-log-diff-at-at { color: #c0c; }
+.hq-log-diff-plus { color: #33e; }
+.hq-log-diff-minus { color: #e00; }
+.hq-log-diff-else { color: #000; }

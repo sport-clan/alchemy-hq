@@ -290,27 +290,9 @@ module Mandar::Master
 
 	def self.run_self_on_host host_name, args, redirect = ""
 
-		cmd = %W[ /#{Mandar.deploy_dir}/#{Mandar.remote_command} ]
+		cmd = [ "/#{Mandar.deploy_dir}/#{Mandar.remote_command}" ]
 
-		cmd += %W[ --html ] \
-			if Mandar.logger.format == :html
-
-		cmd += %W[ --verbose ] \
-			if Mandar.logger.would_log :notice \
-			unless Mandar.logger.would_log :debug
-
-		cmd += %W[ --debug ] \
-			if Mandar.logger.would_log :debug \
-			unless Mandar.logger.would_log :trace
-
-		cmd += %W[ --trace ] \
-			if Mandar.logger.would_log :trace
-
-		cmd += %W[ --quiet ] \
-			unless Mandar.logger.would_log :notice
-
-		cmd += %W[ --mock ] \
-			if $mock
+		cmd += $passthru_args
 
 		cmd += args
 

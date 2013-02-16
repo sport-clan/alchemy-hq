@@ -43,8 +43,21 @@ class Mandar::Core::Script
 		"",
 	].join("\n") + "\n"
 
-	def parse_args()
+	def parse_args
+
 		require "getoptlong"
+
+		if File.exist? "#{CONFIG}/etc/hq-config.xml"
+
+			hq_config =
+				Mandar::Core::Config.mandar
+
+		else
+
+			hq_config =
+				XML::Document.string("<blah/>").root
+
+		end
 
 		opts = GetoptLong.new(*[
 
@@ -54,21 +67,13 @@ class Mandar::Core::Script
 			[ "--series", "-s", GetoptLong::NO_ARGUMENT ],
 			[ "--profile", "-p", GetoptLong::REQUIRED_ARGUMENT ],
 
-			[ "--quiet", "-0", GetoptLong::NO_ARGUMENT ],
-			[ "--normal", "-1", GetoptLong::NO_ARGUMENT ],
-			[ "--verbose", "-2", GetoptLong::NO_ARGUMENT ],
-			[ "--debug", "-3", GetoptLong::NO_ARGUMENT ],
-			[ "--timing", "-4", GetoptLong::NO_ARGUMENT ],
-			[ "--trace", "-5", GetoptLong::NO_ARGUMENT ],
-			[ "--html", GetoptLong::NO_ARGUMENT ],
+			[ "--log", "-l", GetoptLong::REQUIRED_ARGUMENT ],
 
 			[ "--role", GetoptLong::REQUIRED_ARGUMENT ],
 			[ "--staged", GetoptLong::NO_ARGUMENT ],
 			[ "--rollback", GetoptLong::NO_ARGUMENT ],
 			[ "--force", "-f", GetoptLong::NO_ARGUMENT ],
 
-			[ "--fork", GetoptLong::NO_ARGUMENT ],
-			[ "--pid-file", GetoptLong::REQUIRED_ARGUMENT ],
 			[ "--log-file", GetoptLong::REQUIRED_ARGUMENT ],
 
 			[ "--ssh-identity", GetoptLong::REQUIRED_ARGUMENT ],
@@ -83,9 +88,7 @@ class Mandar::Core::Script
 		$deploy_role = nil
 		$deploy_mode = :unstaged
 
-		$console_fork = false
-		$console_pid_file = nil
-		$console_log_file = nil
+		$passthru_args = []
 
 		$ssh_identity = nil
 
@@ -94,6 +97,7 @@ class Mandar::Core::Script
 
 			when "--mock"
 				$mock = true
+				$passthru_args << [ "--mock" ]
 
 			when "--no-config"
 				$no_config = true
@@ -104,62 +108,20 @@ class Mandar::Core::Script
 			when "--series"
 				$series = true
 
-			# log level
-
-			when "--debug"
-
-				Mandar.logger.level != nil \
-					and Mandar.die "Only one log level option allowed"
-
-				Mandar.logger.level = :debug
-
-			when "--quiet"
-
-				Mandar.logger.level != nil \
-					and Mandar.die "Only one log level option allowed"
-
-				Mandar.logger.level = :warning
-
-			when "--trace"
-
-				Mandar.logger.level != nil \
-					and Mandar.die "Only one log level option allowed"
-
-				Mandar.logger.level = :trace
-
-			when "--timing"
-
-				Mandar.logger.level != nil \
-					and Mandar.die "Only one log level option allowed"
-
-				Mandar.logger.level = :timing
-
-			when "--verbose"
-
-				Mandar.logger.level != nil \
-					and Mandar.die "Only one log level option allowed"
-
-				Mandar.logger.level = :detail
-
-			# log format
-
-			when "--html"
-
-				Mandar.logger.format == :html \
-					and Mandar.die "Only one --html option allowed"
-
-				Mandar.logger.format = :html
-
-			# profile
-
 			when "--profile"
-
-				$profile == nil \
-					or Mandar.die "Only one --profile option allowed"
-
 				$profile = arg
 
-			# role
+			when "--log"
+
+				level, format, filename =
+					arg.split ":", 3
+
+				Mandar.logger.add_target \
+					filename ? File.open(filename, "a") : STDOUT,
+					format || :ansi,
+					level || hq_config["default-log-level"] || :detail
+
+				$passthru_args << [ "--log", arg ]
 
 			when "--role"
 
@@ -192,29 +154,6 @@ class Mandar::Core::Script
 
 				$force = true
 
-			# console
-
-			when "--fork"
-
-				$console_fork \
-					and Mandar.die "Only one --fork option allowed"
-
-				$console_fork = true
-
-			when "--pid-file"
-
-				$console_pid_file \
-					and Mandar.die "Only one --pid-file option allowed"
-
-				$console_pid_file = arg
-
-			when "--log-file"
-
-				$console_log_file \
-					and Mandar.die "Only one --log-file option allowed"
-
-				$console_log_file = arg
-
 			# ssh
 
 			when "--ssh-identity"
@@ -232,45 +171,17 @@ class Mandar::Core::Script
 			end
 		end
 
-		# default from config file
+		# set defaults
 
-		if File.exist? "#{CONFIG}/etc/hq-config.xml"
+		$profile ||=
+			hq_config["default-profile"]
 
-			hq_config =
-				Mandar::Core::Config.mandar
-
-			# set default logging level
-
-			default_log_level_str =
-				hq_config.attributes["default-log-level"]
-
-			default_log_level =
-				default_log_level_str ?
-					default_log_level_str.to_sym : nil
-
-			Mandar.logger.level ||=
-				default_log_level
-
-			# set default profile
-
-			$profile ||=
-				hq_config.attributes["default-profile"]
-
-			# set deafult role
-
-			$deploy_role ||=
-				hq_config.attributes["default-role"]
-
-		end
-
-		# fall back defaults
-
-		Mandar.logger.level ||=
-			:notice
+		$deploy_role ||=
+			hq_config["default-role"]
 
 	end
 
-	def main()
+	def main
 		STDOUT.sync = true
 		argv_copy = ARGV.clone
 		parse_args

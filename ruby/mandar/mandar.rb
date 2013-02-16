@@ -1,39 +1,49 @@
+require "hq/tools/logger"
+
 module Mandar
 
 	def self.logger
-		return @logger ||= Mandar::Tools::Logger.new
+		return @logger ||= HQ::Tools::Logger.new
 	end
 
-	def self.message text, level, options = {}
-		logger.message text, level, options
+	def self.message text, level, *content
+		logger.message text, level, *content
 	end
 
-	def self.trace text, options = {}
-		logger.message text, :trace, options
+	def self.message_partial text, level, *content
+		logger.message_partial text, level, options
 	end
 
-	def self.timing text, options = {}
-		logger.message text, :timing, options
+	def self.message_complete text, level, *content
+		logger.message_complete text, level, options
 	end
 
-	def self.debug text, options = {}
-		logger.message text, :debug, options
+	def self.trace text, *contents
+		logger.message text, :trace, *contents
 	end
 
-	def self.detail text, options = {}
-		logger.message text, :detail, options
+	def self.timing text, *contents
+		logger.message text, :timing, *contents
 	end
 
-	def self.notice text, options = {}
-		logger.message text, :notice, options
+	def self.debug text, *contents
+		logger.message text, :debug, *contents
 	end
 
-	def self.warning text, options = {}
-		logger.message text, :warning, options
+	def self.detail text, *contents
+		logger.message text, :detail, *contents
 	end
 
-	def self.error text, options = {}
-		logger.message text, :error, options
+	def self.notice text, *contents
+		logger.message text, :notice, *contents
+	end
+
+	def self.warning text, *contents
+		logger.message text, :warning, *contents
+	end
+
+	def self.error text, *contents
+		logger.message text, :error, *contents
 	end
 
 	def self.time text, level = :timing

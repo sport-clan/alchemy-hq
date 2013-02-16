@@ -191,9 +191,14 @@ class HQ::Deploy::Slave
 
 				rescue => e
 
-					Mandar.error "error during deployment of #{task_name}"
-					Mandar.error e.inspect
-					Mandar.error e.backtrace
+					Mandar.logger.output({
+						"type" => "exception",
+						"level" => "error",
+						"hostname" => Mandar.host,
+						"text" => "error during deployment of #{task_name}",
+						"message" => e.message,
+						"backtrace" => e.backtrace,
+					})
 
 					exit 1
 

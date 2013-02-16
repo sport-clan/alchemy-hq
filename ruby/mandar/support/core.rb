@@ -163,14 +163,15 @@ module Mandar::Support::Core
 			end
 
 			# notice
-			Mandar.notice case
-				when ! exists; "creating #{dest}"
-				when content_changes; "updating #{dest}"
-				else "updating permissions on #{dest}"
-			end
 
-			# diff
-			diff src, dest
+			message =
+				case
+					when ! exists; "creating #{dest}"
+					when content_changes; "updating #{dest}"
+					else "updating permissions on #{dest}"
+				end
+
+			diff message, src, dest
 
 			# check
 			unless options[:check].call src
@@ -200,106 +201,69 @@ module Mandar::Support::Core
 		end
 	end
 
-	def self.diff src, dest
+	def self.diff message, src, dest
 
-		# output diff
+		# run diff command
 
-		exists = File.exists? dest
-
-		ret = shell_real Mandar.shell_quote %W[
-			diff
-			--unified=3
-			--ignore-space-change
-			#{exists ? dest : "/dev/null"}
-			#{src}
+		diff_cmd = Mandar.shell_quote [
+			"diff",
+			"--unified=3",
+			"--ignore-space-change",
+			File.exists?(dest) ? dest : "/dev/null",
+			src,
 		]
 
-		if Mandar.logger.format == :html
-			html = "<div class=\"mandar-diff\">\n"
+		diff_result =
+			shell_real diff_cmd
+
+		# construct result
+
+		diff_log = {
+			"type" => "diff",
+			"level" => "notice",
+			"hostname" => Mandar.host,
+			"text" => message,
+			"content" => [],
+		}
+
+		diff_result[:output].each do
+			|line|
+
+			line_type =
+				case line
+					when /^---/; "minus-minus-minus"
+					when /^\+\+\+/; "plus-plus-plus"
+					when /^@@/; "at-at"
+					when /^-/; "minus"
+					when /^\+/; "plus"
+					else "else"
+				end
+
+			diff_log["content"] << {
+				"type" => "diff-#{line_type}",
+				"text" => line,
+			}
+
 		end
 
-		ret[:output].each do |line|
-
-			line_type = case line
-				when /^---/; :minus_minus_minus
-				when /^\+\+\+/; :plus_plus_plus
-				when /^@@/; :at_at
-				when /^-/; :minus
-				when /^\+/; :plus
-				else :else
-			end
-
-			if Mandar.logger.format == :html
-				div_class = "mandar-diff-#{line_type.to_s.gsub("_","-")}"
-				html += "<div class=\"#{div_class}\">#{CGI::escapeHTML line}" +
-					"</div>\n"
-			else
-				Mandar.detail line, \
-					:colour => Mandar::Tools::Logger::DIFF_COLOURS[line_type]
-			end
-		end
-
-		if Mandar.logger.format == :html
-			html += "</div>"
-			Mandar.message html, :detail, :html => true
-		end
-	end
-
-	def self.diff src, dest
-
-		dest = "/dev/null" unless File.exists? dest
-
-		ret = shell_real "diff --unified=3 --ignore-space-change #{dest} #{src}"
-
-		if Mandar.logger.format == :html
-			html = "<div class=\"mandar-diff\">\n"
-		end
-
-		ret[:output].each do |line|
-
-			line_type = case line
-				when /^---/; :minus_minus_minus
-				when /^\+\+\+/; :plus_plus_plus
-				when /^@@/; :at_at
-				when /^-/; :minus
-				when /^\+/; :plus
-				else :else
-			end
-
-			if Mandar.logger.format == :html
-				div_class = "mandar-diff-#{line_type.to_s.gsub("_","-")}"
-				html += "<div class=\"#{div_class}\">#{CGI::escapeHTML line}" +
-					"</div>\n"
-			else
-				Mandar.detail line, \
-					:colour => Mandar::Tools::Logger::DIFF_COLOURS[line_type]
-			end
-		end
-
-		if Mandar.logger.format == :html
-			html += "</div>"
-			Mandar.message html, :detail, :html => true
-		end
+		Mandar.logger.output diff_log
 
 	end
 
 	def self.shell cmd, options = {}
-
-		options[:log] =
-			Mandar.logger.format != :html
 
 		options[:level] ||= :detail
 
 		ret =
 			shell_real cmd, options
 
-		if Mandar.logger.format == :html
-
-			Mandar.message \
-				[ cmd, *ret[:output]].join("\n"),
-				options[:level]
-
-		end
+		Mandar.logger.output({
+			"type" => "command",
+			"level" => options[:level].to_s,
+			"hostname" => Mandar.host,
+			"text" => cmd,
+			"output" => ret[:output],
+		}, :complete)
 
 		return ret[:status] == 0
 
