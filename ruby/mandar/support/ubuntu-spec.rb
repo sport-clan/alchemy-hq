@@ -45,7 +45,7 @@ describe Mandar::Support::Ubuntu do
 
 			Mandar::Support::Core
 				.should_receive(:shell_real)
-				.with("initctl status service")
+				.with("initctl status service", :log => false)
 
 			subject.initctl_auto "service", true, "restart"
 
@@ -55,7 +55,7 @@ describe Mandar::Support::Ubuntu do
 
 			Mandar::Support::Core
 				.should_receive(:shell_real)
-				.with("initctl status service")
+				.with("initctl status service", :log => false)
 				.and_return({ status: 1 })
 
 			expect do
@@ -70,7 +70,7 @@ describe Mandar::Support::Ubuntu do
 
 			Mandar::Support::Core
 				.should_receive(:shell_real)
-				.with("initctl status service")
+				.with("initctl status service", :log => false)
 				.and_return({ status: 0, output: [ "blah" ] })
 
 			expect do
