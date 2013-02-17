@@ -7,19 +7,6 @@ describe HQ::Tools::Logger::HtmlLogger do
 
 	context "#output" do
 
-		def output_for content
-
-			string_io =
-				StringIO.new
-
-			subject.output \
-				content,
-				{ out: string_io, prefix: "|" }
-
-			return string_io.string
-
-		end
-
 		it "log without content" do
 
 			output_for(sample_log_without_content).should == [

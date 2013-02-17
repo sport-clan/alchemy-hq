@@ -7,19 +7,6 @@ describe HQ::Tools::Logger::AnsiLogger do
 
 	context "#output" do
 
-		def output_for content
-
-			string_io =
-				StringIO.new
-
-			subject.output \
-				content,
-				{ out: string_io, prefix: "|" }
-
-			return string_io.string
-
-		end
-
 		def ansi_line colour, text
 			return [
 				HQ::Tools::Logger::AnsiLogger::ANSI_CODES[:bold],

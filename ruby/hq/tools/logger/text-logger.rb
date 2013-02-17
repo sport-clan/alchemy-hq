@@ -9,7 +9,7 @@ class HQ::Tools::Logger::TextLogger \
 
 	def text_line text, stuff, prefix = ""
 
-		stuff[:out].print \
+		out.print \
 			stuff[:hostname],
 			" ",
 			stuff[:level],

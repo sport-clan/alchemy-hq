@@ -1,13 +1,16 @@
 shared_examples_for "a logger" do
 
-	def output_for content
+	let(:string_io) { StringIO.new }
 
-		string_io =
-			StringIO.new
+	before do
+		subject.out = string_io
+	end
+
+	def output_for content
 
 		subject.output \
 			content,
-			{ out: string_io, prefix: "|" }
+			{ prefix: "|", mode: "mode" }
 
 		return string_io.string
 

@@ -7,19 +7,6 @@ describe HQ::Tools::Logger::RawLogger do
 
 	context "#output_raw" do
 
-		def output_for content
-
-			string_io =
-				StringIO.new
-
-			subject.output \
-				content,
-				{ out: string_io, mode: :mode }
-
-			return string_io.string
-
-		end
-
 		it "outputs JSON" do
 
 			json = output_for(sample_log_with_content)

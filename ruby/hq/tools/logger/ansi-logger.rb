@@ -50,7 +50,7 @@ class HQ::Tools::Logger::AnsiLogger \
 		raise "No such colour: #{colour}" \
 			unless MESSAGE_COLOURS[colour] || ANSI_CODES[colour]
 
-		stuff[:out].print \
+		out.print \
 			ANSI_CODES[:bold],
 			ANSI_CODES[MESSAGE_COLOURS[:hostname]],
 			stuff[:hostname],

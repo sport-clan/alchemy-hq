@@ -16,7 +16,7 @@ class HQ::Tools::Logger::RawLogger \
 			content: [ content ],
 		}
 
-		stuff[:out].print MultiJson.dump(data) + "\n"
+		out.print MultiJson.dump(data) + "\n"
 
 	end
 

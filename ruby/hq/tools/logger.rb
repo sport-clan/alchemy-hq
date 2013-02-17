@@ -49,8 +49,9 @@ class HQ::Tools::Logger
 				end
 			end
 
+		formatter.out = out
+
 		@targets << {
-			out: out,
 			formatter: formatter,
 			level: level.to_sym,
 		}
@@ -89,8 +90,6 @@ class HQ::Tools::Logger
 			next unless target[:formatter].valid_modes.include? mode
 
 			target[:formatter].output content, stuff
-
-			target[:out].flush
 
 		end
 
