@@ -802,12 +802,15 @@ module Mandar::Support::Core
 
 			Dir.mktmpdir do |new_dir|
 
-				File.new(new_dir).chown \
+				FileUtils.chown \
 					options[:user],
-					options[:group]
+					options[:group],
+					new_dir
 
 				Dir.chdir new_dir
+
 				proc.call
+
 			end
 
 		ensure
@@ -820,7 +823,10 @@ module Mandar::Support::Core
 
 	def self.command_tmpdir tmpdir_elem
 
-		tmpdir do
+		tmpdir \
+			:user => tmpdir_elem["user"],
+			:group => tmpdir_elem["group"] \
+		do
 			Mandar::Deploy::Commands.perform tmpdir_elem
 		end
 

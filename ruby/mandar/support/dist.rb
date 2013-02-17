@@ -8,34 +8,20 @@ module Mandar::Support::Dist
 
 	def self.command_build build_elem
 
-		build_flag_name =
-			build_elem.attributes["flag-name"]
-
-		build_flag_value =
-			build_elem.attributes["flag-value"]
-
-		build_message =
-			build_elem.attributes["message"]
-
-		build_flag_user =
-			build_elem.attributes["user"]
-
-		build_flag_group =
-			build_elem.attributes["group"]
-
 		Mandar::Deploy::Flag.set_flag \
-			build_flag_name,
-			build_flag_value \
+			build_elem["flag-name"],
+			build_elem["flag-value"] \
 		do
 
-			Mandar::notice build_message
+			Mandar::notice build_elem["message"]
 
 			Mandar::Support::Core.tmpdir \
-				:user => build_flag_user,
-				:group => build_flag_group \
+				:user => build_elem["user"],
+				:group => build_elem["group"] \
 			do
 
-				Mandar::Deploy::Commands.perform build_elem
+				Mandar::Deploy::Commands.perform \
+					build_elem
 
 			end
 
@@ -47,23 +33,40 @@ module Mandar::Support::Dist
 
 		require "net/http"
 
-		fetch_url =
-			fetch_elem["url"]
-
-		fetch_user =
-			fetch_elem["user"]
-
-		fetch_group =
-			fetch_elem["group"]
-
-		fetch_mode =
-			fetch_elem["mode"]
-
 		fetch_uri =
-			URI fetch_url
+			URI fetch_elem["url"]
 
-		data =
-			Net::HTTP.get fetch_uri
+		begin
+
+			http =
+				Net::HTTP.new \
+					fetch_uri.host,
+					fetch_uri.port
+
+			http.use_ssl =
+				fetch_uri.scheme == "https"
+
+			request =
+				Net::HTTP::Get.new \
+					fetch_uri.request_uri
+
+			response =
+				http.request request
+
+			raise "Error #{response.code} #{reponse.message}" \
+				unless response.code == "200"
+
+			data =
+				response.body
+
+		ensure
+
+			begin
+				http.finish
+			rescue
+			end
+
+		end
 
 		filename =
 			File.basename fetch_uri.path
@@ -72,13 +75,14 @@ module Mandar::Support::Dist
 			f.print data
 		end
 
-		File.new(filename).chown \
-			fetch_user,
-			fetch_group,
+		FileUtils.chown \
+			fetch_elem["user"],
+			fetch_elem["group"],
+			filename
 
-		if fetch_mode
+		if fetch_elem["mode"]
 			File.chmod \
-				fetch_mode.to_i(8),
+				fetch_elem["mode"].to_i(8),
 				filename
 		end
 
@@ -86,38 +90,26 @@ module Mandar::Support::Dist
 
 	def self.command_rsync rsync_elem
 
-		rsync_from =
-			rsync_elem.attributes["from"]
-
-		rsync_to =
-			rsync_elem.attributes["to"]
-
-		rsync_key =
-			rsync_elem.attributes["key"]
-
-		rsync_no_strict_key =
-			rsync_elem.attributes["no-strict-key"] != "yes"
-
 		args = [
 			"rsync",
 			"--archive",
 			"--delete",
 		]
 
-		if rsync_key || rsync_no_strict_key
+		if rsync_elem["key"] || rsync_elem["no-strict-key"] != "yes"
 
 			ssh_args = [
 				"ssh",
 			]
 
-			if rsync_key
+			if rsync_elem["key"]
 				ssh_args += [
 					"-i",
-					rsync_key,
+					rsync_elem["key"],
 				]
 			end
 
-			if rsync_no_strict_key
+			if rsync_elem["no-strict-key"] != "yes"
 				ssh_args += [
 					"-o",
 					"StrictHostKeyChecking=no",
@@ -132,8 +124,8 @@ module Mandar::Support::Dist
 		end
 
 		args += [
-			"#{rsync_from}/",
-			"#{rsync_to}/",
+			"#{rsync_elem["from"]}/",
+			"#{rsync_elem["to"]}/",
 		]
 
 		Mandar::Support::Core.shell \
@@ -143,20 +135,18 @@ module Mandar::Support::Dist
 
 	def self.command_untar untar_elem
 
-		untar_archive =
-			untar_elem.attributes["archive"]
-
 		args = [
 			"tar",
 			"--extract",
-			"--file", untar_archive,
+			"--file", untar_elem["archive"],
 			"--gunzip",
 			"--no-same-owner",
 			"--no-same-permissions",
 		]
 
 		Mandar::Support::Core.shell \
-			Mandar.shell_quote(args)
+			Mandar.shell_quote(args),
+			:user => untar_elem[:user]
 
 	end
 
