@@ -17,6 +17,12 @@ module Mandar::Support::Dist
 		build_message =
 			build_elem.attributes["message"]
 
+		build_flag_user =
+			build_elem.attributes["user"]
+
+		build_flag_group =
+			build_elem.attributes["group"]
+
 		Mandar::Deploy::Flag.set_flag \
 			build_flag_name,
 			build_flag_value \
@@ -24,7 +30,10 @@ module Mandar::Support::Dist
 
 			Mandar::notice build_message
 
-			Mandar::Support::Core.tmpdir do
+			Mandar::Support::Core.tmpdir \
+				:user => build_flag_user,
+				:group => build_flag_group \
+			do
 
 				Mandar::Deploy::Commands.perform build_elem
 
@@ -39,7 +48,16 @@ module Mandar::Support::Dist
 		require "net/http"
 
 		fetch_url =
-			fetch_elem.attributes["url"]
+			fetch_elem["url"]
+
+		fetch_user =
+			fetch_elem["user"]
+
+		fetch_group =
+			fetch_elem["group"]
+
+		fetch_mode =
+			fetch_elem["mode"]
 
 		fetch_uri =
 			URI fetch_url
@@ -52,6 +70,16 @@ module Mandar::Support::Dist
 
 		File.open filename, "w" do |f|
 			f.print data
+		end
+
+		File.new(filename).chown \
+			fetch_user,
+			fetch_group,
+
+		if fetch_mode
+			File.chmod \
+				fetch_mode.to_i(8),
+				filename
 		end
 
 	end

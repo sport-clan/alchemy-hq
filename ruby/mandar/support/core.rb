@@ -256,7 +256,7 @@ module Mandar::Support::Core
 			unless options.has_key? :log
 
 		options[:level] = :detail \
-			unless options.has_key :level
+			unless options.has_key? :level
 
 		if options[:log]
 
@@ -290,11 +290,11 @@ module Mandar::Support::Core
 
 	def self.shell_real cmd, options = {}
 
-		options[:log] = true \
+		options[:log] = false \
 			unless options.has_key? :log
 
 		options[:level] = :detail \
-			unless options.has_key :level
+			unless options.has_key? :level
 
 		Mandar.debug [
 			"shell",
@@ -350,7 +350,9 @@ module Mandar::Support::Core
 
 			# execute the command
 
-			exec "/bin/bash", "-c", cmd
+			Bundler.with_clean_env do
+				exec "/bin/bash", "-c", cmd
+			end
 
 		end
 
@@ -792,13 +794,18 @@ module Mandar::Support::Core
 		Mandar::Deploy::Commands.perform shell_if_elem
 	end
 
-	def self.tmpdir &proc
+	def self.tmpdir options = {}, &proc
 
 		old_dir = Dir.pwd
 
 		begin
 
 			Dir.mktmpdir do |new_dir|
+
+				File.new(new_dir).chown \
+					options[:user],
+					options[:group]
+
 				Dir.chdir new_dir
 				proc.call
 			end

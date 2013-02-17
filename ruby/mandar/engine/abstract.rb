@@ -234,18 +234,29 @@ module Mandar::Engine::Abstract
 	end
 
 	def self.load_results
+
 		@results = {}
-		Dir.new("#{WORK}/abstract").each do |abstract_name|
-			next unless abstract_name =~ /^[a-z0-9]+(?:-[a-z0-9]+)*$/
-			abstract = []
-			Dir.new("#{WORK}/abstract/#{abstract_name}").each do |result_filename|
-				next unless result_filename =~ /^([a-z0-9]+(?:-[a-z0-9]+)*)\.xml$/
-				result_name = $1
-				result_doc = XML::Document.file "#{WORK}/abstract/#{abstract_name}/#{result_filename}",
+
+		Dir[
+			"#{WORK}/abstract/**/*.xml",
+			"#{WORK}/data/*.xml",
+		].each do
+			|path|
+
+			result_name =
+				File.basename path, ".xml"
+
+			result_doc =
+				XML::Document.file \
+					path,
 					:options => XML::Parser::Options::NOBLANKS
-				set_result result_name, result_doc.root.find("*")
-			end
+
+			set_result \
+				result_name,
+				result_doc.root.find("*")
+
 		end
+
 	end
 
 end

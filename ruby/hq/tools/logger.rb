@@ -1,4 +1,4 @@
-require "json"
+require "multi_json"
 
 require "hq/tools"
 
@@ -553,7 +553,7 @@ class HQ::Tools::Logger
 			content: [ content ],
 		}
 
-		stuff[:out].print JSON.dump(data) + "\n"
+		stuff[:out].print MultiJson.dump(data) + "\n"
 
 	end
 

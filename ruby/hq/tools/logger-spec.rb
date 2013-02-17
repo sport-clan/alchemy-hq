@@ -453,7 +453,7 @@ describe HQ::Tools::Logger do
 
 			json = output_for(sample_log_with_content)
 
-			JSON.parse(json).should == {
+			MultiJson.load(json).should == {
 				"mode" => "mode",
 				"content" => [
 					{

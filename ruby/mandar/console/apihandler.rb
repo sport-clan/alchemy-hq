@@ -1,3 +1,5 @@
+require "multi_json"
+
 class Mandar::Console::ApiHandler
 
 	include Mandar::Console::Utils
@@ -19,7 +21,7 @@ class Mandar::Console::ApiHandler
 
 			# output confirmation
 			set_content_type "application/json"
-			console_print JSON.dump({})
+			console_print MultiJson.dump({})
 
 		when /^\/stager\/commit$/
 			method_not_allowed unless request_method == :post
@@ -27,7 +29,7 @@ class Mandar::Console::ApiHandler
 
 			# output confirmation
 			set_content_type "application/json"
-			console_print JSON.dump({})
+			console_print MultiJson.dump({})
 
 		when /^\/stager\/(deploy|rollback)$/
 			method_not_allowed unless request_method == :post
@@ -48,7 +50,7 @@ class Mandar::Console::ApiHandler
 
 			# output confirmation
 			set_content_type "application/json"
-			console_print JSON.dump({})
+			console_print MultiJson.dump({})
 
 		when /^\/status$/
 
@@ -95,7 +97,7 @@ class Mandar::Console::ApiHandler
 
 			set_content_type "application/json"
 
-			console_print JSON.dump(status)
+			console_print MultiJson.dump(status)
 
 		else
 			not_found
@@ -117,7 +119,7 @@ class Mandar::Console::ApiHandler
 			end
 			schema_names.sort!
 			set_content_type "application/json"
-			console_print JSON.dump schema_names
+			console_print MultiJson.dump schema_names
 
 		else
 
@@ -161,7 +163,7 @@ class Mandar::Console::ApiHandler
 				record.delete "mandar_type"
 				record.delete "_id"
 				set_content_type "application/json"
-				console_print JSON.dump record
+				console_print MultiJson.dump record
 
 			elsif request_method == :get && parts.size < ids.size
 
@@ -191,7 +193,7 @@ class Mandar::Console::ApiHandler
 
 				# output sub ids
 				set_content_type "application/json"
-				console_print JSON.dump(sub_ids.keys.sort)
+				console_print MultiJson.dump(sub_ids.keys.sort)
 
 			elsif request_method == :put && parts.size == ids.size
 
@@ -199,7 +201,7 @@ class Mandar::Console::ApiHandler
 				must([ "record-type", type_name ])
 
 				# parse body
-				record = JSON.parse(req.body)
+				record = MultiJson.load(req.body)
 
 				# check id matches
 				parts.each_with_index do |part, i|
@@ -215,7 +217,7 @@ class Mandar::Console::ApiHandler
 
 				# output confirmation
 				set_content_type "application/json"
-				console_print JSON.dump({})
+				console_print MultiJson.dump({})
 
 			elsif request_method == :post && parts.size == 0
 
@@ -223,7 +225,7 @@ class Mandar::Console::ApiHandler
 				must([ "record-type", type_name ])
 
 				# parse body
-				record = JSON.parse(req.body)
+				record = MultiJson.load(req.body)
 
 				# build id
 				record["_id"] = type_name
@@ -238,7 +240,7 @@ class Mandar::Console::ApiHandler
 
 				# output confirmation
 				set_content_type "application/json"
-				console_print JSON.dump({})
+				console_print MultiJson.dump({})
 
 			elsif request_method == :delete && parts.size == ids.size
 
@@ -246,7 +248,7 @@ class Mandar::Console::ApiHandler
 				must([ "record-type", type_name ])
 
 				# parse body
-				record = JSON.parse(req.body)
+				record = MultiJson.load(req.body)
 
 				# check id matches
 				parts.each_with_index do |part, i|
@@ -262,7 +264,7 @@ class Mandar::Console::ApiHandler
 
 				# output confirmation
 				set_content_type "application/json"
-				console_print JSON.dump({})
+				console_print MultiJson.dump({})
 
 			else
 				bad_request

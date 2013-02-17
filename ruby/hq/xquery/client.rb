@@ -1,3 +1,5 @@
+require "multi_json"
+
 require "hq/xquery"
 
 class HQ::XQuery::Client
@@ -48,7 +50,8 @@ class HQ::XQuery::Client
 
 		# send request
 
-		request_string = JSON.dump request
+		request_string =
+			MultiJson.dump request
 
 		@req_wr.puts request_string.length + 1
 		@req_wr.puts request_string
@@ -58,7 +61,7 @@ class HQ::XQuery::Client
 		reply_len = @resp_rd.gets.to_i
 		reply_string = @resp_rd.read reply_len
 
-		return JSON.parse reply_string
+		return MultiJson.load reply_string
 
 	end
 

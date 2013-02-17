@@ -11,8 +11,11 @@ module Mandar::Support::Ruby
 
 	def self.command_gem_source gem_source_elem
 
-		gem_source_ruby = gem_source_elem.attributes["ruby"]
-		gem_source_url = gem_source_elem.attributes["url"]
+		gem_source_ruby =
+			gem_source_elem["ruby"]
+
+		gem_source_url =
+			gem_source_elem["url"]
 
 		@gem_sources ||= {}
 

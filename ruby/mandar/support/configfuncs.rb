@@ -27,7 +27,7 @@ module Mandar::Support::ConfigFuncs
 			return ret
 
 		when "json"
-			return JSON.parse elem0.find("string (json)")
+			return MultiJson.load elem0.find("string (json)")
 
 		else
 			raise "Don't know how to convert #{elem0.name}"

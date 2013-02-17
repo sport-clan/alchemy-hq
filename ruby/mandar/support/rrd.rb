@@ -44,9 +44,54 @@ module Mandar::Support::RRD
 		end
 	end
 
-	def self.load_spec(path)
+	def self.rrd_info path
 
-		info_raw = rrd.info path
+		rrdtool_info_args = [
+			"rrdtool",
+			"info",
+			path,
+		]
+
+		rrdtool_info_cmd =
+			Mandar.shell_quote rrdtool_info_args
+
+		rrdtool_info_result =
+			Mandar::Support::Core.shell_real \
+				rrdtool_info_cmd
+
+		return \
+			Hash[
+				rrdtool_info_result[:output].map do
+					|line|
+
+					case line
+
+						when /^(\S+) = (\d+)$/
+							[ $1, $2.to_i ]
+
+						when /^(\S+) = NaN$/
+							[ $1, nil ]
+
+						when /^(\S+) = "([^"]+)"$/
+							[ $1, $2 ]
+
+						when /^(\S+) = (\d,\d+e[-+]\d+)$/
+							[ $1, $2.gsub(",",".").to_f ]
+
+						else
+							raise "Error: #{line}"
+
+					end
+
+				end
+			]
+
+	end
+
+	def self.load_spec path
+
+		info_raw =
+			rrd_info path
 
 		info = {}
 		info_raw.each do |key, val|

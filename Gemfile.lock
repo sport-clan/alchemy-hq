@@ -2,15 +2,9 @@ PATH
   remote: .
   specs:
     alchemy-hq (0.0.0)
-      cucumber (>= 1.2.1)
-      json (>= 1.7.7)
-      librrd
+      json_pure (>= 1.7.7)
       libxml-ruby
       multi_json
-      rake (>= 10.0.3)
-      rspec (>= 2.12.0)
-      rspec_junit_formatter
-      simplecov
 
 GEM
   remote: https://rubygems.org/
@@ -25,9 +19,10 @@ GEM
     gherkin (2.11.6)
       json (>= 1.7.6)
     json (1.7.7)
+    json_pure (1.7.7)
     librrd (1.0.3)
-    libxml-ruby (2.5.0)
-    multi_json (1.6.0)
+    libxml-ruby (2.6.0)
+    multi_json (1.6.1)
     rake (10.0.3)
     rspec (2.12.0)
       rspec-core (~> 2.12.0)
@@ -51,3 +46,9 @@ PLATFORMS
 
 DEPENDENCIES
   alchemy-hq!
+  cucumber (>= 1.2.1)
+  librrd
+  rake (>= 10.0.3)
+  rspec (>= 2.12.0)
+  rspec_junit_formatter
+  simplecov

@@ -25,7 +25,7 @@ class Mandar::Tools::MandarClient
 		# prepare request
 
 		request_string =
-			request_data ? JSON.generate(request_data) : nil
+			request_data ? MultiJson.dump(request_data) : nil
 
 		request =
 			Net::HTTPGenericRequest.new \
@@ -79,7 +79,7 @@ class Mandar::Tools::MandarClient
 
 		response_data =
 			response["Content-Type"] == "application/json" \
-				? JSON.parse(response.body)
+				? MultiJson.load(response.body)
 				: nil
 
 		return response.code.to_i, response_data

@@ -204,7 +204,6 @@ module Mandar::Master
 				--times
 				--copy-links
 				--delete
-				--delete-excluded
 				--executability
 				--perms
 				--recursive
@@ -232,7 +231,13 @@ module Mandar::Master
 				--exclude=/.work/*
 				--include=/.work
 
+				--include=/Gemfile
+				--include=/Gemfile.lock
+				--include=/zattikka-hq.gemspec
+				--include=/vendor
+
 				--include=/alchemy-hq
+				--include=/alchemy-hq/alchemy-hq.gemspec
 				--include=/alchemy-hq/bin
 				--include=/alchemy-hq/etc
 				--exclude=/alchemy-hq/etc/build.properties
@@ -240,9 +245,7 @@ module Mandar::Master
 				--exclude=/alchemy-hq/*
 
 				--include=/bin
-
 				--include=/ruby
-
 				--include=/scripts
 
 				--include=/#{File.basename $0}
@@ -256,12 +259,49 @@ module Mandar::Master
 
 			]
 
-			rsync_cmd = "#{Mandar.shell_quote rsync_args} </dev/null"
+			rsync_cmd =
+				"#{Mandar.shell_quote rsync_args} </dev/null"
 
 			Mandar.debug "executing #{rsync_cmd}"
 
 			system rsync_cmd \
 				or raise "Error #{$?.exitstatus} executing #{rsync_cmd}"
+
+			# run bundle install
+
+			ssh_args = [
+				"ssh",
+				"-q",
+				"-T",
+				"-A",
+				"-S", "#{WORK}/ssh/#{host_name}.sock",
+				"-o", "BatchMode=yes",
+				"root@#{host_hostname}",
+				[
+					"cd /zattikka-hq",
+					"mkdir -p .override",
+					"ln -sfd /zattikka-hq/alchemy-hq .override/alchemy-hq",
+					[
+						"bundle install",
+						"--path .gems",
+						"--binstubs .stubs",
+						"--local",
+						"--without rrd development",
+						"--quiet",
+					].join(" "),
+				].join("; "),
+			]
+
+			ssh_cmd =
+				Mandar.shell_quote ssh_args
+
+			Mandar.debug "executing #{ssh_cmd}"
+
+			ssh_success =
+				system ssh_cmd
+
+			raise "Error: #{ssh_cmd}" \
+				unless ssh_success
 
 		end
 
@@ -295,7 +335,7 @@ module Mandar::Master
 		# build command
 
 		remote_args = [
-			"/#{Mandar.deploy_dir}/#{Mandar.remote_command}",
+			"/#{Mandar.deploy_dir}/.stubs/#{Mandar.remote_command}",
 			"--log", "trace:raw",
 			*args,
 		]
@@ -356,10 +396,10 @@ module Mandar::Master
 			begin
 
 				data =
-					JSON.parse line
+					MultiJson.load line
 
 			rescue => e
-				puts "INVALID DATA: #{line.strip} (#{e.message})"
+				$stderr.print line
 				next
 			end
 

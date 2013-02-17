@@ -34,7 +34,7 @@ module Mandar::CouchDB
 
 		def initialize(hostname = "localhost", port = 5984)
 			require "cgi"
-			require "json"
+			require "multi_json"
 			require "net/http"
 			@hostname = hostname
 			@port = port
@@ -60,23 +60,29 @@ module Mandar::CouchDB
 			return call("PUT", path)
 		end
 
-		def get(db)
+		def get db
 			path = Mandar::CouchDB.urlf("/%", db)
 			return call("GET", path)
 		end
 
-		def temp_view(db, code)
+		def temp_view db, code
 			path = Mandar::CouchDB.urlf("/%/_temp_view", db)
 			return call("POST", path, code)
 		end
 
-		def call(method, path, request = nil)
+		def call method, path, request = nil
 
-			request_string = request ? JSON.generate(request, :max_nesting => false) : nil
+			request_string =
+				request ? MultiJson.dump(request) : nil
 
-			response_string = http_request(method, path, request_string)
+			response_string =
+				http_request \
+					method,
+					path,
+					request_string
 
-			response = JSON.parse(response_string, :max_nesting => false)
+			response =
+				MultiJson.load response_string
 
 			if response.is_a?(Hash) && response["error"]
 				raise Mandar::CouchDB::map_error response
@@ -85,7 +91,7 @@ module Mandar::CouchDB
 			return response
 		end
 
-		def http_request(method, path, request_string)
+		def http_request method, path, request_string
 			Mandar.trace "couchdb #{method} #{path} #{request_string}"
 			# TODO reuse connections
 			Net::HTTP.start @hostname, @port do |http|
@@ -106,22 +112,22 @@ module Mandar::CouchDB
 
 	class Database
 
-		def initialize(server, db)
+		def initialize server, db
 			@server = server
 			@db = db
 		end
 
-		def create(doc)
+		def create doc
 			path = Mandar::CouchDB.urlf("/%", @db)
 			return @server.call("POST", path, doc)
 		end
 
-		def get(id)
+		def get id
 			path = Mandar::CouchDB.urlf("/%/%", @db, id)
 			return @server.call("GET", path)
 		end
 
-		def get_nil(id)
+		def get_nil id
 			begin
 				return get id
 			rescue CouchNotFoundException
@@ -129,38 +135,78 @@ module Mandar::CouchDB
 			end
 		end
 
-		def update(doc)
-			path = Mandar::CouchDB.urlf("/%/%", @db, doc["_id"])
-			return @server.call("PUT", path, doc)
+		def update doc
+
+			path =
+				Mandar::CouchDB.urlf \
+					"/%/%",
+					@db,
+					doc["_id"]
+
+			return @server.call "PUT", path, doc
+
 		end
 
-		def delete(id, rev)
-			path = Mandar::CouchDB.urlf("/%/%?rev=%", @db, id, rev)
-			return @server.call("DELETE", path)
+		def delete id, rev
+
+			path =
+				Mandar::CouchDB.urlf \
+					"/%/%?rev=%",
+					@db,
+					id,
+					rev
+
+			return @server.call "DELETE", path
+
 		end
 
-		def view(design, view)
-			path = Mandar::CouchDB.urlf("/%/_design/%/_view/%", @db, design, view)
-			return @server.call("GET", path)
+		def view design, view
+
+			path =
+				Mandar::CouchDB.urlf \
+					"/%/_design/%/_view/%",
+					@db,
+					design,
+					view
+
+			return @server.call "GET", path
+
 		end
 
-		def view_key(design, view, key)
-			path = Mandar::CouchDB.urlf("/%/_design/%/_view/%?key=%", @db, design, view, key.to_json)
-			return @server.call("GET", path)
+		def view_key design, view, key
+
+			path =
+				Mandar::CouchDB.urlf \
+					"/%/_design/%/_view/%?key=%",
+					@db,
+					design,
+					view,
+					key.to_json
+
+			return @server.call "GET", path
+
 		end
 
 		def bulk docs
-			path = Mandar::CouchDB.urlf \
-				"/%/_bulk_docs", \
-				@db
+
+			path =
+				Mandar::CouchDB.urlf \
+					"/%/_bulk_docs",
+					@db
+
 			return @server.call "POST", path, { "docs" => docs }
+
 		end
 
 		def all_docs
-			path = Mandar::CouchDB.urlf \
-				"/%/_all_docs", \
-				@db
+
+			path =
+				Mandar::CouchDB.urlf \
+					"/%/_all_docs",
+					@db
+
 			return @server.call "GET", path
+
 		end
 
 	end
