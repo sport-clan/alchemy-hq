@@ -9,7 +9,7 @@ class HQ::Tools::Logger::RawLogger \
 		[ :normal, :partial ]
 	end
 
-	def output content, stuff
+	def output_real content, stuff
 
 		data = {
 			mode: stuff[:mode],

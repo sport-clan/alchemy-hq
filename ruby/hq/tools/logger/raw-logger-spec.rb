@@ -5,7 +5,7 @@ describe HQ::Tools::Logger::RawLogger do
 
 	include_examples "a logger"
 
-	context "#output_raw" do
+	context "#output" do
 
 		it "outputs JSON" do
 

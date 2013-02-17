@@ -13,7 +13,12 @@ class HQ::Tools::Logger
 	]
 
 	def initialize
-		@targets = []
+
+		require "hq/tools/logger/multi-logger"
+
+		@multi_logger =
+			HQ::Tools::Logger::MultiLogger.new
+
 	end
 
 	def add_target out, format, level
@@ -21,44 +26,38 @@ class HQ::Tools::Logger
 		raise "Invalid log level #{level}" \
 			unless MESSAGE_TYPES.include? level.to_sym
 
-		formatter =
-			if format.is_a? Class
-				format
-			else
-				case format.to_sym
+		logger =
+			case format.to_sym
 
-					when :ansi
-						require "hq/tools/logger/ansi-logger"
-						HQ::Tools::Logger::AnsiLogger.new
+				when :ansi
+					require "hq/tools/logger/ansi-logger"
+					HQ::Tools::Logger::AnsiLogger.new
 
-					when :html
-						require "hq/tools/logger/html-logger"
-						HQ::Tools::Logger::HtmlLogger.new
+				when :html
+					require "hq/tools/logger/html-logger"
+					HQ::Tools::Logger::HtmlLogger.new
 
-					when :raw
-						require "hq/tools/logger/raw-logger"
-						HQ::Tools::Logger::RawLogger.new
+				when :raw
+					require "hq/tools/logger/raw-logger"
+					HQ::Tools::Logger::RawLogger.new
 
-					when :text
-						require "hq/tools/logger/text-logger"
-						HQ::Tools::Logger::TextLogger.new
+				when :text
+					require "hq/tools/logger/text-logger"
+					HQ::Tools::Logger::TextLogger.new
 
-					else
-						raise "Error"
+				else
+					raise "Error"
 
-				end
 			end
 
-		formatter.out = out
+		logger.out = out
+		logger.level = level
 
-		@targets << {
-			formatter: formatter,
-			level: level.to_sym,
-		}
+		@multi_logger.add_logger logger
 
 	end
 
-	def level_includes level_1, level_2
+	def self.level_includes level_1, level_2
 
 		index_1 =
 			MESSAGE_TYPES.index(level_1.to_sym)
@@ -75,23 +74,9 @@ class HQ::Tools::Logger
 		raise "Must provide hostname" \
 			unless content["hostname"]
 
-		@targets.each do
-			|target|
-
-			next unless level_includes \
-				target[:level],
-				content["level"].to_sym
-
-			stuff = {
-				out: target[:out],
-				mode: mode,
-			}
-
-			next unless target[:formatter].valid_modes.include? mode
-
-			target[:formatter].output content, stuff
-
-		end
+		@multi_logger.output \
+			content,
+			{ mode: mode }
 
 	end
 

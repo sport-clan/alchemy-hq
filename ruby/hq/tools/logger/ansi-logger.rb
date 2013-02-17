@@ -63,10 +63,7 @@ class HQ::Tools::Logger::AnsiLogger \
 
 	end
 
-	def output content, stuff = {}, prefix = ""
-
-		stuff =
-			fix_stuff stuff, content, prefix
+	def output_real content, stuff
 
 		if content.is_a? String
 			ansi_line content, stuff, :normal

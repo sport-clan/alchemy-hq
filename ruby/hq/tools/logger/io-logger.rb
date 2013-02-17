@@ -3,6 +3,7 @@ require "hq/tools/logger"
 class HQ::Tools::Logger::IoLogger
 
 	attr_accessor :out
+	attr_accessor :level
 
 	def fix_stuff old_stuff, content, prefix = nil
 
@@ -13,6 +14,7 @@ class HQ::Tools::Logger::IoLogger
 			hostname: content["hostname"] || old_stuff[:hostname],
 			level: (content["level"] || old_stuff[:level]).to_sym,
 			prefix: (old_stuff[:prefix] || "") + (prefix || ""),
+			mode: old_stuff[:mode],
 		}
 
 		raise "No hostname" \
@@ -22,6 +24,24 @@ class HQ::Tools::Logger::IoLogger
 			unless new_stuff[:level]
 
 		return new_stuff
+
+	end
+
+	def output content, stuff = {}, prefix = ""
+
+		stuff = fix_stuff stuff, content, prefix
+
+		# check we want to output this entry
+
+		return unless HQ::Tools::Logger.level_includes \
+			level,
+			stuff[:level]
+
+		return unless valid_modes.include? stuff[:mode]
+
+		# output it
+
+		output_real content, stuff
 
 	end
 
