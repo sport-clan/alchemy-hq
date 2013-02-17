@@ -23,6 +23,7 @@ Gem::Specification.new do
 
 	spec.extensions = [ "c++/Rakefile" ]
 
+	spec.add_dependency "amqp", ">= 0.9.8"
 	spec.add_dependency "json_pure", ">= 1.7.7"
 	spec.add_dependency "libxml-ruby"
 	spec.add_dependency "multi_json"
