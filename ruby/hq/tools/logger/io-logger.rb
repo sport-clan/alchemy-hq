@@ -1,6 +1,6 @@
 require "hq/tools/logger"
 
-class HQ::Tools::Logger::Formatter
+class HQ::Tools::Logger::IoLogger
 
 	def fix_stuff old_stuff, content, prefix = nil
 

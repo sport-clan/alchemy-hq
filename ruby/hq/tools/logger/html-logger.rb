@@ -1,8 +1,8 @@
 require "hq/tools/escape"
-require "hq/tools/logger/formatter"
+require "hq/tools/logger/io-logger"
 
-class HQ::Tools::Logger::HtmlFormatter \
-	< HQ::Tools::Logger::Formatter
+class HQ::Tools::Logger::HtmlLogger \
+	< HQ::Tools::Logger::IoLogger
 
 	include HQ::Tools::Escape
 

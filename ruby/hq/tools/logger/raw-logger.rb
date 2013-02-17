@@ -1,9 +1,9 @@
-require "hq/tools/logger/formatter"
+require "hq/tools/logger/io-logger"
 
 require "multi_json"
 
-class HQ::Tools::Logger::RawFormatter \
-	< HQ::Tools::Logger::Formatter
+class HQ::Tools::Logger::RawLogger \
+	< HQ::Tools::Logger::IoLogger
 
 	def valid_modes
 		[ :normal, :partial ]

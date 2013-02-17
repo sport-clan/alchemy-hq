@@ -1,7 +1,7 @@
-require "hq/tools/logger/formatter"
+require "hq/tools/logger/io-logger"
 
-class HQ::Tools::Logger::AnsiFormatter \
-	< HQ::Tools::Logger::Formatter
+class HQ::Tools::Logger::AnsiLogger \
+	< HQ::Tools::Logger::IoLogger
 
 	ANSI_CODES = {
 		:normal => "\e[0m",

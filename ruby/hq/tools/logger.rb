@@ -21,29 +21,27 @@ class HQ::Tools::Logger
 		raise "Invalid log level #{level}" \
 			unless MESSAGE_TYPES.include? level.to_sym
 
-		require "hq/tools/logger/formatter"
-
 		formatter =
-			if format.is_a? Formatter
+			if format.is_a? Class
 				format
 			else
 				case format.to_sym
 
 					when :ansi
-						require "hq/tools/logger/ansi-formatter"
-						HQ::Tools::Logger::AnsiFormatter.new
+						require "hq/tools/logger/ansi-logger"
+						HQ::Tools::Logger::AnsiLogger.new
 
 					when :html
-						require "hq/tools/logger/html-formatter"
-						HQ::Tools::Logger::HtmlFormatter.new
+						require "hq/tools/logger/html-logger"
+						HQ::Tools::Logger::HtmlLogger.new
 
 					when :raw
-						require "hq/tools/logger/raw-formatter"
-						HQ::Tools::Logger::RawFormatter.new
+						require "hq/tools/logger/raw-logger"
+						HQ::Tools::Logger::RawLogger.new
 
 					when :text
-						require "hq/tools/logger/text-formatter"
-						HQ::Tools::Logger::TextFormatter.new
+						require "hq/tools/logger/text-logger"
+						HQ::Tools::Logger::TextLogger.new
 
 					else
 						raise "Error"

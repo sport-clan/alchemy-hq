@@ -1,9 +1,9 @@
-require "hq/tools/logger/raw-formatter"
-require "hq/tools/logger/formatter-examples"
+require "hq/tools/logger/raw-logger"
+require "hq/tools/logger/logger-examples"
 
-describe HQ::Tools::Logger::RawFormatter do
+describe HQ::Tools::Logger::RawLogger do
 
-	include_examples "a log formatter"
+	include_examples "a logger"
 
 	context "#output_raw" do
 

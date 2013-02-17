@@ -1,9 +1,9 @@
-require "hq/tools/logger/html-formatter"
-require "hq/tools/logger/formatter-examples"
+require "hq/tools/logger/html-logger"
+require "hq/tools/logger/logger-examples"
 
-describe HQ::Tools::Logger::HtmlFormatter do
+describe HQ::Tools::Logger::HtmlLogger do
 
-	include_examples "a log formatter"
+	include_examples "a logger"
 
 	context "#output" do
 

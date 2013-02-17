@@ -1,9 +1,9 @@
-require "hq/tools/logger/ansi-formatter"
-require "hq/tools/logger/formatter-examples"
+require "hq/tools/logger/ansi-logger"
+require "hq/tools/logger/logger-examples"
 
-describe HQ::Tools::Logger::AnsiFormatter do
+describe HQ::Tools::Logger::AnsiLogger do
 
-	include_examples "a log formatter"
+	include_examples "a logger"
 
 	context "#output" do
 
@@ -22,13 +22,13 @@ describe HQ::Tools::Logger::AnsiFormatter do
 
 		def ansi_line colour, text
 			return [
-				HQ::Tools::Logger::AnsiFormatter::ANSI_CODES[:bold],
-				HQ::Tools::Logger::AnsiFormatter::ANSI_CODES[:blue],
+				HQ::Tools::Logger::AnsiLogger::ANSI_CODES[:bold],
+				HQ::Tools::Logger::AnsiLogger::ANSI_CODES[:blue],
 				"hostname:",
 				" ",
-				HQ::Tools::Logger::AnsiFormatter::ANSI_CODES[colour],
+				HQ::Tools::Logger::AnsiLogger::ANSI_CODES[colour],
 				text,
-				HQ::Tools::Logger::AnsiFormatter::ANSI_CODES[:normal],
+				HQ::Tools::Logger::AnsiLogger::ANSI_CODES[:normal],
 				"\n",
 			]
 		end

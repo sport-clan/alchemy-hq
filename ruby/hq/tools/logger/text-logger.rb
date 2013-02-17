@@ -1,7 +1,7 @@
-require "hq/tools/logger/formatter"
+require "hq/tools/logger/io-logger"
 
-class HQ::Tools::Logger::TextFormatter \
-	< HQ::Tools::Logger::Formatter
+class HQ::Tools::Logger::TextLogger \
+	< HQ::Tools::Logger::IoLogger
 
 	def valid_modes
 		[ :normal, :partial ]

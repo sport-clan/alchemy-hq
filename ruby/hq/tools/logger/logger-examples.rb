@@ -1,4 +1,4 @@
-shared_examples_for "a log formatter" do
+shared_examples_for "a logger" do
 
 	def output_for content
 
