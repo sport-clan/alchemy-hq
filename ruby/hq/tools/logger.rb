@@ -153,6 +153,10 @@ class HQ::Tools::Logger
 
 	end
 
+	def add_logger logger
+		@multi_logger.add_logger logger
+	end
+
 	def self.level_includes level_1, level_2
 
 		index_1 =

@@ -15,10 +15,6 @@ class HQ::Application
 	attr_accessor :config
 
 	attr_accessor :logger
-	attr_accessor :couch
-
-	attr_accessor :deploy_master
-	attr_accessor :deploy_slave
 
 	def main
 
@@ -33,8 +29,14 @@ class HQ::Application
 		rescue => e
 			logger.error "got error #{e.message}"
 			logger.detail(([ e.inspect ] + e.backtrace).join("\n"))
+		ensure
+			tidy_up
 		end
 
+	end
+
+	def tidy_up
+		@mq_wrapper.stop if @mq_wrapper
 	end
 
 	def init_logger
@@ -52,44 +54,36 @@ class HQ::Application
 
 	end
 
-	def init_deploy_master
+	def deploy_master
+
+		return @deploy_master if @deploy_master
 
 		require "hq/deploy/master"
 
-		self.deploy_master =
-			HQ::Deploy::Master.new
+		@deploy_master = HQ::Deploy::Master.new
+		@deploy_master.application = self
 
-		init_couch
-
-		deploy_master.config = config
-		deploy_master.hostname = hostname
-		deploy_master.config_dir = config_dir
-		deploy_master.work_dir = work_dir
-		deploy_master.deploy_dir = deploy_dir
-		deploy_master.remote_command = remote_command
-
-		deploy_master.logger = logger
-		deploy_master.couch = couch
+		return @deploy_master
 
 	end
 
-	def init_deploy_slave deploy_path
+	def deploy_slave deploy_path
+
+		return @deploy_slave if @deploy_slave
 
 		require "hq/deploy/slave"
 
-		self.deploy_slave =
-			HQ::Deploy::Slave.new
+		@deploy_slave = HQ::Deploy::Slave.new
+		@deploy_slave.application = self
+		@deploy_slave.deploy_path = deploy_path
 
-		deploy_slave.logger = logger
-
-		deploy_slave.hostname = hostname
-		deploy_slave.config_dir = config_dir
-		deploy_slave.work_dir = work_dir
-		deploy_slave.deploy_path = deploy_path
+		return @deploy_slave
 
 	end
 
-	def init_couch
+	def couch
+
+		return @couch if @couch
 
 		require "hq/couchdb/server"
 
@@ -98,17 +92,43 @@ class HQ::Application
 				profile["database-host"],
 				profile["database-port"]
 
-		couch_server.logger =
-			logger
+		couch_server.logger = logger
 
 		couch_server.auth \
 			profile["database-user"],
 			profile["database-pass"]
 
-		self.couch =
+		@couch =
 			couch_server.database \
 				profile["database-name"]
 
+		return @couch
+
+	end
+
+	def mq_wrapper
+
+		return @mq_wrapper if @mq_wrapper
+
+		require "hq/mq/mq-wrapper"
+
+		@mq_wrapper =
+			HQ::MQ::MqWrapper.new
+
+		@mq_wrapper.host = profile["mq-host"]
+		@mq_wrapper.port = profile["mq-port"]
+		@mq_wrapper.vhost = profile["mq-vhost"]
+		@mq_wrapper.username = profile["mq-user"]
+		@mq_wrapper.password = profile["mq-pass"]
+
+		@mq_wrapper.start
+
+		return @mq_wrapper
+
+	end
+
+	def continue
+		@mq_wrapper.continue if @mq_wrapper
 	end
 
 	def determine_hostname
@@ -448,8 +468,6 @@ class HQ::Application
 
 				hosts = ARGV.size > 1 ? process_hosts(ARGV[1..-1]) : nil
 
-				init_deploy_master
-
 				deploy_master.transform
 
 				deploy_master.write hosts
@@ -469,8 +487,6 @@ class HQ::Application
 					if $mock
 
 				# begin staged/rollback deploy
-
-				init_deploy_master
 
 				deploy_master.stager_start \
 					$deploy_mode,
@@ -540,9 +556,7 @@ class HQ::Application
 
 				# and perform the requested deployment
 
-				init_deploy_slave ARGV[2]
-
-				deploy_slave.go
+				deploy_slave(ARGV[2]).go
 
 =begin
 			when "ec2-instances"
@@ -651,8 +665,6 @@ class HQ::Application
 =end
 
 			when "unlock"
-
-				init_couch
 
 				locks =
 					couch.get "mandar-locks"
@@ -897,6 +909,46 @@ class HQ::Application
 					end
 				end
 =end
+
+			when "listen"
+
+				mq_wrapper.schedule do
+
+					queue =
+						AMQP::Queue.new \
+							mq_wrapper.channel,
+							"",
+							:auto_delete => true \
+						do
+							|queue, declare_ok|
+
+							queue.bind \
+								mq_wrapper.channel.fanout \
+									"deploy-progress"
+
+							queue.subscribe do
+								|data_json|
+
+								data =
+									MultiJson.load data_json
+
+								case data["type"]
+
+								when "deploy-log"
+									logger.output \
+										data["content"],
+										data["mode"]
+
+								else
+									puts "got #{data["type"]}"
+
+								end
+
+							end
+
+						end
+
+				end
 
 			else
 				logger.error "syntax error"

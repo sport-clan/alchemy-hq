@@ -2,17 +2,21 @@ require "hq/deploy"
 
 require "hq/tools/escape"
 
-class HQ::Deploy::Master
+module HQ
+module Deploy
+class Master
 
-	attr_accessor :config
-	attr_accessor :hostname
-	attr_accessor :config_dir
-	attr_accessor :work_dir
-	attr_accessor :deploy_dir
-	attr_accessor :remote_command
+	attr_accessor :application
 
-	attr_accessor :couch
-	attr_accessor :logger
+	def profile() application.profile end
+	def hostname() application.hostname end
+	def config_dir() application.config_dir end
+	def work_dir() application.work_dir end
+	def deploy_dir() application.deploy_dir end
+	def remote_command() application.remote_command end
+
+	def couch() application.couch end
+	def logger() application.logger end
 
 	attr_accessor :abstract_engine
 	attr_accessor :xquery_client
@@ -174,6 +178,20 @@ class HQ::Deploy::Master
 		[ :unstaged, :staged, :rollback ].include? deploy_mode \
 			or raise "Invalid mode: #{deploy_mode}"
 
+		# create mq logger
+
+		require "hq/deploy/mq-logger"
+
+		mq_logger = MqLogger.new
+		mq_logger.mq_wrapper = application.mq_wrapper
+		mq_logger.start
+
+		mq_logger.publish({
+			"type" => "deploy-start",
+		})
+
+		logger.add_logger mq_logger
+
 		mode_text = {
 			:unstaged => "unstaged deploy",
 			:staged => "staged deploy",
@@ -325,6 +343,12 @@ class HQ::Deploy::Master
 
 			logger.notice "finished #{mode_text} for role #{deploy_role}"
 
+			# publish end of deployment
+
+			mq_logger.publish({
+				"type" => "deploy-end",
+			})
+
 		end
 
 	end
@@ -459,6 +483,8 @@ class HQ::Deploy::Master
 
 				values_by_type[type] ||= Hash.new
 				values_by_type[type][value["_id"]] = value
+
+				application.continue
 
 			end
 
@@ -1488,4 +1514,6 @@ class HQ::Deploy::Master
 
 	end
 
+end
+end
 end
