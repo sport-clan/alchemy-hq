@@ -1,3 +1,5 @@
+require "mandar"
+
 module Mandar::Console
 end
 

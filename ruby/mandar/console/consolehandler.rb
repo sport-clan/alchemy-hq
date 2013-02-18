@@ -34,7 +34,7 @@ class Mandar::Console::ConsoleHandler
 
 		when /^\/empty.png$/
 			set_content_type "image/png"
-			png = File.read "#{MANDAR}/etc/empty.png"
+			png = File.read "#{HQ::DIR}/etc/empty.png"
 			console_print png
 
 		when /^\/grapher$/

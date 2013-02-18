@@ -732,10 +732,10 @@ class HQ::Application
 =end
 
 			when "console"
-				logger.die "TODO"
 
-=begin
 				require "mandar/console"
+				Mandar.logger = logger
+				Object.const_set "CONFIG", config_dir
 
 				if $console_fork
 					pid = fork do
@@ -751,7 +751,6 @@ class HQ::Application
 				else
 					Mandar::Console::Server.new.run
 				end
-=end
 
 			when "run"
 				logger.die "TODO"

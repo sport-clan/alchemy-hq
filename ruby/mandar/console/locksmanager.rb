@@ -9,7 +9,7 @@ class Mandar::Console::LocksManager
 			# load existing row
 			return db.get "mandar-locks"
 
-		rescue Mandar::CouchDB::CouchNotFoundException
+		rescue HQ::CouchDB::CouchNotFoundException
 
 			# create new row
 			locks = {

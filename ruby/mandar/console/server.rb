@@ -39,7 +39,9 @@ class Mandar::Console::Server
 		db_name = config.attributes["database-name"]
 		db_user = config.attributes["database-user"]
 		db_pass = config.attributes["database-pass"]
-		couch_server = Mandar::CouchDB::Server.new(db_host, db_port)
+		require "hq/couchdb/server"
+		couch_server = HQ::CouchDB::Server.new(db_host, db_port)
+		couch_server.logger = Mandar.logger
 		couch_server.auth db_user, db_pass
 		db = couch_server.database(db_name)
 		app_ctx[:db] = db
