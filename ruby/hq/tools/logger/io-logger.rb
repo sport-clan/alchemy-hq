@@ -14,7 +14,7 @@ class HQ::Tools::Logger::IoLogger
 			hostname: content["hostname"] || old_stuff[:hostname],
 			level: (content["level"] || old_stuff[:level]).to_sym,
 			prefix: (old_stuff[:prefix] || "") + (prefix || ""),
-			mode: old_stuff[:mode],
+			mode: old_stuff[:mode].to_sym,
 		}
 
 		raise "No hostname" \
@@ -37,7 +37,7 @@ class HQ::Tools::Logger::IoLogger
 			level,
 			stuff[:level]
 
-		return unless valid_modes.include? stuff[:mode]
+		return unless valid_modes.include? stuff[:mode].to_sym
 
 		# output it
 

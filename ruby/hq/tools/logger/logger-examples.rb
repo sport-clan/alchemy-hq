@@ -4,13 +4,14 @@ shared_examples_for "a logger" do
 
 	before do
 		subject.out = string_io
+		subject.level = :debug
 	end
 
 	def output_for content
 
 		subject.output \
 			content,
-			{ prefix: "|", mode: "mode" }
+			{ prefix: "|", mode: "normal" }
 
 		return string_io.string
 

@@ -12,7 +12,7 @@ describe HQ::Tools::Logger::RawLogger do
 			json = output_for(sample_log_with_content)
 
 			MultiJson.load(json).should == {
-				"mode" => "mode",
+				"mode" => "normal",
 				"content" => [
 					{
 						"type" => "log",
