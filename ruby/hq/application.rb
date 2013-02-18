@@ -1,8 +1,125 @@
-require "mandar/tools"
+require "hq"
 
-class Mandar::Core::Script
+require "hq/tools/escape"
 
-	include Mandar::Tools::Escape
+class HQ::Application
+
+	include HQ::Tools::Escape
+
+	attr_accessor :config_dir
+	attr_accessor :work_dir
+	attr_accessor :deploy_dir
+	attr_accessor :remote_command
+
+	attr_accessor :hostname
+	attr_accessor :config
+
+	attr_accessor :logger
+	attr_accessor :couch
+
+	attr_accessor :deploy_master
+	attr_accessor :deploy_slave
+
+	def main
+
+		init_logger
+
+		load_config
+
+		process_args
+
+		begin
+			do_command
+		rescue => e
+			logger.error "got error #{e.message}"
+			logger.detail(([ e.inspect ] + e.backtrace).join("\n"))
+		end
+
+	end
+
+	def init_logger
+
+		require "hq/tools/logger"
+
+		self.hostname =
+			determine_hostname
+
+		self.logger =
+			HQ::Tools::Logger.new
+
+		logger.hostname =
+			hostname
+
+	end
+
+	def init_deploy_master
+
+		require "hq/deploy/master"
+
+		self.deploy_master =
+			HQ::Deploy::Master.new
+
+		init_couch
+
+		deploy_master.config = config
+		deploy_master.hostname = hostname
+		deploy_master.config_dir = config_dir
+		deploy_master.work_dir = work_dir
+		deploy_master.deploy_dir = deploy_dir
+		deploy_master.remote_command = remote_command
+
+		deploy_master.logger = logger
+		deploy_master.couch = couch
+
+	end
+
+	def init_deploy_slave deploy_path
+
+		require "hq/deploy/slave"
+
+		self.deploy_slave =
+			HQ::Deploy::Slave.new
+
+		deploy_slave.logger = logger
+
+		deploy_slave.hostname = hostname
+		deploy_slave.config_dir = config_dir
+		deploy_slave.work_dir = work_dir
+		deploy_slave.deploy_path = deploy_path
+
+	end
+
+	def init_couch
+
+		require "hq/couchdb/server"
+
+		couch_server =
+			HQ::CouchDB::Server.new \
+				profile["database-host"],
+				profile["database-port"]
+
+		couch_server.logger =
+			logger
+
+		couch_server.auth \
+			profile["database-user"],
+			profile["database-pass"]
+
+		self.couch =
+			couch_server.database \
+				profile["database-name"]
+
+	end
+
+	def determine_hostname
+
+		if File.exists? "/etc/hq-hostname"
+			return File.read("/etc/hq-hostname").strip
+		end
+
+		return Socket.gethostname.split(".")[0]
+
+	end
 
 	HELP = [
 		"",
@@ -43,41 +160,64 @@ class Mandar::Core::Script
 		"",
 	].join("\n") + "\n"
 
-	def parse_args
+	def load_config
 
-		require "getoptlong"
+		require "xml"
 
-		if File.exist? "#{CONFIG}/etc/hq-config.xml"
+		config_path =
+			"#{config_dir}/etc/hq-config.xml"
 
-			hq_config =
-				Mandar::Core::Config.mandar
+		if File.exists? config_path
+
+			# load config
+
+			config_doc =
+				XML::Document.file \
+					config_path,
+					:options => XML::Parser::Options::NOBLANKS
+
+			self.config =
+				config_doc.root
 
 		else
 
-			hq_config =
-				XML::Document.string("<blah/>").root
+			# default empty config
+
+			config_doc =
+				XML::Document.string("<hq-config/>")
+
+			self.config =
+				config_doc.root
 
 		end
 
-		opts = GetoptLong.new(*[
+	end
 
-			[ "--mock", "-m", GetoptLong::NO_ARGUMENT ],
-			[ "--no-config", "-c", GetoptLong::NO_ARGUMENT ],
-			[ "--no-database", "-d", GetoptLong::NO_ARGUMENT ],
-			[ "--series", "-s", GetoptLong::NO_ARGUMENT ],
-			[ "--profile", "-p", GetoptLong::REQUIRED_ARGUMENT ],
+	def process_args
 
-			[ "--log", "-l", GetoptLong::REQUIRED_ARGUMENT ],
+		require "getoptlong"
 
-			[ "--role", GetoptLong::REQUIRED_ARGUMENT ],
-			[ "--staged", GetoptLong::NO_ARGUMENT ],
-			[ "--rollback", GetoptLong::NO_ARGUMENT ],
-			[ "--force", "-f", GetoptLong::NO_ARGUMENT ],
+		opts =
+			GetoptLong.new(*[
 
-			[ "--log-file", GetoptLong::REQUIRED_ARGUMENT ],
+				[ "--mock", "-m", GetoptLong::NO_ARGUMENT ],
+				[ "--no-config", "-c", GetoptLong::NO_ARGUMENT ],
+				[ "--no-database", "-d", GetoptLong::NO_ARGUMENT ],
+				[ "--series", "-s", GetoptLong::NO_ARGUMENT ],
+				[ "--profile", "-p", GetoptLong::REQUIRED_ARGUMENT ],
 
-			[ "--ssh-identity", GetoptLong::REQUIRED_ARGUMENT ],
-		])
+				[ "--log", "-l", GetoptLong::REQUIRED_ARGUMENT ],
+
+				[ "--role", GetoptLong::REQUIRED_ARGUMENT ],
+				[ "--staged", GetoptLong::NO_ARGUMENT ],
+				[ "--rollback", GetoptLong::NO_ARGUMENT ],
+				[ "--force", "-f", GetoptLong::NO_ARGUMENT ],
+
+				[ "--log-file", GetoptLong::REQUIRED_ARGUMENT ],
+
+				[ "--ssh-identity", GetoptLong::REQUIRED_ARGUMENT ],
+
+			])
 
 		$no_config = false
 		$no_database = false
@@ -87,6 +227,8 @@ class Mandar::Core::Script
 		$profile = nil
 		$deploy_role = nil
 		$deploy_mode = :unstaged
+
+		got_log = false
 
 		$passthru_args = []
 
@@ -112,18 +254,12 @@ class Mandar::Core::Script
 				$profile = arg
 
 			when "--log"
-
-				level, format, filename =
-					arg.split ":", 3
-
-				Mandar.logger.add_target \
-					filename ? File.open(filename, "a") : STDOUT,
-					format || :ansi,
-					level || hq_config["default-log-level"] || :detail
+				logger.add_auto arg
+				got_log = true
 
 			when "--role"
 
-				$deploy_role and Mandar.die "Only one --role option allowed"
+				$deploy_role and logger.die "Only one --role option allowed"
 
 				$deploy_role = arg
 
@@ -132,7 +268,7 @@ class Mandar::Core::Script
 			when "--staged"
 
 				$deploy_mode == :unstaged \
-					or Mandar.die "Only one --staged and/or --rollback " +
+					or logger.die "Only one --staged and/or --rollback " +
 						"option allowed"
 
 				$deploy_mode = :staged
@@ -140,7 +276,7 @@ class Mandar::Core::Script
 			when "--rollback"
 
 				$deploy_mode == :unstaged \
-					or Mandar.die "Only one --staged and/or --rollback " +
+					or logger.die "Only one --staged and/or --rollback " +
 						"option allowed"
 
 				$deploy_mode = :rollback
@@ -148,7 +284,7 @@ class Mandar::Core::Script
 			when "--force"
 
 				$force \
-					and Mandar.die "Online one --force option allowed"
+					and logger.die "Online one --force option allowed"
 
 				$force = true
 
@@ -157,7 +293,7 @@ class Mandar::Core::Script
 			when "--ssh-identity"
 
 				$ssh_identity \
-					and Mandar.die "Only one --ssh-identity option allowed"
+					and logger.die "Only one --ssh-identity option allowed"
 
 				$ssh_identity = arg
 
@@ -171,29 +307,45 @@ class Mandar::Core::Script
 
 		# set defaults
 
+		config_script =
+			config.find_first("script")
+
+		config_script ||=
+			XML::Node.new "script"
+
 		$profile ||=
-			hq_config["default-profile"]
+			config_script["default-profile"]
 
 		$deploy_role ||=
-			hq_config["default-role"]
+			config_script["default-role"]
+
+		unless got_log
+			logger.add_auto \
+				config_script["default-log"] || "detail:ansi"
+		end
 
 	end
 
-	def main
-		STDOUT.sync = true
-		argv_copy = ARGV.clone
-		parse_args
-		Mandar.trace "executing #{File.basename $0} #{argv_copy.join " "}"
-		begin
-			do_command
-		rescue => e
-			Mandar.error "got error #{e.message}"
-			Mandar.detail(([ e.inspect ] + e.backtrace).join("\n"))
-		end
+	def profile
+
+		return @profile \
+			if @profile
+
+		profile =
+			config.find_first("profile[@name='#{$profile}']")
+
+		profile \
+			or logger.die "No such profile: #{$profile}"
+
+		return @profile = profile
+
 	end
 
 	def process_hosts args
-		abstract = Mandar::Core::Config.abstract
+
+		abstract =
+			deploy_master.abstract
+
 		hosts = []
 		for arg in args
 			if arg == "all"
@@ -224,12 +376,12 @@ class Mandar::Core::Script
 	def filter_hosts hosts, message, requested_hosts
 
 		abstract =
-			Mandar::Core::Config.abstract
+			deploy_master.abstract
 
 		return hosts.select do |host|
 
 			host_xp =
-				Mandar::Tools::Escape.xpath host
+				esc_xp host
 
 			query =
 				"deploy-host [@name = #{host_xp}]"
@@ -245,7 +397,7 @@ class Mandar::Core::Script
 
 			when ! host_elem
 
-				Mandar.die "No such host #{host}"
+				logger.die "No such host #{host}"
 
 			when ! host_elem.attributes["skip"].to_s.empty?
 
@@ -253,9 +405,9 @@ class Mandar::Core::Script
 					"#{host_elem.attributes["skip"]}"
 
 				if requested_hosts.include? host
-					Mandar.warning message
+					logger.warning message
 				else
-					Mandar.debug message
+					logger.debug message
 				end
 
 				false
@@ -269,13 +421,13 @@ class Mandar::Core::Script
 
 			when $force
 
-				Mandar.warning "#{message} no-deploy host #{host}"
+				logger.warning "#{message} no-deploy host #{host}"
 
 				true
 
 			else
 
-				Mandar.warning "skipping no-deploy host #{host}"
+				logger.warning "skipping no-deploy host #{host}"
 
 				false
 
@@ -289,39 +441,48 @@ class Mandar::Core::Script
 		case ARGV[0]
 
 			when "config"
-				Mandar.host = "local"
+
+				logger.die "FIXME"
+
+				self.hostname = "local"
+
 				hosts = ARGV.size > 1 ? process_hosts(ARGV[1..-1]) : nil
-				Mandar::Core::Config.rebuild_abstract
-				Mandar::Core::Config.rebuild_concrete hosts
+
+				init_deploy_master
+
+				deploy_master.transform
+
+				deploy_master.write hosts
 
 			when "deploy"
 
-				Mandar.host = "local"
+				self.hostname = "local"
 
 				# check args
 
-				$deploy_role or Mandar.die "must specify --role in deploy mode"
+				$deploy_role \
+					or logger.die "must specify --role in deploy mode"
 
 				# message about mock
 
-				Mandar.warning "running in mock deployment mode" if $mock
+				logger.warning "running in mock deployment mode" \
+					if $mock
 
 				# begin staged/rollback deploy
 
-				Mandar::Core::Config.stager_start \
+				init_deploy_master
+
+				deploy_master.stager_start \
 					$deploy_mode,
 					$deploy_role,
 					$mock \
 				do
 
-					Mandar.time "transform", :detail do
+					logger.time "transform", :detail do
 
 						# rebuild config
 
-						Mandar::Core::Config.rebuild_abstract
-
-						abstract =
-							Mandar::Core::Config.abstract
+						deploy_master.transform
 
 						# determine list of hosts to deploy to
 
@@ -337,17 +498,17 @@ class Mandar::Core::Script
 								"deploying to",
 								requested_hosts
 
-						# rebuild concrete config
+						# output processed config
 
-						Mandar::Core::Config.rebuild_concrete hosts
+						deploy_master.write hosts
 
 					end
 
-					Mandar.time "deploy", :detail do
+					logger.time "deploy", :detail do
 
 						# and deploy
 
-						Mandar::Master.deploy hosts
+						deploy_master.deploy hosts
 
 					end
 
@@ -365,16 +526,13 @@ class Mandar::Core::Script
 
 				system \
 					"test -h /alchemy-hq " +
-					"|| ln -s #{Mandar.deploy_dir}/alchemy-hq /alchemy-hq"
+					"|| ln -s #{deploy_dir}/alchemy-hq /alchemy-hq"
 
-				# remove obsolete mandar-hostname file
+				# set hostname
 
-				# TODO remove this
+				self.hostname = ARGV[1]
 
-				File.unlink "/etc/mandar-hostname" \
-					if File.exist? "/etc/mandar-hostname"
-
-				# write hostname
+				logger.hostname = hostname
 
 				File.open "/etc/hq-hostname", "w" do |f|
 					f.puts ARGV[1]
@@ -382,37 +540,33 @@ class Mandar::Core::Script
 
 				# and perform the requested deployment
 
-				HQ::Deploy::Slave.go \
-					ARGV[2]
+				init_deploy_slave ARGV[2]
 
-			when "action"
-				Mandar.host = "local"
-				Mandar::Core::Config.rebuild_abstract
-				cdb = Mandar.cdb
-				hosts = cdb.view_key("root", "by_type", "host")["rows"].map { |row| row["value"] }
-				hosts.each do |host|
-					next unless host["action"].is_a?(String) && ! host["action"].empty?
-					Mandar::Master::Actions.perform cdb, host
-				end
+				deploy_slave.go
 
+=begin
 			when "ec2-instances"
 				raise "syntax error" unless ARGV.length == 2
-				Mandar.host = "local"
+				hostname = "local"
 				ec2 = Mandar::EC2.connect ARGV[1]
 				Mandar::EC2::Reports.instances ec2
 
 			when "ec2-snapshots-summary"
 				raise "syntax error" unless ARGV.length == 2
-				Mandar.host = "local"
+				hostname = "local"
 				ec2 = Mandar::EC2.connect ARGV[1]
 				Mandar::EC2::Reports.snapshots_summary ec2
+=end
 
 			when "console-config"
 
-				Mandar.host = "local"
+				logger.die "TODO"
+
+=begin
+				self.hostname = "local"
 				Mandar::Core::Config.rebuild_abstract
 
-				Mandar.notice "creating console config"
+				logger.notice "creating console config"
 
 				mandar = Mandar::Core::Config.mandar
 				profile = Mandar::Core::Config.profile
@@ -480,46 +634,78 @@ class Mandar::Core::Script
 					file.puts doc.to_s
 				end
 
-				Mandar.notice "done"
+				logger.notice "done"
+=end
 
 			when "help", nil
 				puts HELP
 
 			when "clean"
+				logger.die "TODO"
+=begin
 				Mandar::Master.disconnect_all
 				if File.directory? WORK
-					Mandar.notice "removing #{WORK}"
+					logger.notice "removing #{WORK}"
 					FileUtils.remove_entry_secure WORK
 				end
+=end
 
 			when "unlock"
 
-				locks = Mandar.cdb.get "mandar-locks"
+				init_couch
+
+				locks =
+					couch.get "mandar-locks"
+
 				if locks["deploy"]
+
 					if locks["deploy"]["role"] == $deploy_role
-						Mandar.warning "unlocking deployment for role #{locks["deploy"]["role"]}"
+
+						logger.warning "unlocking deployment for role " +
+							"#{locks["deploy"]["role"]}"
+
 						locks["deploy"] = nil
+
 					else
-						Mandar.error "not unlocking deployment for role #{locks["deploy"]["role"]}"
+
+						logger.error "not unlocking deployment for role " +
+							"#{locks["deploy"]["role"]}"
+
 					end
+
 				end
-				locks["changes"].each do |role, change|
+
+				locks["changes"].each do
+					|role, change|
+
 					next if change["state"] == "stage"
+
 					if role == $deploy_role
-						Mandar.warning "unlocking changes in state #{change["state"]} for role #{role}"
+
+						logger.warning "unlocking changes in state " +
+							"#{change["state"]} for role #{role}"
+
 						change["state"] = "stage"
+
 					else
-						Mandar.warning "not unlocking changes in state #{change["state"]} for role #{role}"
+
+						logger.warning "not unlocking changes in state " +
+							"#{change["state"]} for role #{role}"
+
 					end
+
 				end
-				Mandar.cdb.update locks
+
+				couch.update locks
 
 			when "verify"
+				logger.die "TODO"
 
+=begin
 				relax_abstract = Mandar::Core::Config.load_relax_ng "#{CONFIG}/etc/abstract.rnc"
 				relax_concrete = Mandar::Core::Config.load_relax_ng "#{MANDAR}/etc/concrete.rnc"
 
-				Mandar.host = "local"
+				self.hostname = "local"
 
 				Mandar::Core::Config.rebuild_abstract
 				Dir.new("#{WORK}/abstract").each do |dir|
@@ -530,7 +716,7 @@ class Mandar::Core::Script
 						doc.validate_relaxng(relax_abstract)
 					end
 				end
-				Mandar.notice "all abstract xml confirmed as valid"
+				logger.notice "all abstract xml confirmed as valid"
 
 				Mandar::Core::Config.rebuild_concrete
 				Dir.new("#{WORK}/concrete").each do |host|
@@ -542,10 +728,13 @@ class Mandar::Core::Script
 					end
 					GC.start
 				end
-				Mandar.notice "all concrete xml confirmed as valid"
+				logger.notice "all concrete xml confirmed as valid"
+=end
 
 			when "console"
+				logger.die "TODO"
 
+=begin
 				require "mandar/console"
 
 				if $console_fork
@@ -562,10 +751,13 @@ class Mandar::Core::Script
 				else
 					Mandar::Console::Server.new.run
 				end
+=end
 
 			when "run"
+				logger.die "TODO"
 
-				Mandar.host = "local"
+=begin
+				self.hostname = "local"
 
 				sep = ARGV.index ""
 				sep or raise "Syntax error"
@@ -587,12 +779,12 @@ class Mandar::Core::Script
 				Mandar::Master.run_command \
 					filtered_hosts,
 					cmd_args.join(" ")
-
-			when "server-run"
-				Mandar::Support::Core.shell ARGV[1]
+=end
 
 			when "export"
+				logger.die "TODO"
 
+=begin
 				raise "syntax error" unless ARGV.length == 2
 				zip_name = ARGV[1]
 
@@ -615,9 +807,12 @@ class Mandar::Core::Script
 					end
 
 				end
+=end
 
 			when "import"
+				logger.die "TODO"
 
+=begin
 				raise "syntax error" unless ARGV.length == 2
 				zip_name = ARGV[1]
 
@@ -635,18 +830,18 @@ class Mandar::Core::Script
 				# delete existing
 
 				updates = []
-				Mandar.cdb.all_docs["rows"].each do |row|
+				couchdb.all_docs["rows"].each do |row|
 					updates << {
 						"_id" => row["id"],
 						"_rev" => row["value"]["rev"],
 						"_deleted" => true,
 					}
 				end
-				Mandar.cdb.bulk updates
+				couchdb.bulk updates
 
 				# design documents
 
-				Mandar.cdb.create({
+				couchdb.create({
 					"_id" => "_design/root",
 					"language" => "javascript",
 					"views" => {
@@ -702,10 +897,13 @@ class Mandar::Core::Script
 
 					end
 				end
+=end
 
 			else
-				Mandar.error "syntax error"
+				logger.error "syntax error"
 
 		end
+
 	end
+
 end

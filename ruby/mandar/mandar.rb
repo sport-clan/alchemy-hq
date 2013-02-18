@@ -2,110 +2,75 @@ require "hq/tools/logger"
 
 module Mandar
 
+	# logger stuff
+
+	def self.logger= logger
+		@logger = logger
+	end
+
 	def self.logger
-		return @logger ||= HQ::Tools::Logger.new
+		@logger
 	end
 
-	def self.message text, level, *content
-		logger.message text, level, *content
+	def self.message *args
+		logger.message *args
 	end
 
-	def self.message_partial text, level, *content
-		logger.message_partial text, level, options
+	def self.message_partial *args
+		logger.message_partial *args
 	end
 
-	def self.message_complete text, level, *content
-		logger.message_complete text, level, options
+	def self.message_complete *args
+		logger.message_complete *args
 	end
 
-	def self.trace text, *contents
-		logger.message text, :trace, *contents
+	def self.trace *args
+		logger.trace *args
 	end
 
-	def self.timing text, *contents
-		logger.message text, :timing, *contents
+	def self.timing *args
+		logger.timing *args
 	end
 
-	def self.debug text, *contents
-		logger.message text, :debug, *contents
+	def self.debug *args
+		logger.debug *args
 	end
 
-	def self.detail text, *contents
-		logger.message text, :detail, *contents
+	def self.detail *args
+		logger.detail *args
 	end
 
-	def self.notice text, *contents
-		logger.message text, :notice, *contents
+	def self.notice *args
+		logger.notice *args
 	end
 
-	def self.warning text, *contents
-		logger.message text, :warning, *contents
+	def self.warning *args
+		logger.warning *args
 	end
 
-	def self.error text, *contents
-		logger.message text, :error, *contents
+	def self.error *args
+		logger.error *args
 	end
 
-	def self.time text, level = :timing
-
-		time_start =
-			Time.now
-
-		begin
-
-			yield
-
-		ensure
-
-			time_end =
-				Time.now
-
-			timing_ms =
-				((time_end - time_start) * 1000).to_i
-
-			timing_str =
-				case timing_ms
-					when (0...1000)
-						"%dms" % [ timing_ms ]
-					when (1000...10000)
-						"%.2fs" % [ timing_ms.to_f / 1000 ]
-					when (10000...100000)
-						"%.1fs" % [ timing_ms.to_f / 1000 ]
-					else
-						"%ds" % [ timing_ms / 1000 ]
-				end
-
-			message \
-				"#{text} took #{timing_str}",
-				level
-
-		end
-
+	def self.time *args, &proc
+		logger.time *args, &proc
 	end
 
-	def self.die text, status = 1
-		error text
-		exit status
+	def self.die *args
+		logger.die *args
 	end
 
-	def self.host= hostname
-		@hostname = hostname
+	# hostname
+
+	def self.host= host
+		@host = host
 	end
 
-	def self.host()
-
-		# cache hostname
-		return @hostname if @hostname
-
-		# read it from /etc/hq-hostname
-		if File.exists?("/etc/hq-hostname")
-			return @hostname = File.read("/etc/hq-hostname").strip
-		end
-
-		# default to reported hostname
-		return Socket.gethostname.split(".")[0]
+	def self.host
+		@host
 	end
 
+=begin
 	def self.cdb()
 		return @cdb if @cdb
 		profile = Mandar::Core::Config.profile
@@ -146,6 +111,7 @@ module Mandar
 		@remote_command or raise "No remote_command specified"
 		return @remote_command
 	end
+=end
 
 	# escape a string or strings for use as shell arguments
 	def self.shell_quote(str)

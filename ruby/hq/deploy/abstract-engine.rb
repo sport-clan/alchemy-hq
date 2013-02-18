@@ -1,22 +1,34 @@
-module Mandar::Engine::Abstract
+require "hq/deploy"
 
-	@abstracts = nil
-	@results = nil
+module HQ
+module Deploy
+class AbstractEngine
 
-	def self.results
+	attr_accessor :logger
+	attr_accessor :xquery_client
+
+	attr_accessor :config_dir
+	attr_accessor :work_dir
+
+	def initialize
+		@abstracts = nil
+		@results = nil
+	end
+
+	def results
 		load_results unless @results
 		return @results
 	end
 
-	def self.load_source
+	def load_source
 
-		Mandar.debug "loading abstract sources"
+		logger.debug "loading abstract sources"
 		abstracts = {}
 
-		Dir.glob("#{CONFIG}/abstract/**/*").each do |filename|
+		Dir.glob("#{config_dir}/abstract/**/*").each do |filename|
 
 			next unless filename =~ /^
-				#{Regexp.quote "#{CONFIG}/abstract/"}
+				#{Regexp.quote "#{config_dir}/abstract/"}
 				(
 					(.+)
 					\. (xquery)
@@ -30,35 +42,23 @@ module Mandar::Engine::Abstract
 			abstract[:source] = File.read abstract[:path]
 			abstract[:in] = []
 			abstract[:out] = []
-			abstract[:source].scan(/\(: (in|out) ([a-z0-9]+(?:-[a-z0-9]+)*) :\)$/).each do |type, name|
+			abstract[:source].scan(
+				/\(: (in|out) ([a-z0-9]+(?:-[a-z0-9]+)*) :\)$/
+			).each do |type, name|
 				abstract[type.to_sym] << name
 			end
 			abstracts[abstract[:name]] = abstract
 
 		end
 
-		FileUtils.rm_rf "#{WORK}/abstract-rules"
-		FileUtils.mkdir_p "#{WORK}/abstract-rules"
-		Mandar::Core::Config.schemas_elem.find("abstract-rule[@enabled='yes']").each do |rule|
-			abstract = {}
-			abstract[:name] = rule.attributes["name"]
-			abstract[:type] = rule.attributes["type"]
-			abstract[:path] = "#{WORK}/abstract-rules/#{abstract[:name]}.#{abstract[:type]}"
-			abstract[:source] = rule.find "string(source)"
-			abstract[:in] = rule.find("inputs/abstract").to_a.map { |elem| elem.attributes["name"] }
-			abstract[:out] = rule.find("outputs/abstract").to_a.map { |elem| elem.attributes["name"] }
-			abstracts[abstract[:name]] = abstract
-			File.open(abstract[:path], "w") { |f| f.print abstract[:source] }
-		end
-
 		return @abstracts = abstracts
 	end
 
-	def self.rebuild data_docs
+	def rebuild data_docs
 
 		load_source
 
-		Mandar.notice "rebuilding abstract"
+		logger.notice "rebuilding abstract"
 
 		# set up results with data
 
@@ -70,35 +70,30 @@ module Mandar::Engine::Abstract
 			}
 		end
 
-		Mandar.time "rebuilding abstract" do
+		logger.time "rebuilding abstract" do
 
 			begin
 
-				# setup xquery
+				# create session
 
-				xquery_client = Mandar::Engine.xquery_client
-				if xquery_client
+				xquery_session = xquery_client.session
 
-					# create session
+				# send include files
 
-					xquery_session = xquery_client.session
-
-					# send include files
-
-					include_dir = "#{CONFIG}/include"
-					Dir["#{include_dir}/*.xquery"].each do |path|
-						path =~ /^ #{Regexp.quote include_dir} \/ (.+) $/x
-						name = $1
-						text = File.read path
-						xquery_session.set_library_module name, text
-					end
-
+				include_dir = "#{config_dir}/include"
+				Dir["#{include_dir}/*.xquery"].each do |path|
+					path =~ /^ #{Regexp.quote include_dir} \/ (.+) $/x
+					name = $1
+					text = File.read path
+					xquery_session.set_library_module name, text
 				end
 
 				# remove existing
 
-				FileUtils.remove_entry_secure "#{WORK}/abstract" if File.directory? "#{WORK}/abstract"
-				FileUtils.mkdir "#{WORK}/abstract"
+				FileUtils.remove_entry_secure "#{work_dir}/abstract" \
+					if File.directory? "#{work_dir}/abstract"
+
+				FileUtils.mkdir "#{work_dir}/abstract"
 
 				# do it
 
@@ -126,7 +121,7 @@ module Mandar::Engine::Abstract
 
 					end
 
-					Mandar.die "circular dependency in abstract: #{remaining.keys.sort.join ", "}" unless num_processed > 0
+					logger.die "circular dependency in abstract: #{remaining.keys.sort.join ", "}" unless num_processed > 0
 				end
 
 			ensure
@@ -137,12 +132,13 @@ module Mandar::Engine::Abstract
 
 	end
 
-	def self.rebuild_one xquery_session, data_docs, abstract
+	def rebuild_one xquery_session, data_docs, abstract
+
 		abstract_name = abstract[:name]
 		abstract_type = abstract[:type]
 
-		Mandar.debug "rebuilding abstract #{abstract_name}"
-		Mandar.time "rebuilding abstract #{abstract_name}" do
+		logger.debug "rebuilding abstract #{abstract_name}"
+		logger.time "rebuilding abstract #{abstract_name}" do
 
 			# setup abstract
 
@@ -154,7 +150,7 @@ module Mandar::Engine::Abstract
 				result = @results[in_name]
 
 				unless result
-					Mandar.debug "No abstract result for #{in_name}, " \
+					logger.debug "No abstract result for #{in_name}, " \
 						+ "requested by #{abstract_name}"
 					next
 				end
@@ -181,19 +177,23 @@ module Mandar::Engine::Abstract
 						"<xml/>"
 
 			rescue => e
-				Mandar.error e.to_s
-				Mandar.detail e.backtrace
-				FileUtils.touch "#{WORK}/error-flag"
+				logger.error e.to_s
+				logger.detail e.backtrace
+				FileUtils.touch "#{work_dir}/error-flag"
 				raise "error compiling #{abstract[:path]}"
 			end
 
 			# delete and/or create
 
-			FileUtils.mkdir_p "#{WORK}/abstract/#{abstract_name}"
+			FileUtils.mkdir_p "#{work_dir}/abstract/#{abstract_name}"
 
 			# process output
 
-			abstract[:doc] = XML::Document.string abstract[:str], :options => XML::Parser::Options::NOBLANKS
+			abstract[:doc] =
+				XML::Document.string \
+					abstract[:str],
+					:options => XML::Parser::Options::NOBLANKS
+
 			abstract[:result] = {}
 			abstract[:out].each { |out| abstract[:result][out] = [] }
 			abstract[:doc].root.find("*").each do |elem|
@@ -208,7 +208,7 @@ module Mandar::Engine::Abstract
 				doc = XML::Document.new
 				doc.root = XML::Node.new "abstract"
 				elems.each { |elem| doc.root << doc.import(elem) }
-				doc.save "#{WORK}/abstract/#{abstract_name}/#{result_name}.xml"
+				doc.save "#{work_dir}/abstract/#{abstract_name}/#{result_name}.xml"
 			end
 
 			# add output to results
@@ -221,7 +221,7 @@ module Mandar::Engine::Abstract
 
 	end
 
-	def self.set_result name, elems
+	def set_result name, elems
 		result = @results[name]
 		unless result
 			result = {}
@@ -233,13 +233,13 @@ module Mandar::Engine::Abstract
 		elems.each { |elem| doc.root << doc.import(elem) }
 	end
 
-	def self.load_results
+	def load_results
 
 		@results = {}
 
 		Dir[
-			"#{WORK}/abstract/**/*.xml",
-			"#{WORK}/data/*.xml",
+			"#{work_dir}/abstract/**/*.xml",
+			"#{work_dir}/data/*.xml",
 		].each do
 			|path|
 
@@ -259,4 +259,6 @@ module Mandar::Engine::Abstract
 
 	end
 
+end
+end
 end

@@ -1,20 +1,17 @@
+require "hq/deploy"
+
+require "hq/tools/escape"
+
 class HQ::Deploy::Slave
 
-	include Mandar::Tools::Escape
+	include HQ::Tools::Escape
 
+	attr_accessor :logger
+
+	attr_accessor :hostname
+	attr_accessor :config_dir
+	attr_accessor :work_dir
 	attr_accessor :deploy_path
-
-	def self.go deploy_path
-
-		deploy_slave =
-			new
-
-		deploy_slave.deploy_path =
-			deploy_path
-
-		deploy_slave.go
-
-	end
 
 	def go
 
@@ -34,7 +31,7 @@ class HQ::Deploy::Slave
 
 		deploy_doc =
 			XML::Document.file \
-				"#{CONFIG}/.work/deploy/#{@deploy_path}"
+				"#{config_dir}/.work/deploy/#{deploy_path}"
 
 		deploy_doc \
 			or raise "Error"
@@ -58,7 +55,7 @@ class HQ::Deploy::Slave
 				file_elem.attributes["name"]
 
 			full_path =
-				"#{WORK}/deploy/#{file_name}"
+				"#{work_dir}/deploy/#{file_name}"
 
 			tasks_doc = \
 				XML::Document.string \
@@ -178,11 +175,15 @@ class HQ::Deploy::Slave
 
 	def run_tasks
 
+		require "mandar"
+		Mandar.logger = logger
+		Mandar.host = hostname
+
 		@task_order.each do |task_name|
 
-			Mandar.debug "deploying #{task_name}"
+			logger.debug "deploying #{task_name}"
 
-			Mandar.time "deploying #{task_name}" do
+			logger.time "deploying #{task_name}" do
 
 				begin
 
@@ -191,10 +192,10 @@ class HQ::Deploy::Slave
 
 				rescue => e
 
-					Mandar.logger.output({
+					logger.output({
 						"type" => "exception",
 						"level" => "error",
-						"hostname" => Mandar.host,
+						"hostname" => hostname,
 						"text" => "error during deployment of #{task_name}",
 						"message" => e.message,
 						"backtrace" => e.backtrace,
