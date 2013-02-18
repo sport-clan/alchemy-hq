@@ -72,61 +72,56 @@ class AbstractEngine
 
 		logger.time "rebuilding abstract" do
 
-			begin
+			# create session
 
-				# create session
+			xquery_session = xquery_client.session
 
-				xquery_session = xquery_client.session
+			# send include files
 
-				# send include files
-
-				include_dir = "#{config_dir}/include"
-				Dir["#{include_dir}/*.xquery"].each do |path|
-					path =~ /^ #{Regexp.quote include_dir} \/ (.+) $/x
-					name = $1
-					text = File.read path
-					xquery_session.set_library_module name, text
-				end
-
-				# remove existing
-
-				FileUtils.remove_entry_secure "#{work_dir}/abstract" \
-					if File.directory? "#{work_dir}/abstract"
-
-				FileUtils.mkdir "#{work_dir}/abstract"
-
-				# do it
-
-				remaining = @abstracts.clone
-				until remaining.empty?
-
-					pending = Set.new
-					remaining.each do |abstract_name, abstract|
-						pending.merge abstract[:out]
-					end
-
-					num_processed = 0
-					remaining.each do |abstract_name, abstract|
-
-						# check dependencies
-
-						next if abstract[:in].find { |name| pending.include? name }
-
-						remaining.delete abstract_name
-						num_processed += 1
-
-						# do it
-
-						rebuild_one xquery_session, data_docs, abstract
-
-					end
-
-					logger.die "circular dependency in abstract: #{remaining.keys.sort.join ", "}" unless num_processed > 0
-				end
-
-			ensure
-				xquery_client.close if xquery_client
+			include_dir = "#{config_dir}/include"
+			Dir["#{include_dir}/*.xquery"].each do |path|
+				path =~ /^ #{Regexp.quote include_dir} \/ (.+) $/x
+				name = $1
+				text = File.read path
+				xquery_session.set_library_module name, text
 			end
+
+			# remove existing
+
+			FileUtils.remove_entry_secure "#{work_dir}/abstract" \
+				if File.directory? "#{work_dir}/abstract"
+
+			FileUtils.mkdir "#{work_dir}/abstract"
+
+			# do it
+
+			remaining = @abstracts.clone
+			until remaining.empty?
+
+				pending = Set.new
+				remaining.each do |abstract_name, abstract|
+					pending.merge abstract[:out]
+				end
+
+				num_processed = 0
+				remaining.each do |abstract_name, abstract|
+
+					# check dependencies
+
+					next if abstract[:in].find { |name| pending.include? name }
+
+					remaining.delete abstract_name
+					num_processed += 1
+
+					# do it
+
+					rebuild_one xquery_session, data_docs, abstract
+
+				end
+
+				logger.die "circular dependency in abstract: #{remaining.keys.sort.join ", "}" unless num_processed > 0
+			end
+
 
 		end
 
