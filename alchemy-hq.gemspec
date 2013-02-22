@@ -28,6 +28,7 @@ Gem::Specification.new do
 	spec.add_dependency "libxml-ruby"
 	spec.add_dependency "multi_json"
 	spec.add_dependency "rake", ">= 10.0.3"
+	spec.add_dependency "sys-filesystem" # TODO remove this
 
 	spec.add_development_dependency "cucumber", ">= 1.2.1"
 	spec.add_development_dependency "rspec", ">= 2.12.0"
@@ -49,7 +50,9 @@ Gem::Specification.new do
 
 	spec.test_files = []
 
-	spec.executables = []
+	spec.executables = [
+		"grapher-daemon",
+	]
 
 	spec.require_paths = [ "ruby" ]
 

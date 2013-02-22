@@ -6,15 +6,13 @@ class HQ::Deploy::Slave
 
 	include HQ::Tools::Escape
 
-	attr_accessor :application
-
+	attr_accessor :hq
 	attr_accessor :deploy_path
 
-	def logger() application.logger end
-
-	def hostname() application.hostname end
-	def config_dir() application.config_dir end
-	def work_dir() application.work_dir end
+	def config_dir() hq.config_dir end
+	def hostname() hq.hostname end
+	def logger() hq.logger end
+	def work_dir() hq.work_dir end
 
 	def go
 

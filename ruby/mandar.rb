@@ -10,7 +10,7 @@ require "socket"
 require "tempfile"
 require "thread"
 require "uri"
-require "webrick"
+#require "webrick"
 
 %W[
 	rubygems
@@ -37,7 +37,6 @@ end
 # small additions to standard library
 class Array
 	def map_with_index
-		i = 0
 		map { |item| yield item, (i += 1) - 1 }
 	end
 end

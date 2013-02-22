@@ -1,29 +1,32 @@
-require "hq/deploy"
+require "hq/mq"
 
 module HQ
-module Deploy
+module MQ
 class MqLogger
 
+	attr_accessor :em_wrapper
 	attr_accessor :mq_wrapper
 
 	def publish data
 
-		@mq_wrapper.schedule do
-			|return_proc|
+		@em_wrapper.quick do
 
 			data_json =
 				MultiJson.dump data
 
 			@mq_exchange.publish \
-				data_json \
-
-			return_proc.call
+				data_json
 
 		end
 
 	end
 
 	def output content, stuff = {}, prefix = ""
+
+		return \
+			unless Tools::Logger.level_includes \
+				:debug,
+				content["level"]
 
 		data = {
 			"type" => "deploy-log",
@@ -37,7 +40,7 @@ class MqLogger
 
 	def start
 
-		@mq_wrapper.schedule do
+		@em_wrapper.slow do
 			|return_proc|
 
 			@mq_exchange =

@@ -1,7 +1,7 @@
 module Mandar::Grapher::Daemon
 
 	class DebugSink
-		def submit(name, data)
+		def submit name, data
 			puts "----- #{name}"
 			pp data
 		end
@@ -25,17 +25,17 @@ module Mandar::Grapher::Daemon
 
 	class DiskSpaceGrapher
 
-		def initialize(name, path)
+		def initialize name, path
 			require "sys/filesystem"
 			@name = name
 			@path = path
 		end
 
-		def self.from_elem(elem)
+		def self.from_elem elem
 			return new elem.attributes["name"], elem.attributes["path"]
 		end
 
-		def run(sink)
+		def run sink
 			stat = Sys::Filesystem.stat @path
 			sink.submit @name, [
 				stat.block_size * (stat.blocks - stat.blocks_free),
@@ -49,15 +49,15 @@ module Mandar::Grapher::Daemon
 
 		COL_COUNT = 10
 
-		def initialize(name)
+		def initialize name
 			@name = name
 		end
 
-		def self.from_elem(elem)
+		def self.from_elem elem
 			return new elem.attributes["name"]
 		end
 
-		def run(sink)
+		def run sink
 			@current = read
 			@current_total = @current.inject(0) { |a, b| a + b }
 
@@ -71,7 +71,7 @@ module Mandar::Grapher::Daemon
 			@last_total = @current_total
 		end
 
-		def read()
+		def read
 			lines = File.new("/proc/stat").to_a.map { |line| line.chomp }
 			cpu = lines[0].split(/\s+/)
 			return (0...COL_COUNT).map { |i| cpu[i + 1].to_i }
@@ -215,20 +215,20 @@ module Mandar::Grapher::Daemon
 
 		COL_COUNT = 16
 
-		def initialize(name, iface)
+		def initialize name, iface
 			@name = name
 			@iface = iface
 		end
 
-		def self.from_elem(elem)
+		def self.from_elem elem
 			return new elem.attributes["name"], elem.attributes["iface"]
 		end
 
-		def multi_split(string, *patterns)
+		def multi_split string, *patterns
 			return patterns.empty? ? string : string.split(patterns.shift).map { |part| multi_split(part, *patterns) }
 		end
 
-		def run(sink)
+		def run sink
 			@current = read
 			@current_time = Time.now
 
@@ -248,7 +248,7 @@ module Mandar::Grapher::Daemon
 			@last_time = @current_time
 		end
 
-		def read()
+		def read
 			lines = File.new("/proc/net/dev").to_a
 			multi_split(lines[0], "|", " ") == [
 				%W[ Inter- ],
@@ -272,15 +272,15 @@ module Mandar::Grapher::Daemon
 
 	class LoadGrapher
 
-		def initialize(name)
+		def initialize name
 			@name = name
 		end
 
-		def self.from_elem(elem)
+		def self.from_elem elem
 			return new elem.attributes["name"]
 		end
 
-		def run(sink)
+		def run sink
 			line = File.new("/proc/loadavg").to_a[0].split
 			sink.submit @name, [
 				line[0].to_f,
@@ -293,15 +293,15 @@ module Mandar::Grapher::Daemon
 
 	class MemoryGrapher
 
-		def initialize(name)
+		def initialize name
 			@name = name
 		end
 
-		def self.from_elem(elem)
+		def self.from_elem elem
 			return new elem.attributes["name"]
 		end
 
-		def run(sink)
+		def run sink
 			data = {}
 			line = File.new("/proc/meminfo").each do |line|
 				next unless line =~ /^([^:]+):\s+(\d+) kB$/
@@ -320,17 +320,17 @@ module Mandar::Grapher::Daemon
 
 	end
 
-	def self.log(message)
+	def self.log message
 		@log_file.puts "#{Time.now}: #{message}"
 		@log_file.flush
 	end
 
-	def self.init_log()
+	def self.init_log
 		@log_file = File.open @log_path, "a"
 		log "starting"
 	end
 
-	def self.create_graphers()
+	def self.create_graphers
 		@graphers = []
 
 		@grapher_config_elem.find("*").each do |elem|
@@ -361,7 +361,7 @@ module Mandar::Grapher::Daemon
 		end
 	end
 
-	def self.loop()
+	def self.loop
 		time_next = Time.now
 		wait = 1
 		margin = 0.1
@@ -390,7 +390,7 @@ module Mandar::Grapher::Daemon
 	#	run
 	#end
 
-	def self.process_args(args)
+	def self.process_args args
 
 		unless args.size == 1
 			puts "Syntax: #{File.basename $0} CONFIG-FILE"
@@ -404,7 +404,7 @@ module Mandar::Grapher::Daemon
 		end
 	end
 
-	def self.read_config()
+	def self.read_config
 
 		grapher_config_doc = XML::Document.file @config_path
 		@grapher_config_elem = grapher_config_doc.root
@@ -429,7 +429,7 @@ module Mandar::Grapher::Daemon
 		at_exit { File.delete(@pid_path) if File.exists?(@pid_path) }
 	end
 
-	def self.start(args)
+	def self.start args
 
 		# process command line
 		process_args args
@@ -446,41 +446,24 @@ module Mandar::Grapher::Daemon
 		# use self as sink
 		@sink = self
 
-		# fork with pipe to signal readiness
-		rd, wr = IO.pipe
-		fork do
-			rd.close
+		# create pid file
+		create_pid
 
-			# create pid file
-			create_pid
+		begin
 
-			# signal parent that we are ok
-			wr.close
+			# main loop
+			loop
 
-			# close stdout, etc
-			$stdin.close
-			$stdout.close
-			$stderr.close
-			begin
+		rescue => e
 
-				# main loop
-				loop
-
-			rescue => e
-
-				log "caught exception: #{e.message}"
-				log "shutting down"
-
-			end
+			log "caught exception: #{e.message}"
+			log "shutting down"
 
 		end
-		wr.close
 
-		# wait for child and exit
-		rd.gets
 	end
 
-	def self.submit(name, data)
+	def self.submit name, data
 		Mandar::Support::RRD.update(name, {
 			:daemon => @daemon,
 			:data => data,

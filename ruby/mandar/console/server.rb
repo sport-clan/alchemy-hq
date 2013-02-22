@@ -1,3 +1,5 @@
+require "webrick"
+
 class Mandar::Console::Server
 
 	include Mandar::Console::Utils

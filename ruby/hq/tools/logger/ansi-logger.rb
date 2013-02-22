@@ -22,6 +22,7 @@ class HQ::Tools::Logger::AnsiLogger \
 
 		:hostname => :blue,
 
+		:timing => :blue,
 		:trace => :magenta,
 		:debug => :cyan,
 		:detail => :white,

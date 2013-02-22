@@ -1,17 +1,17 @@
 require "hq"
 
 module HQ
-module Engine
+module Core
 
 	def self.register_commands hq
 
 		hq.register_command \
-			"unlock",
+			"listen",
 			nil,
-			"Unlock crashed deployment" \
+			"Continually display activity" \
 		do
-			require "hq/engine/unlock-command"
-			command = HQ::Engine::UnlockCommand.new
+			require "hq/core/listen-command"
+			command = HQ::Core::ListenCommand.new
 			command.hq = hq
 			command
 		end

@@ -1,9 +1,10 @@
 require "hq"
 
-require "hq/tools/escape"
+module HQ
+module Core
+class Main
 
-class HQ::Application
-
+	require "hq/tools/escape"
 	include HQ::Tools::Escape
 
 	attr_accessor :config_dir
@@ -11,21 +12,22 @@ class HQ::Application
 	attr_accessor :deploy_dir
 	attr_accessor :remote_command
 
-	attr_accessor :hostname
-	attr_accessor :config
+	def hostname= new_hostname
+		@hostname = new_hostname
+		@logger.hostname = new_hostname if @logger
+	end
 
-	attr_accessor :logger
+	def initialize
+		@commands = {}
+	end
 
-	def main
+	def main all_args
 
-		init_logger
-
-		load_config
-
-		process_args
+		command_args =
+			process_args all_args
 
 		begin
-			do_command
+			do_command command_args
 		rescue => e
 			logger.error "got error #{e.message}"
 			logger.detail(([ e.inspect ] + e.backtrace).join("\n"))
@@ -36,48 +38,49 @@ class HQ::Application
 	end
 
 	def tidy_up
-		@mq_wrapper.stop if @mq_wrapper
+
+		begin
+			@mq_wrapper.stop if @mq_wrapper
+		rescue => e
+			puts "Error stopping mq_wrapper", e.message, e.backtrace
+		end
+
+		begin
+			@em_wrapper.stop if @em_wrapper
+		rescue => e
+			puts "Error stopping em_wrapper", e.message, e.backtrace
+		end
+
 	end
 
-	def init_logger
+	def logger
+
+		return @logger if @logger
 
 		require "hq/tools/logger"
 
-		self.hostname =
-			determine_hostname
-
-		self.logger =
+		@logger =
 			HQ::Tools::Logger.new
 
-		logger.hostname =
+		@logger.hostname =
 			hostname
 
-	end
-
-	def deploy_master
-
-		return @deploy_master if @deploy_master
-
-		require "hq/deploy/master"
-
-		@deploy_master = HQ::Deploy::Master.new
-		@deploy_master.application = self
-
-		return @deploy_master
+		return @logger
 
 	end
 
-	def deploy_slave deploy_path
+	def engine
 
-		return @deploy_slave if @deploy_slave
+		return @engine if @engine
 
-		require "hq/deploy/slave"
+		require "hq/engine/engine"
 
-		@deploy_slave = HQ::Deploy::Slave.new
-		@deploy_slave.application = self
-		@deploy_slave.deploy_path = deploy_path
+		@engine =
+			HQ::Engine::Engine.new
 
-		return @deploy_slave
+		@engine.main = self
+
+		return @engine
 
 	end
 
@@ -106,6 +109,21 @@ class HQ::Application
 
 	end
 
+	def em_wrapper
+
+		return @em_wrapper if @em_wrapper
+
+		require "hq/core/em-wrapper"
+
+		@em_wrapper =
+			HQ::Core::EmWrapper.new
+
+		@em_wrapper.start
+
+		return @em_wrapper
+
+	end
+
 	def mq_wrapper
 
 		return @mq_wrapper if @mq_wrapper
@@ -114,6 +132,8 @@ class HQ::Application
 
 		@mq_wrapper =
 			HQ::MQ::MqWrapper.new
+
+		@mq_wrapper.em_wrapper = em_wrapper
 
 		@mq_wrapper.host = profile["mq-host"]
 		@mq_wrapper.port = profile["mq-port"]
@@ -128,59 +148,26 @@ class HQ::Application
 	end
 
 	def continue
-		@mq_wrapper.continue if @mq_wrapper
+		@em_wrapper.continue if @em_wrapper
 	end
 
-	def determine_hostname
+	def hostname
+
+		return @hostname if @hostname
 
 		if File.exists? "/etc/hq-hostname"
-			return File.read("/etc/hq-hostname").strip
+			@hostname = File.read("/etc/hq-hostname").strip
+		else
+			@hostname = Socket.gethostname.split(".")[0]
 		end
 
-		return Socket.gethostname.split(".")[0]
+		return @hostname
 
 	end
 
-	HELP = [
-		"",
-		"Usage: #{File.basename($0)} [GLOBAL-OPTION...] COMMAND [ARG...] [COMMAND-OPTION...]",
-		"",
-		"Commands:",
-		"",
-		"    help                Display this message",
-		"    config              Rebuild configuration",
-		"    clean               Shut down SSH connections and clear generated config",
-		"    verify              Validate generated xml (abstract and concrete)",
-		"    deploy HOST...      Deploy to specified hosts",
-		"",
-		"General options:",
-		"",
-		"    -m, --mock          Log actions but don't do them",
-		"    -c, --no-config     Don't rebuild configuration",
-		"    -d, --no-database   Don't access CouchDB",
-		"    -p, --profile NAME  Specify config profile to use",
-		"    -s, --series        Perform deployments in series",
-		"",
-		"Output options:",
-		"",
-		"    -0, --quiet         Show errors and warnings",
-		"    -1, --normal        Show normal log",
-		"    -2, --verbose       Show detailed log",
-		"    -3, --debug         Show debug log",
-		"    -4, --timing        Show timing log",
-		"    -5, --trace         Show trace log",
-		"    --html              Generate HTML output",
-		"",
-		"Deploy command options:",
-		"",
-		"    --role ROLE         Specify role, required",
-		"    --staged USER       Merge staged changes",
-		"    --rollback USER     Rollback staged changes",
-		"    -f, --force         Ignore no-deploy flag on hosts",
-		"",
-	].join("\n") + "\n"
+	def config
 
-	def load_config
+		return @config if @config
 
 		require "xml"
 
@@ -196,7 +183,7 @@ class HQ::Application
 					config_path,
 					:options => XML::Parser::Options::NOBLANKS
 
-			self.config =
+			@config =
 				config_doc.root
 
 		else
@@ -206,14 +193,16 @@ class HQ::Application
 			config_doc =
 				XML::Document.string("<hq-config/>")
 
-			self.config =
+			@config =
 				config_doc.root
 
 		end
 
+		return @config
+
 	end
 
-	def process_args
+	def process_args all_args
 
 		require "getoptlong"
 
@@ -254,7 +243,9 @@ class HQ::Application
 
 		$ssh_identity = nil
 
-		opts.each do |opt, arg|
+		opts.each do
+			|opt, arg|
+
 			case opt
 
 			when "--mock"
@@ -344,6 +335,8 @@ class HQ::Application
 				config_script["default-log"] || "detail:ansi"
 		end
 
+		return ARGV
+
 	end
 
 	def profile
@@ -361,110 +354,50 @@ class HQ::Application
 
 	end
 
-	def process_hosts args
+	def register_command name, args = nil, info = nil, &proc
 
-		abstract =
-			deploy_master.abstract
-
-		hosts = []
-		for arg in args
-			if arg == "all"
-				abstract["host"].each do |host_elem|
-					hosts << host_elem.attributes["name"]
-				end
-				hosts << "local"
-			elsif arg == "local"
-				hosts << "local"
-			elsif abstract["host"].find_first("host[@name='#{arg}']")
-				hosts <<= arg
-			elsif abstract["host"].find_first("host[@class='#{arg}']")
-				abstract["host"].find("host[@class='#{arg}']").each do |host_elem|
-					hosts <<= host_elem.attributes["name"]
-				end
-			elsif domain_elem = abstract["domain"].find_first("domain[@short-name='#{arg}']")
-				domain_name = domain_elem.attributes["name"]
-				abstract["host"].find("host[@domain='#{domain_name}']").each do |host_elem|
-					hosts <<= host_elem.attributes["name"]
-				end
-			else
-				raise "Unknown host/group #{arg}"
-			end
-		end
-		return hosts
-	end
-
-	def filter_hosts hosts, message, requested_hosts
-
-		abstract =
-			deploy_master.abstract
-
-		return hosts.select do |host|
-
-			host_xp =
-				esc_xp host
-
-			query =
-				"deploy-host [@name = #{host_xp}]"
-
-			host_elem =
-				abstract["deploy-host"].find_first query
-
-			case
-
-			when host == "local"
-
-				true
-
-			when ! host_elem
-
-				logger.die "No such host #{host}"
-
-			when ! host_elem.attributes["skip"].to_s.empty?
-
-				message = "skipping host #{host} because " +
-					"#{host_elem.attributes["skip"]}"
-
-				if requested_hosts.include? host
-					logger.warning message
-				else
-					logger.debug message
-				end
-
-				false
-
-			when host_elem.attributes["no-deploy"] != "yes"
-
-				message = "skipping host #{host} because it is " +
-					"set to no-deploy"
-
-				true
-
-			when $force
-
-				logger.warning "#{message} no-deploy host #{host}"
-
-				true
-
-			else
-
-				logger.warning "skipping no-deploy host #{host}"
-
-				false
-
-			end
-
-		end
+		@commands[name] = {
+			info: info,
+			args: args,
+			info: info,
+			proc: proc,
+		}
 
 	end
 
+	def do_command args
+
+		if args.size < 1
+			logger.die "TODO help"
+		end
+
+		command_name =
+			args.shift
+
+		command_meta =
+			@commands[command_name]
+
+		if ! command_meta
+			logger.die "Command not recognised: #{command_name}"
+		end
+
+		command =
+			command_meta[:proc].call self
+
+		command.go command_name, *args
+
+	end
+
+=begin
 	def do_command
+
 		case ARGV[0]
 
 			when "config"
 
 				logger.die "FIXME"
 
-				self.hostname = "local"
+				@hostname = "local"
 
 				hosts = ARGV.size > 1 ? process_hosts(ARGV[1..-1]) : nil
 
@@ -472,112 +405,23 @@ class HQ::Application
 
 				deploy_master.write hosts
 
-			when "deploy"
-
-				self.hostname = "local"
-
-				# check args
-
-				$deploy_role \
-					or logger.die "must specify --role in deploy mode"
-
-				# message about mock
-
-				logger.warning "running in mock deployment mode" \
-					if $mock
-
-				# begin staged/rollback deploy
-
-				deploy_master.stager_start \
-					$deploy_mode,
-					$deploy_role,
-					$mock \
-				do
-
-					logger.time "transform", :detail do
-
-						# rebuild config
-
-						deploy_master.transform
-
-						# determine list of hosts to deploy to
-
-						requested_hosts = ARGV[1..-1]
-
-						hosts = process_hosts requested_hosts
-
-						# reduce list of hosts on various criteria
-
-						hosts =
-							filter_hosts \
-								hosts,
-								"deploying to",
-								requested_hosts
-
-						# output processed config
-
-						deploy_master.write hosts
-
-					end
-
-					logger.time "deploy", :detail do
-
-						# and deploy
-
-						deploy_master.deploy hosts
-
-					end
-
-				end
-
-			when "server-deploy"
-
-				require "hq/deploy"
-
-				# create /alchemy-hq link
-
-				# TODO does this belong here?
-
-				# TODO do this with ruby, not bash
-
-				system \
-					"test -h /alchemy-hq " +
-					"|| ln -s #{deploy_dir}/alchemy-hq /alchemy-hq"
-
-				# set hostname
-
-				self.hostname = ARGV[1]
-
-				logger.hostname = hostname
-
-				File.open "/etc/hq-hostname", "w" do |f|
-					f.puts ARGV[1]
-				end
-
-				# and perform the requested deployment
-
-				deploy_slave(ARGV[2]).go
-
-=begin
 			when "ec2-instances"
 				raise "syntax error" unless ARGV.length == 2
-				hostname = "local"
+				@hostname = "local"
 				ec2 = Mandar::EC2.connect ARGV[1]
 				Mandar::EC2::Reports.instances ec2
 
 			when "ec2-snapshots-summary"
 				raise "syntax error" unless ARGV.length == 2
-				hostname = "local"
+				@hostname = "local"
 				ec2 = Mandar::EC2.connect ARGV[1]
 				Mandar::EC2::Reports.snapshots_summary ec2
-=end
 
 			when "console-config"
 
 				logger.die "TODO"
 
-=begin
-				self.hostname = "local"
+				@hostname = "local"
 				Mandar::Core::Config.rebuild_abstract
 
 				logger.notice "creating console config"
@@ -649,75 +493,25 @@ class HQ::Application
 				end
 
 				logger.notice "done"
-=end
 
 			when "help", nil
 				puts HELP
 
 			when "clean"
 				logger.die "TODO"
-=begin
 				Mandar::Master.disconnect_all
 				if File.directory? WORK
 					logger.notice "removing #{WORK}"
 					FileUtils.remove_entry_secure WORK
 				end
-=end
-
-			when "unlock"
-
-				locks =
-					couch.get "mandar-locks"
-
-				if locks["deploy"]
-
-					if locks["deploy"]["role"] == $deploy_role
-
-						logger.warning "unlocking deployment for role " +
-							"#{locks["deploy"]["role"]}"
-
-						locks["deploy"] = nil
-
-					else
-
-						logger.error "not unlocking deployment for role " +
-							"#{locks["deploy"]["role"]}"
-
-					end
-
-				end
-
-				locks["changes"].each do
-					|role, change|
-
-					next if change["state"] == "stage"
-
-					if role == $deploy_role
-
-						logger.warning "unlocking changes in state " +
-							"#{change["state"]} for role #{role}"
-
-						change["state"] = "stage"
-
-					else
-
-						logger.warning "not unlocking changes in state " +
-							"#{change["state"]} for role #{role}"
-
-					end
-
-				end
-
-				couch.update locks
 
 			when "verify"
 				logger.die "TODO"
 
-=begin
 				relax_abstract = Mandar::Core::Config.load_relax_ng "#{CONFIG}/etc/abstract.rnc"
 				relax_concrete = Mandar::Core::Config.load_relax_ng "#{MANDAR}/etc/concrete.rnc"
 
-				self.hostname = "local"
+				@hostname = "local"
 
 				Mandar::Core::Config.rebuild_abstract
 				Dir.new("#{WORK}/abstract").each do |dir|
@@ -741,7 +535,6 @@ class HQ::Application
 					GC.start
 				end
 				logger.notice "all concrete xml confirmed as valid"
-=end
 
 			when "console"
 
@@ -767,8 +560,7 @@ class HQ::Application
 			when "run"
 				logger.die "TODO"
 
-=begin
-				self.hostname = "local"
+				@hostname = "local"
 
 				sep = ARGV.index ""
 				sep or raise "Syntax error"
@@ -790,12 +582,10 @@ class HQ::Application
 				Mandar::Master.run_command \
 					filtered_hosts,
 					cmd_args.join(" ")
-=end
 
 			when "export"
 				logger.die "TODO"
 
-=begin
 				raise "syntax error" unless ARGV.length == 2
 				zip_name = ARGV[1]
 
@@ -818,12 +608,10 @@ class HQ::Application
 					end
 
 				end
-=end
 
 			when "import"
 				logger.die "TODO"
 
-=begin
 				raise "syntax error" unless ARGV.length == 2
 				zip_name = ARGV[1]
 
@@ -908,47 +696,6 @@ class HQ::Application
 
 					end
 				end
-=end
-
-			when "listen"
-
-				mq_wrapper.schedule do
-
-					queue =
-						AMQP::Queue.new \
-							mq_wrapper.channel,
-							"",
-							:auto_delete => true \
-						do
-							|queue, declare_ok|
-
-							queue.bind \
-								mq_wrapper.channel.fanout \
-									"deploy-progress"
-
-							queue.subscribe do
-								|data_json|
-
-								data =
-									MultiJson.load data_json
-
-								case data["type"]
-
-								when "deploy-log"
-									logger.output \
-										data["content"],
-										data["mode"]
-
-								else
-									puts "got #{data["type"]}"
-
-								end
-
-							end
-
-						end
-
-				end
 
 			else
 				logger.error "syntax error"
@@ -956,5 +703,8 @@ class HQ::Application
 		end
 
 	end
+=end
 
+end
+end
 end

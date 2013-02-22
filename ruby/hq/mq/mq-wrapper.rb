@@ -4,6 +4,8 @@ module HQ
 module MQ
 class MqWrapper
 
+	attr_accessor :em_wrapper
+
 	attr_accessor :host
 	attr_accessor :port
 	attr_accessor :vhost
@@ -15,19 +17,10 @@ class MqWrapper
 
 	def start
 
-		@em_fiber =
-			Fiber.new { startup }
-
-		@em_fiber.resume
-
-	end
-
-	def startup
-
 		require "amqp"
-		require "eventmachine"
 
-		EventMachine.run do
+		@em_wrapper.slow do
+			|return_proc|
 
 			@connection =
 				AMQP.connect \
@@ -35,59 +28,36 @@ class MqWrapper
 					:port => @port,
 					:vhost => @vhost,
 					:username => @username,
-					:password => @password
+					:password => @password \
+			do
 
-			@channel =
-				AMQP::Channel.new \
-					@connection
+				@channel =
+					AMQP::Channel.new \
+						@connection \
+					do
 
-			Fiber.yield
+						return_proc.call
 
-		end
+					end
 
-	end
-
-	def continue
-
-		EventMachine.add_timer 0 do
-			Fiber.yield
-		end
-
-		@em_fiber.resume
-
-	end
-
-	def schedule *args, &proc
-
-		EventMachine.add_timer 0 do
-
-			return_proc =
-				Proc.new do
-					|return_value|
-					Fiber.yield return_value
-				end
-
-			proc.call return_proc
+			end
 
 		end
-
-		return @em_fiber.resume
 
 	end
 
 	def stop
 
-		EventMachine.add_timer 0 do
+		@em_wrapper.slow do
+			|return_proc|
 
 			@channel.close do
 				@connection.disconnect do
-					EventMachine.stop_event_loop
+					return_proc.call
 				end
 			end
 
 		end
-
-		@em_fiber.resume
 
 	end
 

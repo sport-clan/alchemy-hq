@@ -1,8 +1,8 @@
-require "hq/deploy"
+require "hq/engine"
 
 module HQ
-module Deploy
-class AbstractEngine
+module Engine
+class Transformer
 
 	attr_accessor :logger
 	attr_accessor :xquery_client
@@ -119,7 +119,9 @@ class AbstractEngine
 
 				end
 
-				logger.die "circular dependency in abstract: #{remaining.keys.sort.join ", "}" unless num_processed > 0
+				logger.die "circular dependency in abstract: " +
+					"#{remaining.keys.sort.join ", "}" \
+					unless num_processed > 0
 			end
 
 

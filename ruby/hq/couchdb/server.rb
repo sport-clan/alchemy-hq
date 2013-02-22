@@ -50,7 +50,14 @@ class Server
 	def call method, path, request = nil
 
 		request_string =
-			request ? MultiJson.dump(request) : nil
+			if request
+				JSON.fast_generate \
+					request,
+					:max_nesting => false
+			else
+				nil
+			end
+			request ? JSON.dump(request) : nil
 
 		response_string =
 			http_request \
@@ -58,8 +65,12 @@ class Server
 				path,
 				request_string
 
+		# TODO want to use MultiJson but it enforces nesting depth
+
 		response =
-			MultiJson.load response_string
+			JSON.parse \
+				response_string,
+				:max_nesting => false
 
 		if response.is_a?(Hash) && response["error"]
 			raise CouchDB::map_error response
