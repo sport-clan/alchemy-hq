@@ -1,6 +1,6 @@
-require "hq/tools"
-
-class HQ::Tools::Future
+module HQ
+module Tools
+class Future
 
 	def initialize thread_pool, *args, &block
 
@@ -72,4 +72,6 @@ class HQ::Tools::Future
 
 	end
 
+end
+end
 end

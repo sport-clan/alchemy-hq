@@ -1,6 +1,6 @@
-require "hq/tools"
-
-class HQ::Tools::ThreadPool
+module HQ
+module Tools
+class ThreadPool
 
 	def initialize
 		require "thread"
@@ -70,4 +70,6 @@ class HQ::Tools::ThreadPool
 
 	end
 
+end
+end
 end

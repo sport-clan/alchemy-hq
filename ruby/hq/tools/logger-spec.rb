@@ -1,5 +1,9 @@
 require "hq/tools/logger"
 
-describe HQ::Tools::Logger do
+module HQ
+module Tools
+describe Logger do
 
+end
+end
 end
