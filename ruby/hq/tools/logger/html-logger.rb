@@ -1,10 +1,12 @@
 require "hq/tools/escape"
 require "hq/tools/logger/io-logger"
 
-class HQ::Tools::Logger::HtmlLogger \
-	< HQ::Tools::Logger::IoLogger
+module HQ
+module Tools
+class Logger
+class HtmlLogger < IoLogger
 
-	include HQ::Tools::Escape
+	include Tools::Escape
 
 	def valid_modes
 		[ :normal, :complete ]
@@ -280,4 +282,7 @@ class HQ::Tools::Logger::HtmlLogger \
 
 	end
 
+end
+end
+end
 end

@@ -1,5 +1,3 @@
-require "hq/engine"
-
 module HQ
 module Engine
 class Transformer

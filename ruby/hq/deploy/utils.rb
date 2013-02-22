@@ -1,5 +1,3 @@
-require "hq"
-
 require "hq/tools/escape"
 
 module HQ

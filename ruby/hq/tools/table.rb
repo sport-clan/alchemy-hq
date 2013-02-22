@@ -1,6 +1,6 @@
-require "hq/tools"
-
-class HQ::Tools::Table
+module HQ
+module Tools
+class Table
 
 	attr_accessor :rows
 	attr_accessor :cats
@@ -54,4 +54,6 @@ class HQ::Tools::Table
 
 	end
 
+end
+end
 end

@@ -1,6 +1,7 @@
-require "hq/systools/ec2"
-
-class HQ::SysTools::EC2::Ec2SnapshotCreateScript
+module HQ
+module SysTools
+module EC2
+class Ec2SnapshotCreateScript
 
 	attr_accessor :args
 	attr_accessor :exit_code
@@ -260,4 +261,7 @@ class HQ::SysTools::EC2::Ec2SnapshotCreateScript
 
 	end
 
+end
+end
+end
 end

@@ -1,6 +1,7 @@
-require "hq/tools/logger"
-
-class HQ::Tools::Logger::IoLogger
+module HQ
+module Tools
+class Logger
+class IoLogger
 
 	attr_accessor :out
 	attr_accessor :level
@@ -45,4 +46,7 @@ class HQ::Tools::Logger::IoLogger
 
 	end
 
+end
+end
+end
 end

@@ -1,20 +1,21 @@
-# parent
-require "hq/systools/rrd"
-
-# libraries
-require "RRD"
-
-# hq stuff
 require "hq/systools/monitoring/check-script"
 require "hq/tools/getopt"
 
-class HQ::SysTools::RRD::CheckRecentScript \
-	< HQ::SysTools::Monitoring::CheckScript
+module HQ
+module SysTools
+module RRD
+class CheckRecentScript \
+	< Monitoring::CheckScript
+
+	def initialize
+		require "RRD"
+		super
+	end
 
 	def process_args
 
 		@opts, @files =
-			HQ::Tools::Getopt.process @args, [
+			Tools::Getopt.process @args, [
 
 				{ :name => :warning,
 					:required => true,
@@ -44,7 +45,7 @@ class HQ::SysTools::RRD::CheckRecentScript \
 		@files.each do
 			|file|
 
-			info = RRD.info file
+			info = ::RRD.info file
 
 			last_update = info["last_update"]
 
@@ -67,4 +68,7 @@ class HQ::SysTools::RRD::CheckRecentScript \
 
 	end
 
+end
+end
+end
 end

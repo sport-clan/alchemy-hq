@@ -1,5 +1,3 @@
-require "hq"
-
 module HQ
 module Core
 

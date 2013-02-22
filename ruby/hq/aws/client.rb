@@ -1,6 +1,6 @@
-require "hq/aws"
-
-class HQ::AWS::Client
+module HQ
+module AWS
+class Client
 
 	attr_accessor :default_prefix
 
@@ -138,4 +138,6 @@ class HQ::AWS::Client
 		return sym.to_s.split("_").map { |str| str[0...1].upcase + str[1..-1] }.join("")
 	end
 
+end
+end
 end

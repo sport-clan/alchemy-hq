@@ -1,7 +1,9 @@
 require "hq/tools/logger/io-logger"
 
-class HQ::Tools::Logger::AnsiLogger \
-	< HQ::Tools::Logger::IoLogger
+module HQ
+module Tools
+class Logger
+class AnsiLogger < IoLogger
 
 	ANSI_CODES = {
 		:normal => "\e[0m",
@@ -129,4 +131,7 @@ class HQ::Tools::Logger::AnsiLogger \
 
 	end
 
+end
+end
+end
 end

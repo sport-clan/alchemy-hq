@@ -1,8 +1,10 @@
 require "hq/systools/rrd/check-recent-script"
 
-describe HQ::SysTools::RRD::CheckRecentScript do
+module HQ::SysTools::RRD
+describe CheckRecentScript do
 
 	before do
+		require "RRD"
 		RRD.stub(:info).and_return({ "last_update" => 99 })
 		Time.stub(:now).and_return(Time.at(100))
 		subject.stdout = StringIO.new
@@ -83,4 +85,5 @@ describe HQ::SysTools::RRD::CheckRecentScript do
 
 	end
 
+end
 end

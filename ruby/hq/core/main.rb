@@ -1,5 +1,3 @@
-require "hq"
-
 module HQ
 module Core
 class Main
@@ -88,7 +86,7 @@ class Main
 
 		return @couch if @couch
 
-		require "hq/couchdb/server"
+		require "hq/couchdb/couchdb-server"
 
 		couch_server =
 			HQ::CouchDB::Server.new \

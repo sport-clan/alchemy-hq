@@ -1,8 +1,6 @@
-#!/usr/bin/env ruby
-
-require "hq/tools"
-
-module HQ::Tools::Lock
+module HQ
+module Tools
+module Lock
 
 	def self.lock_simple filename
 
@@ -77,4 +75,6 @@ module HQ::Tools::Lock
 
 	end
 
+end
+end
 end

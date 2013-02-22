@@ -1,7 +1,8 @@
 require "hq/tools/logger/raw-logger"
 require "hq/tools/logger/logger-examples"
 
-describe HQ::Tools::Logger::RawLogger do
+class HQ::Tools::Logger
+describe RawLogger do
 
 	include_examples "a logger"
 
@@ -39,4 +40,5 @@ describe HQ::Tools::Logger::RawLogger do
 
 	end
 
+end
 end

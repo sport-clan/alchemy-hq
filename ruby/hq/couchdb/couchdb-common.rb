@@ -1,6 +1,5 @@
-require "hq"
-
-module HQ::CouchDB
+module HQ
+module CouchDB
 
 	def self.urlf url, *args
 		ret = ""
@@ -38,4 +37,5 @@ module HQ::CouchDB
 	class CouchNotFoundException < CouchException
 	end
 
+end
 end

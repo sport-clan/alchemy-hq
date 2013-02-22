@@ -1,5 +1,3 @@
-require "hq/deploy"
-
 require "hq/tools/escape"
 
 class HQ::Deploy::Slave

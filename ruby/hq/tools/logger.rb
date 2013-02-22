@@ -1,6 +1,6 @@
-require "hq/tools"
-
-class HQ::Tools::Logger
+module HQ
+module Tools
+class Logger
 
 	attr_accessor :hostname
 
@@ -19,7 +19,7 @@ class HQ::Tools::Logger
 		require "hq/tools/logger/multi-logger"
 
 		@multi_logger =
-			HQ::Tools::Logger::MultiLogger.new
+			MultiLogger.new
 
 	end
 
@@ -214,4 +214,6 @@ class HQ::Tools::Logger
 
 	end
 
+end
+end
 end

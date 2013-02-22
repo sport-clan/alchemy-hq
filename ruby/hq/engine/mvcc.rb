@@ -1,6 +1,6 @@
-require "hq/engine"
-
-class HQ::Engine::MVCC
+module HQ
+module Engine
+class MVCC
 
 	attr_accessor :transactions
 
@@ -90,4 +90,6 @@ class HQ::Engine::MVCC
 
 	end
 
+end
+end
 end

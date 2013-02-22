@@ -1,7 +1,8 @@
 require "hq/tools/logger/ansi-logger"
 require "hq/tools/logger/logger-examples"
 
-describe HQ::Tools::Logger::AnsiLogger do
+class HQ::Tools::Logger
+describe AnsiLogger do
 
 	include_examples "a logger"
 
@@ -9,13 +10,13 @@ describe HQ::Tools::Logger::AnsiLogger do
 
 		def ansi_line colour, text
 			return [
-				HQ::Tools::Logger::AnsiLogger::ANSI_CODES[:bold],
-				HQ::Tools::Logger::AnsiLogger::ANSI_CODES[:blue],
+				AnsiLogger::ANSI_CODES[:bold],
+				AnsiLogger::ANSI_CODES[:blue],
 				"hostname:",
 				" ",
-				HQ::Tools::Logger::AnsiLogger::ANSI_CODES[colour],
+				AnsiLogger::ANSI_CODES[colour],
 				text,
-				HQ::Tools::Logger::AnsiLogger::ANSI_CODES[:normal],
+				AnsiLogger::ANSI_CODES[:normal],
 				"\n",
 			]
 		end
@@ -99,4 +100,5 @@ describe HQ::Tools::Logger::AnsiLogger do
 
 	end
 
+end
 end

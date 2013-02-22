@@ -1,7 +1,8 @@
 require "hq/tools/logger/logger-examples"
 require "hq/tools/logger/text-logger"
 
-describe HQ::Tools::Logger::TextLogger do
+class HQ::Tools::Logger
+describe TextLogger do
 
 	include_examples "a logger"
 
@@ -86,4 +87,5 @@ describe HQ::Tools::Logger::TextLogger do
 
 	end
 
+end
 end

@@ -1,5 +1,3 @@
-require "hq/tools"
-
 require "cgi"
 
 module HQ

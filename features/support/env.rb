@@ -12,7 +12,7 @@ def xquery_client
 	return @xquery_client \
 		if @xquery_client
 
-	require "hq/xquery"
+	require "hq/xquery/start"
 
 	@xquery_client =
 		HQ::XQuery.start \

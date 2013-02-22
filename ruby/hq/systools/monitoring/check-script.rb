@@ -1,6 +1,7 @@
-require "hq/systools/monitoring"
-
-class HQ::SysTools::Monitoring::CheckScript
+module HQ
+module SysTools
+module Monitoring
+class CheckScript
 
 	attr_accessor :args
 	attr_accessor :status
@@ -81,4 +82,7 @@ class HQ::SysTools::Monitoring::CheckScript
 		@unknown = true
 	end
 
+end
+end
+end
 end

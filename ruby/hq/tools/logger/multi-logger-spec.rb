@@ -1,6 +1,7 @@
 require "hq/tools/logger/multi-logger"
 
-describe HQ::Tools::Logger::MultiLogger do
+class HQ::Tools::Logger
+describe MultiLogger do
 
 	context "#output" do
 
@@ -21,4 +22,5 @@ describe HQ::Tools::Logger::MultiLogger do
 
 	end
 
+end
 end

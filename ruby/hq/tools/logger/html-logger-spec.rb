@@ -1,7 +1,8 @@
 require "hq/tools/logger/html-logger"
 require "hq/tools/logger/logger-examples"
 
-describe HQ::Tools::Logger::HtmlLogger do
+class HQ::Tools::Logger
+describe HtmlLogger do
 
 	include_examples "a logger"
 
@@ -139,4 +140,5 @@ describe HQ::Tools::Logger::HtmlLogger do
 
 	end
 
+end
 end

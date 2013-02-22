@@ -1,5 +1,3 @@
-require "hq/mq"
-
 module HQ
 module MQ
 class MqLogger

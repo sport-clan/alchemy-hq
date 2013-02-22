@@ -1,6 +1,6 @@
-require "hq/engine"
-
-class HQ::Engine::API
+module HQ
+module Engine
+class API
 
 	attr_accessor :mvcc
 
@@ -39,4 +39,6 @@ class HQ::Engine::API
 
 	end
 
+end
+end
 end

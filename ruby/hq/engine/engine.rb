@@ -1,5 +1,3 @@
-require "hq/engine"
-
 module HQ
 module Engine
 class Engine
@@ -36,7 +34,7 @@ class Engine
 
 		return @xquery_client if @xquery_client
 
-		require "hq/xquery/client"
+		require "hq/xquery/start"
 
 		logger.debug "starting xquery server"
 

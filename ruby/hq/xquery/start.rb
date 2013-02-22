@@ -1,6 +1,5 @@
-require "hq"
-
-module HQ::XQuery
+module HQ
+module XQuery
 
 	def self.start xquery_server
 
@@ -54,7 +53,7 @@ module HQ::XQuery
 		require "hq/xquery/client"
 
 		xquery_client =
-			HQ::XQuery::Client.new \
+			Client.new \
 				req_wr,
 				resp_rd
 
@@ -62,4 +61,5 @@ module HQ::XQuery
 
 	end
 
+end
 end

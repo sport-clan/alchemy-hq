@@ -1,6 +1,7 @@
-require "hq/tools/logger"
-
-class HQ::Tools::Logger::MultiLogger
+module HQ
+module Tools
+class Logger
+class MultiLogger
 
 	def initialize
 		@loggers = []
@@ -17,4 +18,7 @@ class HQ::Tools::Logger::MultiLogger
 		end
 	end
 
+end
+end
+end
 end

@@ -1,5 +1,3 @@
-require "hq/core"
-
 module HQ
 module Core
 class EmWrapper

@@ -1,8 +1,8 @@
 require "multi_json"
 
-require "hq/xquery"
-
-class HQ::XQuery::Client
+module HQ
+module XQuery
+class Client
 
 	def initialize req_wr, resp_rd
 
@@ -39,7 +39,7 @@ class HQ::XQuery::Client
 		chars = "abcdefghijklmnopqrstuvwxyz"
 		session_id = (0...16).map { chars[rand chars.length] }.join("")
 
-		return HQ::XQuery::Session.new self, session_id
+		return Session.new self, session_id
 
 	end
 
@@ -65,4 +65,6 @@ class HQ::XQuery::Client
 
 	end
 
+end
+end
 end

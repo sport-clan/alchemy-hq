@@ -1,5 +1,4 @@
-require "hq/deploy"
-
+require "hq/dir"
 require "hq/tools/escape"
 
 module HQ
@@ -384,44 +383,44 @@ class Controller
 			returned = false
 
 			next_host_proc =
-				Proc.new do
-					|error|
+				proc do
+				|error|
 
-					if current_hosts.size < max_threads \
-							&& ! remaining_hosts.empty?
+				if current_hosts.size < max_threads \
+						&& ! remaining_hosts.empty?
 
-						next_host =
-							remaining_hosts.shift
+					next_host =
+						remaining_hosts.shift
 
-						current_hosts << next_host
+					current_hosts << next_host
 
-						deploy_host next_host do
-							|success|
+					deploy_host next_host do
+						|success|
 
-							if success
-								success_count += 1
-							else
-								error_count += 1
-							end
-
-							current_hosts.delete next_host
-
-							next_host_proc.call
-
+						if success
+							success_count += 1
+						else
+							error_count += 1
 						end
+
+						current_hosts.delete next_host
 
 						next_host_proc.call
 
-					elsif remaining_hosts.empty? \
-						&& current_hosts.empty? \
-						&& ! returned
-
-						returned = true
-						return_proc.call
-
 					end
 
+					next_host_proc.call
+
+				elsif remaining_hosts.empty? \
+					&& current_hosts.empty? \
+					&& ! returned
+
+					returned = true
+					return_proc.call
+
 				end
+
+			end
 
 			next_host_proc.call false
 
@@ -445,70 +444,79 @@ class Controller
 		run_local_proc = nil
 
 		start_proc =
-			Proc.new do
+			proc do
 
-				if host == "local"
+			if host == "local"
 
-					EventMachine.next_tick do
-						run_local_proc.call
-					end
+				EventMachine.next_tick do
+					run_local_proc.call
+				end
 
-				else
+			else
 
-					EventMachine.next_tick do
-						send_to_host_proc.call
-					end
-
+				EventMachine.next_tick do
+					send_to_host_proc.call
 				end
 
 			end
+
+		end
 
 		send_to_host_proc =
-			Proc.new do
+			proc do
 
-				send_to host do
-					|success|
+			send_to host do
+				|success|
 
-					if success
-						deploy_on_host_proc.call
-					else
-						puts "send to host #{host} failed"
-						return_proc.call false
-					end
-
+				if success
+					deploy_on_host_proc.call
+				else
+					puts "send to host #{host} failed"
+					return_proc.call false
 				end
 
 			end
+
+		end
 
 		deploy_on_host_proc =
-			Proc.new do
+			proc do
 
-				args = [
-					"server-deploy",
-					host,
-					"host/#{host}/deploy.xml",
-				]
+			args = [
+				"server-deploy",
+				host,
+				"host/#{host}/deploy.xml",
+			]
 
-				run_self_on_host host, args do
-					|success|
+			args += [
+				"--mock",
+			] if $mock
 
-					if success
-						return_proc.call true
-					else
-						puts "deploy on #{host} failed"
-						return_proc.call false
-					end
+			run_self_on_host host, args do
+				|success|
 
+				if success
+					return_proc.call true
+				else
+					puts "deploy on #{host} failed"
+					return_proc.call false
 				end
 
 			end
 
-		run_local_proc = proc do
+		end
+
+		run_local_proc =
+			proc do
 
 			args = [
 				"local-deploy",
 				"host/local/deploy.xml",
 			]
+
+			args += [
+				"--mock",
+			] if $mock
 
 			run_self_locally args do
 				|success|

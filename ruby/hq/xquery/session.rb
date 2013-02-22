@@ -1,6 +1,6 @@
-require "hq/xquery"
-
-class HQ::XQuery::Session
+module HQ
+module XQuery
+class Session
 
 	def initialize client, session_id
 		@client = client
@@ -92,4 +92,6 @@ class HQ::XQuery::Session
 		end
 	end
 
+end
+end
 end

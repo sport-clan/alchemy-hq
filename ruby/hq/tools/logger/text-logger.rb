@@ -1,7 +1,9 @@
 require "hq/tools/logger/io-logger"
 
-class HQ::Tools::Logger::TextLogger \
-	< HQ::Tools::Logger::IoLogger
+module HQ
+module Tools
+class Logger
+class TextLogger < IoLogger
 
 	def valid_modes
 		[ :normal, :partial ]
@@ -87,4 +89,7 @@ class HQ::Tools::Logger::TextLogger \
 
 	end
 
+end
+end
+end
 end

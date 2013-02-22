@@ -1,8 +1,6 @@
-#!/usr/bin/env ruby
-
-require "hq/tools"
-
-module HQ::Tools::Getopt
+module HQ
+module Tools
+module Getopt
 
 	def self.to_long name
 		return "--#{name.to_s.gsub "_", "-"}"
@@ -102,7 +100,7 @@ module HQ::Tools::Getopt
 				next if spec[:multi] && ! ret[spec[:key]].empty?
 				msg = "#{$0}: option '#{spec[:long_name]}' is required"
 				$stderr.puts msg
-				raise HQ::Tools::GetoptError.new msg
+				raise GetoptError.new msg
 			end
 
 			# check for mismatched regex arguments
@@ -113,14 +111,14 @@ module HQ::Tools::Getopt
 						next if value =~ /^#{easy_spec[:regex]}$/
 						msg = "#{$0}: option '#{easy_spec[:long_name]}' is invalid: #{value}"
 						$stderr.puts msg
-						raise HQ::Tools::GetoptError.new msg
+						raise GetoptError.new msg
 					end
 				else
 					next if ret[easy_spec[:name]] == easy_spec[:default]
 					next if ret[easy_spec[:name]] =~ /^#{easy_spec[:regex]}$/
 					msg = "#{$0}: option '#{easy_spec[:long_name]}' is invalid: #{ret[easy_spec[:name]]}"
 					$stderr.puts msg
-					raise HQ::Tools::GetoptError.new msg
+					raise GetoptError.new msg
 				end
 			end
 
@@ -144,7 +142,7 @@ module HQ::Tools::Getopt
 			return ret, rest
 
 		rescue GetoptLong::MissingArgument
-			raise HQ::Tools::GetoptError
+			raise GetoptError
 
 		ensure
 			ARGV.clear
@@ -152,7 +150,9 @@ module HQ::Tools::Getopt
 		end
 	end
 
-end
+	class HQ::Tools::GetoptError < StandardError
+	end
 
-class HQ::Tools::GetoptError < StandardError
+end
+end
 end

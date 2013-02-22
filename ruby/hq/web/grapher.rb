@@ -1,12 +1,10 @@
-require "hq/web"
-
 # TODO get rid of this
 require "mandar"
 
-module HQ::Web::Grapher
-end
-
-class HQ::Web::Grapher::GraphHandler
+module HQ
+module Web
+module Grapher
+class GraphHandler
 
 	include Mandar::Tools::Escape
 
@@ -27,7 +25,7 @@ class HQ::Web::Grapher::GraphHandler
 		return proc do |env, params|
 
 			handler =
-				HQ::Web::Grapher::GraphHandler.new \
+				GraphHandler.new \
 					grapher_config_elem
 
 			handler.handle \
@@ -111,4 +109,8 @@ class HQ::Web::Grapher::GraphHandler
 
 		return [ 200, headers, body ]
 	end
+
+end
+end
+end
 end

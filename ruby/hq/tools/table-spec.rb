@@ -1,9 +1,11 @@
 require "hq/tools/table"
 
-describe HQ::Tools::Table do
+module HQ
+module Tools
+describe Table do
 
 	subject do
-		HQ::Tools::Table.new
+		Table.new
 	end
 
 	describe "#initialize" do
@@ -44,4 +46,6 @@ describe HQ::Tools::Table do
 	describe "#print" do
 	end
 
+end
+end
 end

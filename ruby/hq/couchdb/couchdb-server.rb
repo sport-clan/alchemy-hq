@@ -1,5 +1,3 @@
-require "hq/couchdb"
-
 module HQ
 module CouchDB
 class Server
@@ -93,7 +91,7 @@ class Server
 	end
 
 	def database name
-		require "hq/couchdb/database"
+		require "hq/couchdb/couchdb-database"
 		return CouchDB::Database.new(self, name)
 	end
 

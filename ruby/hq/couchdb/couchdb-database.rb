@@ -1,4 +1,4 @@
-require  "hq/couchdb"
+require "hq/couchdb/couchdb-common"
 
 module HQ
 module CouchDB

@@ -2,8 +2,10 @@ require "hq/tools/logger/io-logger"
 
 require "multi_json"
 
-class HQ::Tools::Logger::RawLogger \
-	< HQ::Tools::Logger::IoLogger
+module HQ
+module Tools
+class Logger
+class RawLogger < IoLogger
 
 	def valid_modes
 		[ :normal, :partial ]
@@ -20,4 +22,7 @@ class HQ::Tools::Logger::RawLogger \
 
 	end
 
+end
+end
+end
 end

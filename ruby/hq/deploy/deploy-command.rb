@@ -1,5 +1,3 @@
-require "hq/deploy"
-
 require "hq/deploy/utils"
 
 module HQ

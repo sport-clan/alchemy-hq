@@ -1,6 +1,6 @@
-require "hq/web"
-
-class HQ::Web::Container
+module HQ
+module Web
+class Container
 
 	def initialize
 	end
@@ -114,4 +114,6 @@ class HQ::Web::Container
 
 	end
 
+end
+end
 end
