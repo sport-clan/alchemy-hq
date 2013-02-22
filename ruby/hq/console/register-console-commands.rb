@@ -14,6 +14,17 @@ module Console
 			command
 		end
 
+		hq.register_command \
+			"console-config",
+			nil,
+			"Write config file for console" \
+		do
+			require "hq/console/console-config-command"
+			command = HQ::Console::ConsoleConfigCommand.new
+			command.hq = hq
+			command
+		end
+
 	end
 
 end
