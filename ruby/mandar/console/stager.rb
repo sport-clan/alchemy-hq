@@ -329,8 +329,8 @@ class Mandar::Console::Stager
 			pid = fork do
 
 				$stdin.reopen "/dev/null", "r"
-				$stdout.reopen "/home/james/log", "a"
-				$stderr.reopen "/home/james/log", "a"
+				$stdout.reopen "/dev/null", "w"
+				$stderr.reopen "/dev/null", "w"
 
 				3.upto 1023 do |fd|
 					begin
