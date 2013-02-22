@@ -29,11 +29,12 @@ class EmWrapper
 
 		rescue => e
 
-			puts [
+			STDOUT.puts [
 				"EventMachine exited abnormally",
 				e.message,
 				*e.backtrace,
 			]
+			STDOUT.flush
 			exit 1
 
 		end
