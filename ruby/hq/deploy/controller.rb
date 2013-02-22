@@ -78,9 +78,9 @@ class Controller
 				"rsync",
 
 				"--times",
-				"--copy-links",
 				"--delete",
 				"--executability",
+				"--links",
 				"--perms",
 				"--recursive",
 				"--rsh=#{rsh_cmd}",
@@ -116,6 +116,8 @@ class Controller
 				"--include=/devbox/lib",
 				"--exclude=/devbox/*",
 				"--include=/devbox",
+
+				"--include=/#{deploy_dir}/.dependencies",
 
 				"--exclude=/#{deploy_dir}/.work/deploy/*/*",
 				"--include=/#{deploy_dir}/.work/deploy/*",
