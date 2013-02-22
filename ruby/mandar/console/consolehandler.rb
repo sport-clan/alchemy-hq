@@ -1,4 +1,4 @@
-require "hq"
+require "hq/dir"
 
 class Mandar::Console::ConsoleHandler
 
