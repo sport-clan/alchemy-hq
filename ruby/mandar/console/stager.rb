@@ -2,6 +2,7 @@ class Mandar::Console::Stager
 
 	include Mandar::Console::Data
 
+	attr_accessor :config
 	attr_accessor :db
 	attr_accessor :entropy
 	attr_accessor :locks_man
@@ -306,46 +307,137 @@ class Mandar::Console::Stager
 				:rollback
 			].include? mode
 
+		deploy_id = entropy.rand_token
+
 		# work out command to execute
-		args = %W[
-			deploy all
-			--profile #{profile}
-			--role #{my_role}
+		args = [
+			"deploy", "all",
+			"--profile", profile,
+			"--role", my_role,
 		]
 		args += [ "--log", "detail:html" ] unless background
 		args += [ "--mock" ] if mock
 		args += [ "--staged" ] if mode == :staged
 		args += [ "--rollback" ] if mode == :rollback
+		args += [ "--deploy-id", deploy_id ]
 		full_command = "#{command} #{Mandar.shell_quote args}"
 
 		puts "#{full_command} (#{background ? "background" : "foreground"})"
 
 		Bundler.with_clean_env do
 
-			if background
+			pid = fork do
 
-				# execute in background, return immediately
-				system "#{full_command} >/dev/null 2>/dev/null &"
-				return { }
+				$stdin.reopen "/dev/null", "r"
+				$stdout.reopen "/home/james/log", "a"
+				$stderr.reopen "/home/james/log", "a"
 
-			else
-
-				# execute in foreground, capture output
-				lines = []
-				IO.popen "#{full_command} 2>&1", "r" do |f|
-					while line = f.gets
-						lines << line.chomp
+				3.upto 1023 do |fd|
+					begin
+						io.close if io = IO::new(fd)
+					rescue
 					end
 				end
 
-				# return
-				return {
-					output: lines,
-					status: $?.exitstatus
-				}
+				fork do
+					sleep 1 # TODO this is awful
+					exec "bash", "-c", full_command
+				end
+
+			end
+
+			Process.wait pid
+
+		end
+
+		return if background
+
+		require "hq/core/em-wrapper"
+		require "hq/mq/mq-wrapper"
+		require "hq/tools/logger/html-logger"
+		require "hq/tools/logger/text-logger"
+
+		em_wrapper = HQ::Core::EmWrapper.new
+		em_wrapper.start
+
+		mq_wrapper = HQ::MQ::MqWrapper.new
+		mq_wrapper.em_wrapper = em_wrapper
+		mq_wrapper.host = config["mq-host"]
+		mq_wrapper.port = config["mq-port"]
+		mq_wrapper.vhost = config["mq-vhost"]
+		mq_wrapper.username = config["mq-user"]
+		mq_wrapper.password = config["mq-pass"]
+		mq_wrapper.start
+
+		html_logger = HQ::Tools::Logger::HtmlLogger.new
+		html_logger.out = StringIO.new
+		html_logger.level = :detail
+
+		text_logger = HQ::Tools::Logger::TextLogger.new
+		text_logger.out = STDOUT
+		text_logger.level = :detail
+
+		em_wrapper.slow do
+			|return_proc|
+
+			queue =
+				AMQP::Queue.new \
+					mq_wrapper.channel,
+					"",
+					:auto_delete => true \
+			do
+				|queue, declare_ok|
+
+				queue.bind \
+					mq_wrapper.channel.fanout \
+						"deploy-progress"
+
+				queue.subscribe do
+					|data_json|
+
+					data =
+						MultiJson.load data_json
+
+					if data["deploy-id"] == deploy_id
+
+						case data["type"]
+
+						when "deploy-start"
+
+							# ignored
+
+						when "deploy-log"
+
+							html_logger.output \
+								data["content"],
+								{ mode: data["mode"] }
+
+							text_logger.output \
+								data["content"],
+								{ mode: data["mode"] }
+
+						when "deploy-end"
+
+							queue.unsubscribe
+
+							return_proc.call
+
+						end
+
+					end
+
+				end
+
 			end
 
 		end
+
+		em_wrapper.stop
+
+		return {
+			output: html_logger.out.string.split("\n"),
+			status: nil,
+		}
 
 	end
 

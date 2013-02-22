@@ -37,6 +37,11 @@ class ConsoleConfigCommand
 		doc.root["database-name"] = profile["database-name"]
 		doc.root["database-user"] = profile["database-user"]
 		doc.root["database-pass"] = profile["database-pass"]
+		doc.root["mq-host"] = profile["mq-host"]
+		doc.root["mq-port"] = profile["mq-port"]
+		doc.root["mq-vhost"] = profile["mq-vhost"]
+		doc.root["mq-user"] = profile["mq-user"]
+		doc.root["mq-pass"] = profile["mq-pass"]
 		doc.root["deploy-command"] = "#{config_dir}/.stubs/#{File.basename $0}"
 		doc.root["deploy-profile"] = $profile
 		doc.root["admin-group"] = console_config["admin-group"]

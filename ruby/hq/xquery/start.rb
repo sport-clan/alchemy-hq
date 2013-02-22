@@ -10,13 +10,15 @@ module XQuery
 		File.executable? xquery_server \
 			or raise "Not found: #{xquery_server}"
 
-		pid = fork do
+		# TODO why do we fork twice? i don't think we need to...
+
+		outer_pid = fork do
 
 			at_exit { exit! }
 
 			ctl_rd.close
 
-			pid = fork do
+			inner_pid = fork do
 
 				$stdin.reopen req_rd
 				$stdout.reopen resp_wr
@@ -29,7 +31,7 @@ module XQuery
 
 			end
 
-			ctl_wr.puts pid
+			ctl_wr.puts inner_pid
 
 			exit!
 
@@ -39,12 +41,14 @@ module XQuery
 		req_rd.close
 		resp_wr.close
 
-		pid = ctl_rd.gets.strip.to_i
+		inner_pid = ctl_rd.gets.strip.to_i
 		ctl_rd.close
+
+		Process.wait outer_pid
 
 		at_exit do
 			begin
-				Process.kill "TERM", pid
+				Process.kill "TERM", inner_pid
 			rescue Errno::ESRCH
 				# do nothing
 			end

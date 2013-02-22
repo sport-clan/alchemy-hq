@@ -198,6 +198,10 @@ class Master
 		mq_logger.mq_wrapper = mq_wrapper
 		mq_logger.start
 
+		mq_logger.set({
+			"deploy-id" => $deploy_id,
+		})
+
 		mq_logger.publish({
 			"type" => "deploy-start",
 		})
@@ -365,6 +369,10 @@ class Master
 			mq_logger.publish({
 				"type" => "deploy-end",
 			})
+
+			mq_logger.unset([
+				"deploy-id",
+			])
 
 		end
 

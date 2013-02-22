@@ -5,9 +5,20 @@ class MqLogger
 	attr_accessor :em_wrapper
 	attr_accessor :mq_wrapper
 
+	def initialize
+		@sets = {}
+	end
+
 	def publish data
 
 		@em_wrapper.quick do
+
+			data = data.clone
+
+			@sets.each do
+				|key, value|
+				data[key] = value
+			end
 
 			data_json =
 				MultiJson.dump data
@@ -49,6 +60,24 @@ class MqLogger
 					return_proc.call
 				end
 
+		end
+
+	end
+
+	def set sets
+
+		sets.each do
+			|key, value|
+			@sets[key] = value
+		end
+
+	end
+
+	def unset keys
+
+		keys.each do
+			|key|
+			@sets.delete key
 		end
 
 	end

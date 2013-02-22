@@ -52,17 +52,22 @@ class Mandar::Console::Server
 		locks_man.db = db
 		app_ctx[:locks_man] = locks_man
 
-		stager = Mandar::Console::Stager.new
-		stager.db = db
-		stager.entropy = entropy
-		stager.locks_man = locks_man
-		app_ctx[:stager] = stager
-
 		api_handler = Mandar::Console::ApiHandler.new
 		app_ctx[:api_handler] = api_handler
 
 		console_handler = Mandar::Console::ConsoleHandler.new
 		app_ctx[:console_handler] = console_handler
+
+		# stager
+
+		stager = Mandar::Console::Stager.new
+		stager.config = config
+		stager.db = db
+		stager.entropy = entropy
+		stager.locks_man = locks_man
+		app_ctx[:stager] = stager
+
+		# request handler
 
 		proc_handler = MyProcHandler.new do |req, resp|
 

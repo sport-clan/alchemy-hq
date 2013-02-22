@@ -207,18 +207,19 @@ class Main
 		opts =
 			GetoptLong.new(*[
 
-				[ "--mock", "-m", GetoptLong::NO_ARGUMENT ],
-				[ "--no-config", "-c", GetoptLong::NO_ARGUMENT ],
-				[ "--no-database", "-d", GetoptLong::NO_ARGUMENT ],
-				[ "--series", "-s", GetoptLong::NO_ARGUMENT ],
-				[ "--profile", "-p", GetoptLong::REQUIRED_ARGUMENT ],
+				[ "--mock", GetoptLong::NO_ARGUMENT ],
+				[ "--no-config", GetoptLong::NO_ARGUMENT ],
+				[ "--no-database", GetoptLong::NO_ARGUMENT ],
+				[ "--series", GetoptLong::NO_ARGUMENT ],
+				[ "--profile", GetoptLong::REQUIRED_ARGUMENT ],
+				[ "--deploy-id", GetoptLong::REQUIRED_ARGUMENT ],
 
-				[ "--log", "-l", GetoptLong::REQUIRED_ARGUMENT ],
+				[ "--log", GetoptLong::REQUIRED_ARGUMENT ],
 
 				[ "--role", GetoptLong::REQUIRED_ARGUMENT ],
 				[ "--staged", GetoptLong::NO_ARGUMENT ],
 				[ "--rollback", GetoptLong::NO_ARGUMENT ],
-				[ "--force", "-f", GetoptLong::NO_ARGUMENT ],
+				[ "--force", GetoptLong::NO_ARGUMENT ],
 
 				[ "--log-file", GetoptLong::REQUIRED_ARGUMENT ],
 
@@ -234,6 +235,7 @@ class Main
 		$profile = nil
 		$deploy_role = nil
 		$deploy_mode = :unstaged
+		$deploy_id = nil
 
 		got_log = false
 
@@ -268,9 +270,17 @@ class Main
 
 			when "--role"
 
-				$deploy_role and logger.die "Only one --role option allowed"
+				$deploy_role \
+					and logger.die "Only one --role option allowed"
 
 				$deploy_role = arg
+
+			when "--deploy-id"
+
+				$deploy_id \
+					and logger.die "Only one --deploy-id option allowed"
+
+				$deploy_id = arg
 
 			# mode
 

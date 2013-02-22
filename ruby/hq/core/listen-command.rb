@@ -19,34 +19,36 @@ class ListenCommand
 					mq_wrapper.channel,
 					"",
 					:auto_delete => true \
-				do
-					|queue, declare_ok|
+			do
+				|queue, declare_ok|
 
-					queue.bind \
-						mq_wrapper.channel.fanout \
-							"deploy-progress"
+				queue.bind \
+					mq_wrapper.channel.fanout \
+						"deploy-progress"
 
-					queue.subscribe do
-						|data_json|
+				queue.subscribe do
+					|data_json|
 
-						data =
-							MultiJson.load data_json
+					data =
+						MultiJson.load data_json
 
-						case data["type"]
+					case data["type"]
 
-						when "deploy-log"
-							logger.output \
-								data["content"],
-								data["mode"]
+					when "deploy-log"
 
-						else
-							puts "got #{data["type"]}"
+						logger.output \
+							data["content"],
+							data["mode"]
 
-						end
+					else
+
+						puts "got #{data_json}"
 
 					end
 
 				end
+
+			end
 
 		end
 
