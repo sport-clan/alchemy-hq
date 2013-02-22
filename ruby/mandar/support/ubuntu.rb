@@ -42,59 +42,71 @@ module Mandar::Support::Ubuntu
 
 			Mandar.notice "restarting #{service}"
 
-			# stop it
+			unless $mock
 
-			stop_args = [
-				"initctl",
-				"stop",
-				service
-			]
+				# stop it
 
-			Mandar::Support::Core.shell \
-				Mandar.shell_quote(stop_args)
+				stop_args = [
+					"initctl",
+					"stop",
+					service
+				]
 
-			# wait for it to stop
+				Mandar::Support::Core.shell \
+					Mandar.shell_quote(stop_args)
 
-			# TODO wait for status to show stop/waiting properly
+				# wait for it to stop
 
-			sleep 1
+				# TODO wait for status to show stop/waiting properly
 
-			# start it
+				sleep 1
 
-			start_args = [
-				"initctl",
-				"start",
-				service
-			]
+				# start it
 
-			Mandar::Support::Core.shell \
-				Mandar.shell_quote(start_args)
+				start_args = [
+					"initctl",
+					"start",
+					service
+				]
+
+				Mandar::Support::Core.shell \
+					Mandar.shell_quote(start_args)
+
+			end
 
 		elsif ! old_running && new_running
 
 			Mandar.notice "starting #{service}"
 
-			start_args = [
-				"initctl",
-				"start",
-				service
-			]
+			unless $mock
 
-			Mandar::Support::Core.shell \
-				Mandar.shell_quote(start_args)
+				start_args = [
+					"initctl",
+					"start",
+					service
+				]
+
+				Mandar::Support::Core.shell \
+					Mandar.shell_quote(start_args) \
+
+			end
 
 		elsif old_running && ! new_running
 
 			Mandar.notice "stopping #{service}"
 
-			stop_args = [
-				"initctl",
-				"stop",
-				service
-			]
+			unless $mock
 
-			Mandar::Support::Core.shell \
-				Mandar.shell_quote(stop_args)
+				stop_args = [
+					"initctl",
+					"stop",
+					service
+				]
+
+				Mandar::Support::Core.shell \
+					Mandar.shell_quote(stop_args)
+
+			end
 
 		end
 
