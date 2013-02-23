@@ -111,10 +111,10 @@ class Main
 
 		return @em_wrapper if @em_wrapper
 
-		require "hq/core/em-wrapper"
+		require "hq/core/event-machine-fibre-wrapper"
 
 		@em_wrapper =
-			HQ::Core::EmWrapper.new
+			HQ::Core::EventMachineFibreWrapper.new
 
 		@em_wrapper.start
 
@@ -400,18 +400,6 @@ class Main
 	def do_command
 
 		case ARGV[0]
-
-			when "config"
-
-				logger.die "FIXME"
-
-				@hostname = "local"
-
-				hosts = ARGV.size > 1 ? process_hosts(ARGV[1..-1]) : nil
-
-				deploy_master.transform
-
-				deploy_master.write hosts
 
 			when "ec2-instances"
 				raise "syntax error" unless ARGV.length == 2

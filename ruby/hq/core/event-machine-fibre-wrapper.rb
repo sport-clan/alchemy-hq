@@ -1,6 +1,6 @@
 module HQ
 module Core
-class EmWrapper
+class EventMachineFibreWrapper
 
 	def start
 
@@ -18,7 +18,6 @@ class EmWrapper
 
 	def startup
 
-		require "amqp"
 		require "eventmachine"
 
 		begin

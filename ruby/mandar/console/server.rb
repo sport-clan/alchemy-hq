@@ -1,8 +1,10 @@
 require "webrick"
 
-class Mandar::Console::Server
+module Mandar
+module Console
+class Server
 
-	include Mandar::Console::Utils
+	include Utils
 
     class MyProcHandler < WEBrick::HTTPServlet::AbstractServlet
 
@@ -33,7 +35,7 @@ class Mandar::Console::Server
 
 		app_ctx[:element_indent] = "  "
 
-		entropy = Mandar::Console::Entropy.new
+		entropy = Entropy.new
 		app_ctx[:entropy] = entropy
 
 		db_host = config.attributes["database-host"]
@@ -48,23 +50,89 @@ class Mandar::Console::Server
 		db = couch_server.database(db_name)
 		app_ctx[:db] = db
 
-		locks_man = Mandar::Console::LocksManager.new
+		locks_man = LocksManager.new
 		locks_man.db = db
 		app_ctx[:locks_man] = locks_man
 
-		api_handler = Mandar::Console::ApiHandler.new
+		api_handler = ApiHandler.new
 		app_ctx[:api_handler] = api_handler
 
-		console_handler = Mandar::Console::ConsoleHandler.new
+		console_handler = ConsoleHandler.new
 		app_ctx[:console_handler] = console_handler
+
+		# event machine
+
+		require "hq/core/event-machine-thread-wrapper"
+
+		em_wrapper = HQ::Core::EventMachineThreadWrapper.new
+		em_wrapper.start
+
+		# message queue
+
+		require "hq/mq/mq-wrapper"
+
+		mq_wrapper = HQ::MQ::MqWrapper.new
+		mq_wrapper.em_wrapper = em_wrapper
+		mq_wrapper.host = config["mq-host"]
+		mq_wrapper.port = config["mq-port"]
+		mq_wrapper.vhost = config["mq-vhost"]
+		mq_wrapper.username = config["mq-user"]
+		mq_wrapper.password = config["mq-pass"]
+		mq_wrapper.start
+
+		app_ctx[:mq_wrapper] = mq_wrapper
+
+		# web sockets
+
+		require "em-websocket"
+
+		console_web_socket_handler =
+			ConsoleWebSocketHandler.new
+
+		console_web_socket_handler.app_ctx =
+			app_ctx
+
+		app_ctx[:console_web_socket_handler] =
+			console_web_socket_handler
+
+		em_wrapper.quick do
+
+			web_socket_config =
+				config.find_first("web-socket")
+
+			opts = {
+				host: "0.0.0.0",
+				port: web_socket_config["port"].to_i,
+				secure: web_socket_config["secure"] == "yes",
+				tls_options: {
+					private_key_file: web_socket_config["private-key-file"],
+					cert_chain_file: web_socket_config["cert-chain-file"],
+				},
+			}
+require "pp"
+pp opts
+
+			EventMachine::WebSocket.run opts do
+				|web_socket|
+puts "RUNNING"
+puts web_socket.state
+
+				console_web_socket_handler.handle \
+					web_socket
+
+			end
+
+		end
 
 		# stager
 
-		stager = Mandar::Console::Stager.new
+		stager = Stager.new
 		stager.config = config
 		stager.db = db
+		stager.em_wrapper = em_wrapper
 		stager.entropy = entropy
 		stager.locks_man = locks_man
+		stager.mq_wrapper = mq_wrapper
 		app_ctx[:stager] = stager
 
 		# request handler
@@ -136,8 +204,20 @@ class Mandar::Console::Server
 			end
 		end
 
+		# main loop
+
 		http_server.start
+
+		# shut down message queue
+
+		mq_wrapper.stop
+
+		# shut down event machine
+
+		em_wrapper.stop
 
 	end
 
+end
+end
 end

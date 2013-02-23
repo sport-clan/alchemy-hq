@@ -67,6 +67,17 @@ class Mandar::Console::ConsoleHandler
 			console_print "LibXML ruby version: #{XML::VERSION}\n"
 			console_print "LibXML native version: #{XML::LIBXML_VERSION}\n"
 
+		when /^\/webs$/
+			set_content_type "text/html"
+			console_print "<!DOCTYPE html>\n"
+			console_print "<script src=\"http://code.jquery.com/jquery-1.9.1.js\"></script>\n"
+			console_print "<script src=\"/console.js\"></script>\n"
+
+		when /^\/console\.js$/
+			set_content_type "text/javascript"
+			js = File.read "#{HQ::DIR}/etc/console.js"
+			console_print js
+
 		else
 			not_found
 

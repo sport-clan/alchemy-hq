@@ -12,6 +12,7 @@ class ConsoleConfigCommand
 
 	def go command_name
 
+		require "hq/tools/random"
 		require "xml"
 
 		hq.hostname = "console"
@@ -48,6 +49,16 @@ class ConsoleConfigCommand
 		doc.root["path-prefix"] = ""
 		doc.root["http-port"] = "8080"
 		doc.root["url-prefix"] = "http://localhost:8080"
+
+		security_elem = XML::Node.new "security"
+		security_elem["secret"] = Tools::Random.lower_case
+		doc.root << security_elem
+
+		web_socket_elem = XML::Node.new "web-socket"
+		web_socket_elem["port"] = "8181"
+		web_socket_elem["prefix"] = "ws://localhost:8181"
+		web_socket_elem["secure"] = "no"
+		doc.root << web_socket_elem
 
 		[
 			[ "grapher-config", [ ] ],

@@ -18,6 +18,7 @@ require "mandar/console/stager.rb"
 # handlers
 require "mandar/console/apihandler.rb"
 require "mandar/console/consolehandler.rb"
+require "mandar/console/console-web-socket-handler.rb"
 require "mandar/console/deploy.rb"
 require "mandar/console/grapher.rb"
 require "mandar/console/home.rb"

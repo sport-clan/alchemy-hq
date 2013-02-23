@@ -225,7 +225,19 @@ module Mandar::Console::Render
 		}
 
 		attrs = {}
-		attrs[:class] = content[:_class].to_s.gsub(?_, ?-) if content[:_class]
+
+		if content[:_class]
+			attrs[:class] =
+				content[:_class].to_s.gsub(?_, ?-)
+		end
+
+		if content[:_style]
+			attrs[:style] =
+				content[:_style].map {
+					|key, value|
+					"#{key}: #{value}"
+				}.join "; "
+		end
 
 		element_open :div, attrs
 		render_children content
@@ -287,11 +299,20 @@ module Mandar::Console::Render
 
 		render_check content, {
 			method: { type: :string, required: true },
+			style: { type: :hash, required: false },
 		}
 
 		attrs = {}
 
 		attrs[:method] = content[:_method] if content[:_method]
+
+		if content[:_style]
+			attrs[:style] =
+				content[:_style].map {
+					|key, value|
+					"#{key}: #{value}"
+				}.join "; "
+		end
 
 		element_open :form, attrs
 		render_children content

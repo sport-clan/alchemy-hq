@@ -6,6 +6,10 @@ class Mandar::Console::Deploy
 
 	def handle
 
+		forbidden \
+			unless can \
+				[ "deployment", "deployment" ]
+
 		if request_method == :post
 
 			locks = locks_man.load
@@ -13,7 +17,7 @@ class Mandar::Console::Deploy
 
 			if post_var("deploy") || post_var("deploy-mock")
 				if my_change && my_change["state"] != "stage" && my_change["state"] != "done"
-					raise "Invali state"
+					raise "Invalid state"
 				end
 			end
 
@@ -48,17 +52,14 @@ class Mandar::Console::Deploy
 				end
 
 				# perform deploy
-				ret = stager.deploy(
-					console_user,
-					config.attributes["deploy-command"],
-					config.attributes["deploy-profile"],
-					mode, mock, false)
-				lines = ret[:output]
 
-				# print output
-				lines.each do |line|
-					console_print "#{line}\n"
-				end
+				deploy_id =
+					stager.deploy \
+						console_user,
+						config.attributes["deploy-command"],
+						config.attributes["deploy-profile"],
+						mode,
+						mock
 
 			elsif post_var("unstage")
 
@@ -94,10 +95,67 @@ class Mandar::Console::Deploy
 			},
 		}
 
+		if deploy_id
+
+			page[:output] = {
+				_type: :div,
+				_class: :deploy_output,
+			}
+
+			auth_data = {
+				username: console_user,
+				timestamp: Time.now.to_i,
+			}
+
+			require "openssl"
+
+			web_socket_config =
+				config.find_first("web-socket")
+
+			security_config =
+				config.find_first("security")
+
+			auth_data[:hmac] =
+				OpenSSL::HMAC.hexdigest \
+					"sha1",
+					security_config["secret"],
+					JSON.dump(auth_data)
+
+			auth_json =
+				JSON.dump auth_data
+
+			page[:script] = [
+				"<script src=\"http://code.jquery.com/jquery-1.9.1.js\"></script>\n",
+				"<script src=\"/console.js\"></script>\n",
+				"<script>\n",
+				"  var deployDone = function () {\n",
+				"    stayAtBottom (function () {\n",
+				"      $(\"form\").show ()\n",
+				"    });\n",
+				"  };\n",
+				"  $(function () {\n",
+				"    deployProgress (\n",
+				"      \"#{web_socket_config["prefix"]}\",\n",
+				"      #{auth_json},\n",
+				"      \"#{deploy_id}\",\n",
+				"      \"detail\",\n",
+				"      $(\".deploy-output\"),\n",
+				"      deployDone);\n",
+				"  });\n",
+				"</script>\n",
+			]
+
+		end
+
 		page[:form] = {
 			_type: :form,
 			_method: :post,
+			_style: {},
 		}
+
+		if deploy_id
+			page[:form][:_style]["display"] = "none"
+		end
 
 		change_in_progress = nil
 		locks["changes"].each do |role, change|

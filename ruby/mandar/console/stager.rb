@@ -4,8 +4,10 @@ class Mandar::Console::Stager
 
 	attr_accessor :config
 	attr_accessor :db
+	attr_accessor :em_wrapper
 	attr_accessor :entropy
 	attr_accessor :locks_man
+	attr_accessor :mq_wrapper
 
 	def put record, action, my_role
 
@@ -298,7 +300,7 @@ class Mandar::Console::Stager
 		locks_man.save locks
 	end
 
-	def deploy my_role, command, profile, mode = :unstaged, mock = false, background = true
+	def deploy my_role, command, profile, mode = :unstaged, mock = false
 
 		raise "Invalid deploy mode #{mode}" \
 			unless [
@@ -310,19 +312,27 @@ class Mandar::Console::Stager
 		deploy_id = entropy.rand_token
 
 		# work out command to execute
+
 		args = [
 			"deploy", "all",
 			"--profile", profile,
 			"--role", my_role,
+			"--deploy-id", deploy_id,
 		]
-		args += [ "--log", "detail:html" ] unless background
+		args = [
+			"deploy", "nitrogen",
+			"--no-config",
+			"--profile", profile,
+			"--role", my_role,
+			"--deploy-id", deploy_id,
+		]
+
 		args += [ "--mock" ] if mock
 		args += [ "--staged" ] if mode == :staged
 		args += [ "--rollback" ] if mode == :rollback
-		args += [ "--deploy-id", deploy_id ]
-		full_command = "#{command} #{Mandar.shell_quote args}"
 
-		puts "#{full_command} (#{background ? "background" : "foreground"})"
+		full_command = "#{command} #{Mandar.shell_quote args}"
+		puts full_command
 
 		Bundler.with_clean_env do
 
@@ -339,8 +349,9 @@ class Mandar::Console::Stager
 					end
 				end
 
+				Process.setsid
+
 				fork do
-					sleep 1 # TODO this is awful
 					exec "bash", "-c", full_command
 				end
 
@@ -350,24 +361,14 @@ class Mandar::Console::Stager
 
 		end
 
-		return if background
+		return deploy_id
 
-		require "hq/core/em-wrapper"
-		require "hq/mq/mq-wrapper"
+=begin
+
+		# TODO something new here
+
 		require "hq/tools/logger/html-logger"
 		require "hq/tools/logger/text-logger"
-
-		em_wrapper = HQ::Core::EmWrapper.new
-		em_wrapper.start
-
-		mq_wrapper = HQ::MQ::MqWrapper.new
-		mq_wrapper.em_wrapper = em_wrapper
-		mq_wrapper.host = config["mq-host"]
-		mq_wrapper.port = config["mq-port"]
-		mq_wrapper.vhost = config["mq-vhost"]
-		mq_wrapper.username = config["mq-user"]
-		mq_wrapper.password = config["mq-pass"]
-		mq_wrapper.start
 
 		html_logger = HQ::Tools::Logger::HtmlLogger.new
 		html_logger.out = StringIO.new
@@ -432,12 +433,11 @@ class Mandar::Console::Stager
 
 		end
 
-		em_wrapper.stop
-
 		return {
 			output: html_logger.out.string.split("\n"),
 			status: nil,
 		}
+=end
 
 	end
 

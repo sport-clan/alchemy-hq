@@ -256,9 +256,6 @@ section.data-types .list-div {
 .hq-log-item-error { color: #900; }
 .hq-log-hostname { color: #009; }
 
-.hq-log-item-trace { display: none; }
-.hq-log-item-debug { display: none; }
-
 .hq-log-diff * {
 	font-family: "monospace", monospace;
 	white-space: pre;

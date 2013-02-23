@@ -4,9 +4,20 @@ module Deploy
 	def self.register_commands hq
 
 		hq.register_command \
+			"config",
+			"TARGET...",
+			"Write config for named targets (host, class, all)" \
+		do
+			require "hq/deploy/config-command"
+			command = HQ::Deploy::ConfigCommand.new
+			command.hq = hq
+			command
+		end
+
+		hq.register_command \
 			"deploy",
 			"TARGET...",
-			"Deploy to named targets (hosts, classes, or 'all'" \
+			"Deploy to named targets (host, class, all)" \
 		do
 			require "hq/deploy/deploy-command"
 			command = HQ::Deploy::DeployCommand.new

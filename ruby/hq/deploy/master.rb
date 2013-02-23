@@ -196,15 +196,8 @@ class Master
 		mq_logger = HQ::MQ::MqLogger.new
 		mq_logger.em_wrapper = em_wrapper
 		mq_logger.mq_wrapper = mq_wrapper
+		mq_logger.deploy_id = $deploy_id
 		mq_logger.start
-
-		mq_logger.set({
-			"deploy-id" => $deploy_id,
-		})
-
-		mq_logger.publish({
-			"type" => "deploy-start",
-		})
 
 		logger.add_logger mq_logger
 
@@ -366,13 +359,7 @@ class Master
 
 			# publish end of deployment
 
-			mq_logger.publish({
-				"type" => "deploy-end",
-			})
-
-			mq_logger.unset([
-				"deploy-id",
-			])
+			mq_logger.stop
 
 		end
 
