@@ -319,13 +319,6 @@ class Mandar::Console::Stager
 			"--role", my_role,
 			"--deploy-id", deploy_id,
 		]
-		args = [
-			"deploy", "nitrogen",
-			"--no-config",
-			"--profile", profile,
-			"--role", my_role,
-			"--deploy-id", deploy_id,
-		]
 
 		args += [ "--mock" ] if mock
 		args += [ "--staged" ] if mode == :staged
