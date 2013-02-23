@@ -124,26 +124,26 @@ class Mandar::Console::Deploy
 			auth_json =
 				JSON.dump auth_data
 
-			page[:script] = [
-				"<script src=\"http://code.jquery.com/jquery-1.9.1.js\"></script>\n",
-				"<script src=\"/console.js\"></script>\n",
-				"<script>\n",
-				"  var deployDone = function () {\n",
-				"    stayAtBottom (function () {\n",
-				"      $(\"form\").show ()\n",
-				"    });\n",
-				"  };\n",
-				"  $(function () {\n",
-				"    deployProgress (\n",
-				"      \"#{web_socket_config["prefix"]}\",\n",
-				"      #{auth_json},\n",
-				"      \"#{deploy_id}\",\n",
-				"      \"detail\",\n",
-				"      $(\".deploy-output\"),\n",
-				"      deployDone);\n",
-				"  });\n",
-				"</script>\n",
-			]
+			page[:script] = "
+				<script src=\"https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js\"></script>
+				<script src=\"/console.js\"></script>
+				<script>
+				  var deployDone = function () {
+				    stayAtBottom (function () {
+				      $(\"form\").show ()
+				    });
+				  };
+				  $(function () {
+				    deployProgress (
+				      \"#{web_socket_config["prefix"]}\",
+				      #{auth_json},
+				      \"#{deploy_id}\",
+				      \"detail\",
+				      $(\".deploy-output\"),
+				      deployDone);
+				  });
+				</script>
+			"
 
 		end
 

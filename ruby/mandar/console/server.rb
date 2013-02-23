@@ -109,13 +109,9 @@ class Server
 					cert_chain_file: web_socket_config["cert-chain-file"],
 				},
 			}
-require "pp"
-pp opts
 
 			EventMachine::WebSocket.run opts do
 				|web_socket|
-puts "RUNNING"
-puts web_socket.state
 
 				console_web_socket_handler.handle \
 					web_socket
