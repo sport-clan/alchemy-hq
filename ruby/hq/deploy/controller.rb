@@ -405,24 +405,33 @@ class Controller
 
 						current_hosts.delete next_host
 
-						next_host_proc.call
+						EventMachine.next_tick do
+							next_host_proc.call
+						end
 
 					end
 
-					next_host_proc.call
+					EventMachine.next_tick do
+						next_host_proc.call
+					end
 
 				elsif remaining_hosts.empty? \
 					&& current_hosts.empty? \
 					&& ! returned
 
 					returned = true
-					return_proc.call
+
+					EventMachine.next_tick do
+						return_proc.call
+					end
 
 				end
 
 			end
 
-			next_host_proc.call false
+			EventMachine.next_tick do
+				next_host_proc.call false
+			end
 
 		end
 
