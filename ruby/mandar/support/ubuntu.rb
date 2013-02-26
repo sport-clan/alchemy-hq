@@ -6,37 +6,47 @@ module Mandar::Support::Ubuntu
 
 		Mandar.debug "checking status of #{service}"
 
-		status_args = [
-			"initctl",
-			"status",
-			service,
-		]
+		if $mock && ! File.exist?("/etc/init/#{service}.conf")
 
-		status_ret =
-			Mandar::Support::Core.shell_real \
-				Mandar.shell_quote(status_args),
-				:log => false
+			old_running = false
+			restart = false
 
-		raise "initctl status #{service} returned #{status_ret[:status]}" \
-			unless status_ret[:status] == 0
+		else
 
-		status_match =
-			status_ret[:output][0] =~
-				/^#{Regexp.quote service} (start|stop)\//
+			status_args = [
+				"initctl",
+				"status",
+				service,
+			]
 
-		raise "Error" \
-			unless status_match
+			status_ret =
+				Mandar::Support::Core.shell_real \
+					Mandar.shell_quote(status_args),
+					:log => false
 
-		old_running =
-			case $1
-				when "start" then true
-				when "stop" then false
-				else raise "Error"
-			end
+			raise "initctl status #{service} returned #{status_ret[:status]}" \
+				unless status_ret[:status] == 0
 
-		restart =
-			restart_flag \
-				&& Mandar::Deploy::Flag.check(restart_flag)
+			status_match =
+				status_ret[:output][0] =~
+					/^#{Regexp.quote service} (start|stop)\//
+
+			raise "Error" \
+				unless status_match
+
+			old_running =
+				case $1
+					when "start" then true
+					when "stop" then false
+					else raise "Error"
+				end
+
+			restart =
+				restart_flag \
+					&& Mandar::Deploy::Flag.check(restart_flag)
+
+		end
+
 
 		if old_running && new_running && restart
 
