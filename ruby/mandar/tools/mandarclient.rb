@@ -1,6 +1,7 @@
 class Mandar::Tools::MandarClient
 
 	def initialize url, username, password
+		require "multi_json"
 		@url = URI.parse url
 		@username = username
 		@password = password
