@@ -26,7 +26,7 @@ class EventMachineFibreWrapper
 				Fiber.yield
 			end
 
-		rescue => e
+		rescue Exception => e
 
 			STDOUT.puts [
 				"EventMachine exited abnormally",
