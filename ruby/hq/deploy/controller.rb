@@ -126,7 +126,7 @@ class Controller
 
 				"--include=/#{deploy_dir}/Gemfile",
 				"--include=/#{deploy_dir}/Gemfile.lock",
-				"--include=/#{deploy_dir}/zattikka-hq.gemspec",
+				"--include=/#{deploy_dir}/*.gemspec",
 
 				"--exclude=/#{deploy_dir}/vendor/cache/archive-tar-minitar-*.gem",
 				"--exclude=/#{deploy_dir}/vendor/cache/builder-*.gem",
