@@ -353,7 +353,13 @@ class Controller
 		# number of consecutive operations
 
 		max_threads =
-			(config.find_first("deploy")["threads"] || 10).to_i
+			if $series
+				1
+			elsif config.find_first("deploy")["threads"]
+				config.find_first("deploy")["threads"].to_i
+			else
+				10
+			end
 
 		if max_threads == 1
 
