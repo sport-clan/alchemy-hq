@@ -65,7 +65,7 @@ class Mandar::Tools::MandarClient
 
 				# reset connection
 
-				http.close
+				http.finish
 				@http = nil
 
 				# and try again
