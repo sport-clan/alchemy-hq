@@ -335,32 +335,30 @@ class Mandar::Console::Stager
 
 		if run_in_background
 
-			Bundler.with_clean_env do
+			pid = fork do
 
-				pid = fork do
+				$stdin.reopen "/dev/null", "r"
+				$stdout.reopen "/dev/null", "w"
+				$stderr.reopen "/dev/null", "w"
 
-					$stdin.reopen "/dev/null", "r"
-					$stdout.reopen "/dev/null", "w"
-					$stderr.reopen "/dev/null", "w"
-
-					3.upto 1023 do |fd|
-						begin
-							io.close if io = IO::new(fd)
-						rescue
-						end
+				3.upto 1023 do |fd|
+					begin
+						io.close if io = IO::new(fd)
+					rescue
 					end
-
-					Process.setsid
-
-					fork do
-						exec "bash", "-c", full_command
-					end
-
 				end
 
-				Process.wait pid
+				Process.setsid
+
+				fork do
+					Bundler.with_clean_env do
+						exec "bash", "-c", full_command
+					end
+				end
 
 			end
+
+			Process.wait pid
 
 			return deploy_id
 
@@ -375,7 +373,9 @@ class Mandar::Console::Stager
 					end
 				end
 
-				exec "bash", "-c", full_command
+				Bundler.with_clean_env do
+					exec "bash", "-c", full_command
+				end
 
 			end
 
