@@ -41,15 +41,23 @@ class Mandar::Console::ApiHandler
 			conflict unless [ "stage", "done" ].include? my_change["state"]
 
 			# perform action
-			ret = stager.deploy(
-				console_user,
-				config.attributes["deploy-command"],
-				config.attributes["deploy-profile"],
-				$1 == "deploy" ? :staged : :rollback, false, false)
-			resp.status = ret[:status] == 0 ? 200 : 500
 
-			# output confirmation
+			ret =
+				stager.deploy \
+					console_user,
+					config.attributes["deploy-command"],
+					config.attributes["deploy-profile"],
+					$1 == "deploy" ? :staged : :rollback,
+					false,
+					false
+
+			# send response
+
+			resp.status =
+				ret[:status] == 0 ? 200 : 500
+
 			set_content_type "application/json"
+
 			console_print MultiJson.dump({})
 
 		when /^\/status$/

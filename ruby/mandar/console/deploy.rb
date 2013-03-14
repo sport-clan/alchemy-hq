@@ -59,7 +59,8 @@ class Mandar::Console::Deploy
 						config.attributes["deploy-command"],
 						config.attributes["deploy-profile"],
 						mode,
-						mock
+						mock,
+						true
 
 			elsif post_var("unstage")
 

@@ -82,10 +82,16 @@ class Mandar::Console::Password
 				stager.commit console_user, true
 
 				# deploy changes
-				stager.deploy console_user, config.attributes["deploy-command"], config.attributes["deploy-profile"]
+				stager.deploy \
+					console_user,
+					config.attributes["deploy-command"],
+					config.attributes["deploy-profile"],
+					:unstaged,
+					false,
+					true
 
 				page[:password_changed] = "
-					<p>Password changed. This may take several seconds to take effect.</p>
+					<p>Password changed. This may take a few minutes to take effect.</p>
 				"
 			end
 

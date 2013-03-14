@@ -306,7 +306,7 @@ class Mandar::Console::Stager
 		profile,
 		mode = :unstaged,
 		mock = false,
-		run_in_background
+		run_in_background = true
 
 		raise "Invalid deploy mode #{mode}" \
 			unless [
