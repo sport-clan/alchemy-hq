@@ -10,7 +10,7 @@ class Mandar::Tools::MandarClient
 	def http
 		return @http if @http
 		@http = Net::HTTP.new @url.host, @url.port
-		@http.read_timeout = 60
+		@http.read_timeout = 300
 		if @url.scheme == "https"
 			@http.use_ssl = true
 			@http.verify_mode = OpenSSL::SSL::VERIFY_PEER
