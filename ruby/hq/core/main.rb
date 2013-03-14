@@ -26,6 +26,8 @@ class Main
 
 		begin
 			do_command command_args
+		rescue SystemExit
+			# just exit
 		rescue Exception => e
 			logger.error "got error #{e.message}"
 			logger.detail(([ e.inspect ] + e.backtrace).join("\n"))

@@ -300,7 +300,13 @@ class Mandar::Console::Stager
 		locks_man.save locks
 	end
 
-	def deploy my_role, command, profile, mode = :unstaged, mock = false
+	def deploy \
+		my_role,
+		command,
+		profile,
+		mode = :unstaged,
+		mock = false,
+		run_in_background
 
 		raise "Invalid deploy mode #{mode}" \
 			unless [
@@ -327,13 +333,40 @@ class Mandar::Console::Stager
 		full_command = "#{command} #{Mandar.shell_quote args}"
 		puts full_command
 
-		Bundler.with_clean_env do
+		if run_in_background
+
+			Bundler.with_clean_env do
+
+				pid = fork do
+
+					$stdin.reopen "/dev/null", "r"
+					$stdout.reopen "/dev/null", "w"
+					$stderr.reopen "/dev/null", "w"
+
+					3.upto 1023 do |fd|
+						begin
+							io.close if io = IO::new(fd)
+						rescue
+						end
+					end
+
+					Process.setsid
+
+					fork do
+						exec "bash", "-c", full_command
+					end
+
+				end
+
+				Process.wait pid
+
+			end
+
+			return deploy_id
+
+		else
 
 			pid = fork do
-
-				$stdin.reopen "/dev/null", "r"
-				$stdout.reopen "/dev/null", "w"
-				$stderr.reopen "/dev/null", "w"
 
 				3.upto 1023 do |fd|
 					begin
@@ -342,95 +375,18 @@ class Mandar::Console::Stager
 					end
 				end
 
-				Process.setsid
-
-				fork do
-					exec "bash", "-c", full_command
-				end
+				exec "bash", "-c", full_command
 
 			end
 
 			Process.wait pid
 
-		end
-
-		return deploy_id
-
-=begin
-
-		# TODO something new here
-
-		require "hq/tools/logger/html-logger"
-		require "hq/tools/logger/text-logger"
-
-		html_logger = HQ::Tools::Logger::HtmlLogger.new
-		html_logger.out = StringIO.new
-		html_logger.level = :detail
-
-		text_logger = HQ::Tools::Logger::TextLogger.new
-		text_logger.out = STDOUT
-		text_logger.level = :detail
-
-		em_wrapper.slow do
-			|return_proc|
-
-			queue =
-				AMQP::Queue.new \
-					mq_wrapper.channel,
-					"",
-					:auto_delete => true \
-			do
-				|queue, declare_ok|
-
-				queue.bind \
-					mq_wrapper.channel.fanout \
-						"deploy-progress"
-
-				queue.subscribe do
-					|data_json|
-
-					data =
-						MultiJson.load data_json
-
-					if data["deploy-id"] == deploy_id
-
-						case data["type"]
-
-						when "deploy-start"
-
-							# ignored
-
-						when "deploy-log"
-
-							html_logger.output \
-								data["content"],
-								{ mode: data["mode"] }
-
-							text_logger.output \
-								data["content"],
-								{ mode: data["mode"] }
-
-						when "deploy-end"
-
-							queue.unsubscribe
-
-							return_proc.call
-
-						end
-
-					end
-
-				end
-
-			end
+			return {
+				status: $?.exitstatus,
+				output: [],
+			}
 
 		end
-
-		return {
-			output: html_logger.out.string.split("\n"),
-			status: nil,
-		}
-=end
 
 	end
 
