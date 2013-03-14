@@ -30,10 +30,8 @@ class ConsoleWebSocketHandler
 
 		handler = nil
 
-puts "A"
 		web_socket.onopen do
 			|handshake|
-puts "B"
 
 			handle_errors "Error handling web socket open" do
 
@@ -56,7 +54,6 @@ puts "B"
 		end
 
 		web_socket.onclose do
-puts "C"
 
 			handle_errors "Error handling web socket close" do
 				handler.close if handler
@@ -65,7 +62,6 @@ puts "C"
 		end
 
 		web_socket.onmessage do |message|
-puts "D"
 
 			handle_errors "Error handling web socket message" do
 				handler.message message if handler
@@ -74,7 +70,6 @@ puts "D"
 		end
 
 		web_socket.onerror do |error|
-puts "E"
 
 			handle_errors "Error handling web socket error" do
 				handler.error error if handler
