@@ -179,10 +179,21 @@ class Controller
 				|output, status|
 
 				if status.exitstatus == 0
+
 					bundle_install_proc.call
+
 				else
-					puts rsync_cmd, output
+
+					logger.output({
+						"type" => "command",
+						"level" => :detail,
+						"hostname" => logger.hostname,
+						"text" => rsync_cmd,
+						"output" => output.split("\n"),
+					})
+
 					return_proc.call false
+
 				end
 
 			end
@@ -226,10 +237,21 @@ class Controller
 				|output, status|
 
 				if status.exitstatus == 0
+
 					return_proc.call true
+
 				else
-					puts ssh_cmd, output
+
+					logger.output({
+						"type" => "command",
+						"level" => :detail,
+						"hostname" => logger.hostname,
+						"text" => ssh_cmd,
+						"output" => output.split("\n"),
+					})
+
 					return_proc.call false
+
 				end
 
 			end
@@ -486,7 +508,7 @@ class Controller
 				if success
 					deploy_on_host_proc.call
 				else
-					puts "send to host #{host} failed"
+					logger.error "send to host #{host} failed"
 					return_proc.call false
 				end
 
@@ -513,7 +535,7 @@ class Controller
 				if success
 					return_proc.call true
 				else
-					puts "deploy on #{host} failed"
+					logger.error "deploy on #{host} failed"
 					return_proc.call false
 				end
 
@@ -539,7 +561,7 @@ class Controller
 				if success
 					return_proc.call true
 				else
-					puts "deploy local failed"
+					logger.error "deploy local failed"
 					return_proc.call false
 				end
 
@@ -729,10 +751,21 @@ class Controller
 				|output, status|
 
 				if status.exitstatus == 0
+
 					return_proc.call true
+
 				else
-					puts ssh_cmd, output
+
+					logger.output({
+						"type" => "command",
+						"level" => :detail,
+						"hostname" => logger.hostname,
+						"text" => ssh_cmd,
+						"output" => output.split("\n"),
+					})
+
 					return_proc.call false
+
 				end
 
 			end
