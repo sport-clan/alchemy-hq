@@ -17,8 +17,11 @@ module Utils
 
 			if target == "all"
 
-				abstract["host"].each do |host_elem|
-					hosts << host_elem.attributes["name"]
+				abstract["host"].each do
+					|host_elem|
+
+					hosts << host_elem["name"]
+
 				end
 
 				hosts << "local"
@@ -27,27 +30,39 @@ module Utils
 
 				hosts << "local"
 
-			elsif abstract["host"].find_first("host[@name = #{esc_xp target}]")
+			elsif abstract["host"].find_first(
+				"host [@name = #{esc_xp target}]"
+			)
 
 				hosts <<= target
 
-			elsif abstract["host"].find_first("host[@class = #{esc_xp target}]")
+			elsif abstract["host"].find_first(
+				"host[@class = #{esc_xp target}]"
+			)
 
-				abstract["host"].find("host[@class = #{esc_xp target}]").each do
+				abstract["host"].find(
+					"host [@class = #{esc_xp target}]"
+				).each do
 					|host_elem|
 
-					hosts <<= host_elem.attributes["name"]
+					hosts <<= host_elem["name"]
 
 				end
 
-			elsif domain_elem = abstract["domain"].find_first("domain[@short-name = esc_xp target}]")
+			elsif domain_elem =
+				abstract["domain"].find_first(
+					"domain [@short-name = #{esc_xp target}]"
+				)
 
-				domain_name = domain_elem.attributes["name"]
+				domain_name =
+					domain_elem["name"]
 
-				abstract["host"].find("host[@domain='#{domain_name}']").each do
+				abstract["host"].find(
+					"host [@domain = #{esc_xp domain_name}]"
+				).each do
 					|host_elem|
 
-					hosts <<= host_elem.attributes["name"]
+					hosts <<= host_elem["name"]
 
 				end
 
