@@ -69,3 +69,8 @@ Feature: Check site script
      When check-site is run
      Then the status should be 2
       And the message should be "Site CRITICAL: 1 hosts found, 1 errors (401), 0.0s time"
+
+  Scenario: No servers
+     When check-site is run
+     Then the status should be 2
+      And the message should be "Site CRITICAL: unable to resolve hostname"
