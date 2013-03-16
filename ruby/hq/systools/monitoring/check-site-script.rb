@@ -2,6 +2,7 @@ require "net/http"
 require "net/https"
 require "resolv"
 require "set"
+require "xml"
 
 require "hq/systools/monitoring/check-script.rb"
 require "hq/tools/getopt"
@@ -26,22 +27,43 @@ class CheckSiteScript < CheckScript
 
 		@opts, @args =
 			Tools::Getopt.process @args, [
-				{ :name => :warning, :required => true, :convert => :to_f },
-				{ :name => :critical, :required => true, :convert => :to_f },
-				{ :name => :url, :required => true },
-				{ :name => :regex },
-				{ :name => :timeout, :convert => :to_f },
-				{ :name => :username },
-				{ :name => :password },
+				{ :name => :config, :required => true },
 			]
 
 		@args.empty? or raise "Extra args on command line"
 
 	end
 
+	def prepare
+
+		config_doc =
+			XML::Document.file @opts[:config]
+
+		@config_elem =
+			config_doc.root
+
+		@timings_elem =
+			@config_elem.find_first "timings"
+
+		@critical_time =
+			@timings_elem["critical"].to_f
+
+		@warning_time =
+			@timings_elem["warning"].to_f
+
+		@timeout_time =
+			@timings_elem["timeout"].to_f
+
+	end
+
 	def perform_checks
 
-		url = URI.parse @opts[:url]
+		step_elem = @config_elem.find_first "step"
+		request_elem = step_elem.find_first "request"
+		response_elem = step_elem.find_first "response"
+
+		url_str = "#{@config_elem["base-url"]}#{request_elem["path"]}"
+		url = URI.parse url_str
 		path = url.path
 		path += "?#{url.query}" if url.query
 
@@ -62,14 +84,16 @@ class CheckSiteScript < CheckScript
 				req["host"] = url.host
 				req["user-agent"] = "mandar check_site"
 
-				if @opts[:username]
-					req.basic_auth @opts[:username], @opts[:password]
+				if request_elem["username"]
+					req.basic_auth \
+						request_elem["username"],
+						request_elem["password"]
 				end
 
 				http = CustomHTTP.new url.host, url.port
 				http.conn_address = address
-				http.open_timeout = @opts[:timeout]
-				http.read_timeout = @opts[:timeout]
+				http.open_timeout = @timeout_time
+				http.read_timeout = @timeout_time
 				http.use_ssl = url.scheme == "https"
 				http.start
 
@@ -82,11 +106,18 @@ class CheckSiteScript < CheckScript
 				worst = duration if duration > worst
 
 				if res.code != "200"
+
 					error_codes << res.code
-				elsif @opts[:regex] && res.body !~ /#{@opts[:regex]}/
+
+				elsif response_elem["body-regex"] &&
+					res.body !~ /#{response_elem["body-regex"]}/
+
 					mismatches += 1
+
 				else
+
 					successes += 1
+
 				end
 
 			rescue Timeout::Error
@@ -113,13 +144,15 @@ class CheckSiteScript < CheckScript
 				if mismatches > 0
 
 			if worst != nil
-				if worst >= @opts[:critical]
-					critical "#{worst}s time (critical is #{@opts[:critical]})"
-				elsif worst >= @opts[:warning]
-					warning "#{worst}s time (warning is #{@opts[:warning]})"
+
+				if worst >= @critical_time
+					critical "#{worst}s time (critical is #{@critical_time})"
+				elsif worst >= @warning_time
+					warning "#{worst}s time (warning is #{@warning_time})"
 				else
 					message "#{worst}s time"
 				end
+
 			end
 
 		end

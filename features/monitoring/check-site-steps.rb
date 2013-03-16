@@ -1,5 +1,6 @@
 require "cucumber/rspec/doubles"
 require "webrick"
+require "xml"
 
 require "hq/systools/monitoring/check-site-script"
 
@@ -23,7 +24,7 @@ end
 
 $servers = {}
 
-$web_server.mount_proc "/path" do
+$web_server.mount_proc "/page" do
 	|request, response|
 
 	server_address = request.addr[3]
@@ -49,28 +50,15 @@ Before do
 	$servers = {}
 	$time = Time.now
 
+	@configs = {}
+
 	Time.stub(:now) { $time }
 
-	@script =
-		HQ::SysTools::Monitoring::CheckSiteScript.new
-
-	@script.args = [
-		"--url", "http://hostname:#{$web_config[:Port]}/path"
-	]
-
-	@script.stdout = StringIO.new
-	@script.stderr = StringIO.new
-
 end
 
-Given /^a (warning|critical|timeout) (?:time )?of (\d+) seconds?$/ do
-	|type, value|
-	@script.args += [ "--#{type}", value ]
-end
-
-Given /^a (regex|username|password) of "([^"]*)"$/ do
-	|name, value|
-	@script.args += [ "--#{name}", value ]
+Given /^a config "(.*?)":$/ do
+	|name, content|
+	@configs[name] = content
 end
 
 Given /^(?:one|another) server which responds in (\d+) seconds?$/ do
@@ -117,7 +105,8 @@ Given /^(?:one|another) server which requires username "([^"]+)" and password "(
 
 end
 
-When /^check\-site is run$/ do
+When /^check\-site is run with config "([^"]*)"$/ do
+	|config_name|
 
 	Resolv.stub(:getaddresses).and_return(
 		$servers.values.map {
@@ -125,7 +114,29 @@ When /^check\-site is run$/ do
 		}
 	)
 
-	@script.main
+	@script =
+		HQ::SysTools::Monitoring::CheckSiteScript.new
+
+	@script.stdout = StringIO.new
+	@script.stderr = StringIO.new
+
+	Tempfile.open "check-site-script-" do
+		|temp|
+
+		config_str = @configs[config_name]
+		base_url = "http://hostname:#{$web_config[:Port]}"
+		config_str.gsub! "${base-url}", base_url
+		config_doc = XML::Document.string config_str
+		temp.write config_doc
+		temp.flush
+
+		@script.args = [
+			"--config", temp.path,
+		]
+
+		@script.main
+
+	end
 
 end
 
