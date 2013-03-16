@@ -113,13 +113,16 @@ class CheckSiteScript < CheckScript
 			critical "#{mismatches} mismatches" \
 				if mismatches > 0
 
-			if worst >= @opts[:critical]
-				critical "#{worst}s time (critical is #{@opts[:critical]})"
-			elsif worst >= @opts[:warning]
-				warning "#{worst}s time (warning is #{@opts[:warning]})"
-			else
-				message "#{worst}s time"
+			if worst != nil
+				if worst >= @opts[:critical]
+					critical "#{worst}s time (critical is #{@opts[:critical]})"
+				elsif worst >= @opts[:warning]
+					warning "#{worst}s time (warning is #{@opts[:warning]})"
+				else
+					message "#{worst}s time"
+				end
 			end
+
 		end
 
 	end
