@@ -29,6 +29,14 @@ $web_server.mount_proc "/path" do
 	server_address = request.addr[3]
 	server = $servers[server_address]
 
+	if server[:require_username]
+		WEBrick::HTTPAuth.basic_auth request, response, "Realm" do
+			|user, pass|
+			user == server[:require_username] &&
+			pass == server[:require_password]
+		end
+	end
+
 	response.status = server[:response_code]
 	response.body = server[:response_body]
 
@@ -56,16 +64,16 @@ Before do
 end
 
 Given /^a (warning|critical|timeout) (?:time )?of (\d+) seconds?$/ do
-	|type, time_str|
-	@script.args += [ "--#{type}", time_str ]
+	|type, value|
+	@script.args += [ "--#{type}", value ]
 end
 
-Given /^a regex of "([^"]*)"$/ do
-	|regex_str|
-	@script.args += [ "--regex", regex_str ]
+Given /^a (regex|username|password) of "([^"]*)"$/ do
+	|name, value|
+	@script.args += [ "--#{name}", value ]
 end
 
-Given /^(?:that one|another) server responds in (\d+) seconds?$/ do
+Given /^(?:one|another) server which responds in (\d+) seconds?$/ do
 	|time_str|
 
 	server = {
@@ -79,7 +87,7 @@ Given /^(?:that one|another) server responds in (\d+) seconds?$/ do
 
 end
 
-Given /^(?:that one|another) server responds with "(.*?)"$/ do
+Given /^(?:one|another) server which responds with "(.*?)"$/ do
 	|response_str|
 
 	server = {
@@ -87,6 +95,22 @@ Given /^(?:that one|another) server responds with "(.*?)"$/ do
 		response_code: "200",
 		response_time: 0,
 		response_body: response_str,
+	}
+
+	$servers[server[:address]] = server
+
+end
+
+Given /^(?:one|another) server which requires username "([^"]+)" and password "([^"]+)"$/ do
+	|username, password|
+
+	server = {
+		address: "127.0.1.#{$servers.size}",
+		response_code: "200",
+		response_time: 0,
+		response_body: "",
+		require_username: username,
+		require_password: password,
 	}
 
 	$servers[server[:address]] = server
