@@ -23,7 +23,36 @@ at_exit do
 	$web_server.shutdown
 end
 
-$servers = {}
+$web_server.mount_proc "/login" do
+	|request, response|
+
+	server_address = request.addr[3]
+	server = $servers[server_address]
+
+	raise "auth method" unless server[:auth_method] == :form
+	raise "request method" unless request.request_method == "POST"
+	raise "username" unless request.query["username"] == server[:auth_username]
+	raise "password" unless request.query["password"] == server[:auth_password]
+
+	# set session id
+
+	server[:session_id] = (?a..?z).to_a.sample(10).join
+
+	# add session cookie and more to make it harder
+
+	misc_cookie_0 = WEBrick::Cookie.new "foo", "bar"
+	misc_cookie_0.path = "/"
+	response.cookies << misc_cookie_0
+
+	session_cookie = WEBrick::Cookie.new "session", server[:session_id]
+	session_cookie.expires = Time.now + 60
+	response.cookies << session_cookie
+
+	misc_cookie_1 = WEBrick::Cookie.new "blah", "meh"
+	misc_cookie_0.path = "/"
+	response.cookies << misc_cookie_1
+
+end
 
 $web_server.mount_proc "/page" do
 	|request, response|
@@ -31,12 +60,30 @@ $web_server.mount_proc "/page" do
 	server_address = request.addr[3]
 	server = $servers[server_address]
 
-	if server[:require_username]
+	server[:request_count] += 1
+
+	if server[:auth_method] == :http
 		WEBrick::HTTPAuth.basic_auth request, response, "Realm" do
 			|user, pass|
-			user == server[:require_username] &&
-			pass == server[:require_password]
+			user == server[:auth_username] &&
+			pass == server[:auth_password]
 		end
+	end
+
+	if server[:auth_method] == :form
+
+		session_cookie =
+			request.cookies.find {
+				|cookie|
+				cookie.name == "session"
+			}
+
+		session_id =
+			session_cookie.value
+
+		raise "not logged in" \
+			unless session_id = server[:session_id]
+
 	end
 
 	response.status = server[:response_code]
@@ -67,6 +114,7 @@ Given /^(?:one|another) server which responds in (\d+) seconds?$/ do
 
 	server = {
 		address: "127.0.1.#{$servers.size}",
+		request_count: 0,
 		response_code: "200",
 		response_time: time_str.to_i,
 		response_body: "",
@@ -81,6 +129,7 @@ Given /^(?:one|another) server which responds with "(.*?)"$/ do
 
 	server = {
 		address: "127.0.1.#{$servers.size}",
+		request_count: 0,
 		response_code: "200",
 		response_time: 0,
 		response_body: response_str,
@@ -90,16 +139,36 @@ Given /^(?:one|another) server which responds with "(.*?)"$/ do
 
 end
 
-Given /^(?:one|another) server which requires username "([^"]+)" and password "([^"]+)"$/ do
+Given /^(?:one|another) server which requires username "([^"]*)" and password "([^"]+)"$/ do
 	|username, password|
 
 	server = {
 		address: "127.0.1.#{$servers.size}",
+		request_count: 0,
 		response_code: "200",
 		response_time: 0,
 		response_body: "",
-		require_username: username,
-		require_password: password,
+		auth_method: :http,
+		auth_username: username,
+		auth_password: password,
+	}
+
+	$servers[server[:address]] = server
+
+end
+
+Given /^one server which requires form based login with "([^"]*)" and "([^"]*)"$/ do
+	|username, password|
+
+	server = {
+		address: "127.0.1.#{$servers.size}",
+		request_count: 0,
+		response_code: "200",
+		response_time: 0,
+		response_body: "",
+		auth_method: :form,
+		auth_username: username,
+		auth_password: password,
 	}
 
 	$servers[server[:address]] = server
@@ -119,7 +188,6 @@ When /^check\-site is run with config "([^"]*)"$/ do
 		HQ::SysTools::Monitoring::CheckSiteScript.new
 
 	@script.stdout = StringIO.new
-	@script.stderr = StringIO.new
 
 	Tempfile.open "check-site-script-" do
 		|temp|
@@ -139,6 +207,13 @@ When /^check\-site is run with config "([^"]*)"$/ do
 
 	end
 
+end
+
+Then /^all servers should receive page requests$/ do
+	$servers.each do
+		|server_address, server|
+		server[:request_count].should >= 1
+	end
 end
 
 Then /^the status should be (\d+)$/ do
