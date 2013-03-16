@@ -2,24 +2,24 @@ function stayAtBottom (bodyFunction) {
 
 	// work out if we are at the bottom
 
-	var atBottom = (
+	var bottomOfWindow =
 		+ $(window).scrollTop ()
-		+ $(window).height ()
-		== $(document).height ());
+		+ $(window).height ();
+
+	var bottomOfDocument =
+		$(document).height ();
+
+	var atBottom =
+		Math.abs (bottomOfDocument - bottomOfWindow) <= 1;
 
 	// call the function
 
 	bodyFunction ();
 
-	// scroll window down
+	// keep us at the bottom
 
 	if (atBottom) {
-
-		$(window).scrollTop (
-			+ $(document).height ()
-			- $(window).height ()
-		);
-
+		$(window).scrollTop ($(document).height ());
 	}
 
 }
