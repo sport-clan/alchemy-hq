@@ -170,8 +170,13 @@ class CheckSiteScript < CheckScript
 		req["host"] = @base_url.host
 		req["user-agent"] = "mandar check_site"
 
-		req["cookie"] =
-			cookies.map { |name,value| "#{name}=#{value}" }.join ", "
+		unless cookies.empty?
+			req["cookie"] =
+				cookies.map {
+					|name, value|
+					"#{name}=#{value}"
+				}.join ", "
+		end
 
 		# set http auth
 
