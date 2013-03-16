@@ -10,4 +10,5 @@
 /results/*
 !/results/index.html
 /stubs
+/test-configs
 /vendor
