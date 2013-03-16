@@ -5,9 +5,10 @@ require "xml"
 require "hq/systools/monitoring/check-site-script"
 
 $web_config = {
-	Port: 10000 + rand(55536),
-	AccessLog: [],
-	Logger: WEBrick::Log::new("/dev/null", 7),
+	:Port => 10000 + rand(55536),
+	:AccessLog => [],
+	:Logger => WEBrick::Log::new("/dev/null", 7),
+	:DoNotReverseLookup => true,
 }
 
 $web_server =
