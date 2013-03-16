@@ -1,8 +1,10 @@
-class Mandar::Console::Deploy
+module Mandar
+module Console
+class Deploy
 
-	include Mandar::Console::Forms
-	include Mandar::Console::Render
-	include Mandar::Console::Utils
+	include Forms
+	include Render
+	include Utils
 
 	def handle
 
@@ -39,17 +41,43 @@ class Mandar::Console::Deploy
 				end
 			end
 
-			if post_var("deploy") || post_var("deploy-mock") || post_var("rollback") || post_var("rollback-mock")
+			if post_var("deploy") || \
+				post_var("deploy-mock") || \
+				post_var("rollback") || \
+				post_var("rollback-mock")
 
 				# work out mock
-				mock = post_var("deploy-mock") || post_var("rollback-mock") ? true : false
+
+				mock =
+					post_var("deploy-mock") || \
+					post_var("rollback-mock") \
+						? true
+						: false
 
 				# work out mode
-				mode = case
-					when (post_var("deploy") || post_var("deploy-mock")) && my_change then :staged
-					when post_var("rollback") || post_var("rollback-mock") then :rollback
-					else :unstaged
-				end
+
+				mode =
+					case
+
+					when \
+						(
+							post_var("deploy") ||
+							post_var("deploy-mock")
+						) && my_change
+
+						:staged
+
+					when \
+						post_var("rollback") ||
+						post_var("rollback-mock")
+
+						:rollback
+
+					else
+
+						:unstaged
+
+					end
 
 				# perform deploy
 
@@ -75,6 +103,7 @@ class Mandar::Console::Deploy
 				raise "Invalid request"
 
 			end
+
 		end
 
 		locks = locks_man.load
@@ -125,13 +154,24 @@ class Mandar::Console::Deploy
 			auth_json =
 				JSON.dump auth_data
 
+			google_apis_url =
+				"https://ajax.googleapis.com"
+
+			jquery_url =
+				"#{google_apis_url}/ajax/libs/jquery/1.9.1/jquery.min.js"
+
 			page[:script] = "
-				<script src=\"https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js\"></script>
+				<script src=\"#{jquery_url}\"></script>
 				<script src=\"/console.js\"></script>
 				<script>
 				  var deployDone = function () {
-				    stayAtBottom (function () {
-				      $(\"form\").show ()
+				    jQuery.ajax ('/deploy-buttons', {
+				      cache: false,
+				      success: function (data) {
+				        stayAtBottom (function () {
+				          $('.deploy-buttons').replaceWith (data);
+				        });
+				      },
 				    });
 				  };
 				  $(function () {
@@ -148,130 +188,20 @@ class Mandar::Console::Deploy
 
 		end
 
-		page[:form] = {
-			_type: :form,
-			_method: :post,
-			_style: {},
-		}
-
 		if deploy_id
-			page[:form][:_style]["display"] = "none"
-		end
 
-		change_in_progress = nil
-		locks["changes"].each do |role, change|
-			next if change["state"] == "stage"
-			change_in_progress = change
-		end
-
-		if change_in_progress && change_in_progress["role"] != console_user
-
-			page[:form][:deploying] = make_para_text \
-				"Cannot deploy now as #{change_in_progress["role"]} has uncommitted changes."
-
-			if my_change && my_change["state"] == "stage"
-
-				page[:form][:unstage] = {
-					_type: :submit,
-					_name: "unstage",
-					_label: "cancel",
-				}
-
-			end
-
-		elsif ! my_change
-
-			page[:form][:deploy] = {
-				_type: :submit,
-				_name: "deploy",
-				_label: "deploy",
+			page[:form] = {
+				_type: :div,
+				_class: :deploy_buttons,
 			}
-
-			page[:form][:deploy_mock] = {
-				_type: :submit,
-				_name: "deploy-mock",
-				_label: "deploy (mock)",
-			}
-
-		elsif my_change["state"] == "stage"
-
-			page[:form][:deploy] = {
-				_type: :submit,
-				_name: "deploy",
-				_label: "deploy",
-			}
-
-			page[:form][:deploy_mock] = {
-				_type: :submit,
-				_name: "deploy-mock",
-				_label: "deploy (mock)",
-			}
-
-			if my_change["rollback_timestamp"]
-
-				page[:form][:rollback] = {
-					_type: :submit,
-					_name: "rollback",
-					_label: "re-rollback",
-				}
-
-				page[:form][:rollback_mock] = {
-					_type: :submit,
-					_name: "rollback-mock",
-					_label: "re-rollback (mock)",
-				}
-
-			end
-
-			page[:form][:unstage] = {
-				_type: :submit,
-				_name: "unstage",
-				_label: "cancel",
-			}
-
-		elsif my_change["state"] == "done"
-
-			page[:form][:deploy] = {
-				_type: :submit,
-				_name: "deploy",
-				_label: "re-deploy",
-			}
-
-			page[:form][:deploy_mock] = {
-				_type: :submit,
-				_name: "deploy-mock",
-				_label: "re-deploy (mock)",
-			}
-
-			page[:form][:rollbacl] = {
-				_type: :submit,
-				_name: "rollback",
-				_label: "rollback",
-			}
-
-			page[:form][:rollback_mock] = {
-				_type: :submit,
-				_name: "rollback-mock",
-				_label: "rollback (mock)",
-			}
-
-			page[:form][:commit] = {
-				_type: :submit,
-				_name: "commit",
-				_label: "commit",
-			}
-
-		elsif my_change["state"] == "deploy"
-
-			page[:form][:deploying] = make_para_text "Deploy in progress..."
-
-		elsif my_change["state"] == "rollback"
-
-			page[:form][:deploying] = make_para_text "Rollback in progress..."
 
 		else
 
-			raise "Invalid state: #{my_change["state"]}"
+			deploy_buttons =
+				DeployButtons.new
+
+			page[:form] =
+				deploy_buttons.make_form
 
 		end
 
@@ -279,4 +209,6 @@ class Mandar::Console::Deploy
 
 	end
 
+end
+end
 end

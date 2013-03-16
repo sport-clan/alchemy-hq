@@ -48,6 +48,9 @@ class Mandar::Console::ConsoleHandler
 		when /^\/deploy$/
 			Mandar::Console::Deploy.new.handle
 
+		when /^\/deploy-buttons$/
+			Mandar::Console::DeployButtons.new.handle
+
 		when /^\/password$/
 			Mandar::Console::Password.new.handle
 
