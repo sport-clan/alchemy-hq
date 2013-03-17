@@ -28,7 +28,13 @@ class CheckSiteScript < CheckScript
 
 		@opts, @args =
 			Tools::Getopt.process @args, [
-				{ :name => :config, :required => true },
+
+				{ :name => :config,
+					:required => true },
+
+				{ :name => :debug,
+					:boolean => true },
+
 			]
 
 		@args.empty? or raise "Extra args on command line"
@@ -148,6 +154,8 @@ class CheckSiteScript < CheckScript
 
 	def check_step http, cookies, step_elem
 
+		@postscript << "performing step #{step_elem["name"]}"
+
 		request_elem = step_elem.find_first "request"
 		response_elem = step_elem.find_first "response"
 
@@ -219,13 +227,26 @@ class CheckSiteScript < CheckScript
 		@worst = duration if @worst == nil
 		@worst = duration if duration > @worst
 
+		debug "REQUEST #{req.path}"
+		req.each { |k,v| debug "  #{k}: #{v}" }
+		debug "RESPONSE #{res.code} #{res.message}"
+		res.each { |k,v| debug "  #{k}: #{v}" }
+
 		if res.code != "200"
 
+			debug "EXPECTED response code 200"
 			@error_codes << res.code
 			return false
 
 		elsif response_elem["body-regex"] &&
 			res.body !~ /#{response_elem["body-regex"]}/
+
+			debug "EXPECTED body to match #{response_elem["body-regex"]}"
+
+			if @opts[:debug]
+				debug "BODY"
+				debug res.body.gsub(/^/, "  ")
+			end
 
 			@mismatches += 1
 			return false
@@ -234,6 +255,10 @@ class CheckSiteScript < CheckScript
 
 		return true
 
+	end
+
+	def debug message
+		@postscript << message
 	end
 
 end
