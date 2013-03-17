@@ -153,7 +153,7 @@ class CheckSiteScript < CheckScript
 
 		# create request
 
-		path = @base_url.path + request_elem["path"]
+		path = @base_url.path + (request_elem["path"] || "")
 
 		req =
 			case request_elem["method"] || "get"

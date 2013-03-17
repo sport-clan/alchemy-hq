@@ -64,6 +64,17 @@ Feature: Check site script
         </check-site-script>
       """
 
+    Given a config "no-path":
+      """
+        <check-site-script base-url="${base-url}/page">
+          <timings warning="2" critical="4" timeout="10"/>
+          <step name="page">
+            <request/>
+            <response/>
+          </step>
+        </check-site-script>
+      """
+
   Scenario: Site responds in ok time
     Given one server which responds in 1 second
      When check-site is run with config "default"
@@ -138,6 +149,13 @@ Feature: Check site script
   Scenario: Form based login
     Given one server which requires form based login with "USER" and "PASS"
      When check-site is run with config "form-auth"
+     Then all servers should receive page requests
+      And the message should be "Site OK: 1 hosts found, 0.0s time"
+      And the status should be 0
+
+  Scenario: No path specified
+    Given one server which responds in 0 seconds
+     When check-site is run with config "no-path"
      Then all servers should receive page requests
       And the message should be "Site OK: 1 hosts found, 0.0s time"
       And the status should be 0
