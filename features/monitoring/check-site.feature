@@ -4,7 +4,7 @@ Feature: Check site script
 
     Given a config "default":
       """
-        <check-site-script base-url="${base-url}">
+        <check-site-script base-url="http://hostname:${port}">
           <timings warning="2" critical="4" timeout="10"/>
           <step name="page">
             <request path="/page"/>
@@ -15,7 +15,7 @@ Feature: Check site script
 
     Given a config "regex":
       """
-        <check-site-script base-url="${base-url}">
+        <check-site-script base-url="http://hostname:${port}">
           <timings warning="2" critical="4" timeout="10"/>
           <step name="page">
             <request path="/page"/>
@@ -26,7 +26,7 @@ Feature: Check site script
 
     Given a config "timeout":
       """
-        <check-site-script base-url="${base-url}">
+        <check-site-script base-url="http://hostname:${port}">
           <timings warning="2" critical="4" timeout="0"/>
           <step name="page">
             <request path="/page"/>
@@ -37,7 +37,7 @@ Feature: Check site script
 
     Given a config "http-auth":
       """
-        <check-site-script base-url="${base-url}">
+        <check-site-script base-url="http://hostname:${port}">
           <timings warning="2" critical="4" timeout="10"/>
           <step name="page">
             <request path="/page" username="USER" password="PASS"/>
@@ -48,7 +48,7 @@ Feature: Check site script
 
     Given a config "form-auth":
       """
-        <check-site-script base-url="${base-url}">
+        <check-site-script base-url="http://hostname:${port}">
           <timings warning="2" critical="4" timeout="10"/>
           <step name="login">
             <request path="/login" method="post">
@@ -66,10 +66,21 @@ Feature: Check site script
 
     Given a config "no-path":
       """
-        <check-site-script base-url="${base-url}/page">
+        <check-site-script base-url="http://hostname:${port}/page">
           <timings warning="2" critical="4" timeout="10"/>
           <step name="page">
             <request/>
+            <response/>
+          </step>
+        </check-site-script>
+      """
+
+    Given a config "wrong-port":
+      """
+        <check-site-script base-url="http://hostname:65535">
+          <timings warning="2" critical="4" timeout="10"/>
+          <step name="page">
+            <request path="/path"/>
             <response/>
           </step>
         </check-site-script>
@@ -84,7 +95,7 @@ Feature: Check site script
 
   Scenario: Site responds in warning time
     Given one server which responds in 1 second
-      And another server which responds in 3 seconds
+      And one server which responds in 3 seconds
      When check-site is run with config "default"
      Then all servers should receive page requests
       And the message should be "Site WARNING: 2 hosts found, 3.0s time (warning is 2.0)"
@@ -92,8 +103,8 @@ Feature: Check site script
 
   Scenario: Site responds in critical time
     Given one server which responds in 1 second
-      And another server which responds in 3 seconds
-      And another server which responds in 5 seconds
+      And one server which responds in 3 seconds
+      And one server which responds in 5 seconds
      When check-site is run with config "default"
      Then all servers should receive page requests
       And the message should be "Site CRITICAL: 3 hosts found, 5.0s time (critical is 4.0)"
@@ -108,7 +119,7 @@ Feature: Check site script
 
   Scenario: Body does not contain regex
     Given one server which responds with "-yes-"
-      And another server which responds with "-no-"
+      And one server which responds with "-no-"
      When check-site is run with config "regex"
      Then all servers should receive page requests
       And the message should be "Site CRITICAL: 2 hosts found, 1 mismatches, 0.0s time"
@@ -159,3 +170,9 @@ Feature: Check site script
      Then all servers should receive page requests
       And the message should be "Site OK: 1 hosts found, 0.0s time"
       And the status should be 0
+
+  Scenario: Connection refused
+    Given one server which responds in 0 seconds
+     When check-site is run with config "wrong-port"
+     Then the message should be "Site CRITICAL: 1 hosts found, 1 uncontactable"
+      And the status should be 2

@@ -5,7 +5,7 @@ require "xml"
 require "hq/systools/monitoring/check-site-script"
 
 $web_config = {
-	:Port => 10000 + rand(55536),
+	:Port => 10000 + rand(55535),
 	:AccessLog => [],
 	:Logger => WEBrick::Log::new("/dev/null", 7),
 	:DoNotReverseLookup => true,
@@ -188,13 +188,13 @@ When /^check\-site is run with config "([^"]*)"$/ do
 		HQ::SysTools::Monitoring::CheckSiteScript.new
 
 	@script.stdout = StringIO.new
+	@script.stderr = StringIO.new
 
 	Tempfile.open "check-site-script-" do
 		|temp|
 
 		config_str = @configs[config_name]
-		base_url = "http://hostname:#{$web_config[:Port]}"
-		config_str.gsub! "${base-url}", base_url
+		config_str.gsub! "${port}", $web_config[:Port].to_s
 		config_doc = XML::Document.string config_str
 		temp.write config_doc
 		temp.flush

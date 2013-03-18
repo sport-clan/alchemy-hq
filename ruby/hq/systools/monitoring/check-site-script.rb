@@ -144,6 +144,10 @@ class CheckSiteScript < CheckScript
 
 			@successes += 1 if success
 
+		rescue Errno::ECONNREFUSED
+
+			@failures += 1
+
 		rescue Timeout::Error
 
 			@failures += 1

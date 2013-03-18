@@ -26,9 +26,18 @@ class CheckScript
 		begin
 			prepare
 			perform_checks
-		rescue => e
-			critical e.message
-			@postscript << e.backtrace
+		rescue => exception
+
+			message = "%s: %s" % [
+				exception.class,
+				exception.message,
+			]
+
+			critical message
+
+			@postscript << message
+			@postscript << exception.backtrace
+
 		end
 
 		perform_output
