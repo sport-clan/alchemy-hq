@@ -180,7 +180,7 @@ class CheckSiteScript < CheckScript
 		# set headers
 
 		req["host"] = @base_url.host
-		req["user-agent"] = "mandar check_site"
+		req["user-agent"] = "hq check-site"
 
 		unless cookies.empty?
 			req["cookie"] =
