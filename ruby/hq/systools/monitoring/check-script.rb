@@ -27,7 +27,7 @@ class CheckScript
 			prepare
 			perform_checks
 		rescue => e
-			unknown e.message
+			critical e.message
 			@postscript << e.backtrace
 		end
 
