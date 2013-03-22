@@ -18,6 +18,12 @@ class RawLogger < IoLogger
 			content: [ content ],
 		}
 
+		data_json = begin
+			MultiJson.dump data
+		rescue
+			out.puts "ERROR encoding #{content} (#{content.encoding})"
+		end
+
 		out.print MultiJson.dump(data) + "\n"
 
 	end
