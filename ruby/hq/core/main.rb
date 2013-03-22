@@ -158,6 +158,7 @@ class Main
 		if File.exists? "/etc/hq-hostname"
 			@hostname = File.read("/etc/hq-hostname").strip
 		else
+			require "socket"
 			@hostname = Socket.gethostname.split(".")[0]
 		end
 
