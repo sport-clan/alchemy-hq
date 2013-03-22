@@ -379,6 +379,8 @@ module Mandar::Support::Core
 
 					line, buf = buf.split("\n", 2)
 
+					line.force_encoding Encoding::UTF_8
+
 					if options[:log]
 
 						Mandar.logger.output({
