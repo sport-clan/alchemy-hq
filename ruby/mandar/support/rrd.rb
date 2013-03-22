@@ -1,5 +1,10 @@
 module Mandar::Support::RRD
 
+	def self.rrd
+		require "RRD"
+		return RRD
+	end
+
 	def self.drill_down(getter, setter, key)
 		case key
 
