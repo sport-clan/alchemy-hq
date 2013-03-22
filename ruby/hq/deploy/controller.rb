@@ -304,6 +304,7 @@ class Controller
 				DeployHandler
 
 		deploy_handler.logger = logger
+		deploy_handler.hostname = "local"
 
 		deploy_handler.on_success do
 			return_proc.call true
@@ -347,7 +348,7 @@ class Controller
 		]
 
 		ssh_cmd =
-			esc_shell ssh_args
+			"#{esc_shell ssh_args} 2>&1"
 
 		# execute it
 
@@ -359,6 +360,7 @@ class Controller
 				DeployHandler
 
 		deploy_handler.logger = logger
+		deploy_handler.hostname = host_name
 
 		deploy_handler.on_success do
 			return_proc.call true
@@ -587,6 +589,7 @@ class Controller
 	module DeployHandler
 
 		attr_accessor :logger
+		attr_accessor :hostname
 
 		def post_init
 			@buf = ""
@@ -615,7 +618,14 @@ class Controller
 					MultiJson.load line
 
 			rescue => e
-				$stderr.print "#{line}\n"
+
+				logger.output({
+					"type" => "log",
+					"hostname" => hostname,
+					"level" => :error,
+					"text" => line,
+				})
+
 				return
 			end
 
