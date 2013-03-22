@@ -1,10 +1,5 @@
 module Mandar::Support::RRD
 
-	def self.rrd
-		require "RRD"
-		return RRD
-	end
-
 	def self.drill_down(getter, setter, key)
 		case key
 
@@ -140,11 +135,13 @@ module Mandar::Support::RRD
 
 			Mandar.notice "creating #{path}"
 
-			args = %W[
-				#{path}.tmp
-				--step #{spec[:step]}
-				--no-overwrite
-			] + spec[:data_sources].map { |data_source|
+			rrdtool_create_args = [
+				"rrdtool",
+				"create",
+				"#{path}.tmp",
+				"--step", spec[:step].to_s,
+			] + spec[:data_sources].map {
+				|data_source|
 				[
 					"DS",
 					data_source[:name],
@@ -153,7 +150,8 @@ module Mandar::Support::RRD
 					"U",
 					"U",
 				].join(":")
-			} + spec[:archives].map { |archive|
+			} + spec[:archives].map {
+				|archive|
 				[
 					"RRA",
 					archive[:function].upcase,
@@ -164,10 +162,23 @@ module Mandar::Support::RRD
 			}
 
 			unless $mock
-				rrd.create *args
-				FileUtils.chown options[:user], options[:group], "#{path}.tmp"
+
+				rrdtool_create_cmd =
+					Mandar.shell_quote rrdtool_create_args
+
+				rrdtool_create_result =
+					Mandar::Support::Core.shell_real \
+						rrdtool_create_cmd
+
+				FileUtils.chown \
+					options[:user],
+					options[:group],
+					"#{path}.tmp"
+
 				FileUtils.chmod options[:mode], "#{path}.tmp"
+
 				FileUtils.mv "#{path}.tmp", path
+
 			end
 
 		end
