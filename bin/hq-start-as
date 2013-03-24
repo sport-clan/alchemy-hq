@@ -31,13 +31,13 @@ Process::GID.change_privilege \
 Process::UID.change_privilege \
 	user_entry.uid
 
-# setup environment
-
-ENV["HOME"] =
-	user_entry.dir
-
 # execute the command
 
 Bundler.with_clean_env do
+
+	ENV["HOME"] =
+		user_entry.dir
+
 	exec *command
+
 end
