@@ -318,40 +318,42 @@ module Mandar::Support::Core
 
 			$stdin.reopen File.open("/dev/null", "r")
 
-			# change directory
-
-			Dir.chdir options[:dir] \
-				if options[:dir]
-
-			# change user
-
-			if options[:user]
-
-				user_entry =
-					Etc.getpwnam options[:user]
-
-				user_entry \
-					or raise "User not found"
-
-				Process.initgroups \
-					user_entry.name,
-					user_entry.gid
-
-				Process::GID.change_privilege \
-					user_entry.gid
-
-				Process::UID.change_privilege \
-					user_entry.uid
-
-				ENV["HOME"] =
-					user_entry.dir
-
-			end
-
-			# execute the command
-
 			Bundler.with_clean_env do
+
+				# change directory
+
+				Dir.chdir options[:dir] \
+					if options[:dir]
+
+				# change user
+
+				if options[:user]
+
+					user_entry =
+						Etc.getpwnam options[:user]
+
+					user_entry \
+						or raise "User not found"
+
+					Process.initgroups \
+						user_entry.name,
+						user_entry.gid
+
+					Process::GID.change_privilege \
+						user_entry.gid
+
+					Process::UID.change_privilege \
+						user_entry.uid
+
+					ENV["HOME"] =
+						user_entry.dir
+
+				end
+
+				# execute the command
+
 				exec "/bin/bash", "-c", cmd
+
 			end
 
 		end
