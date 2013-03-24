@@ -5,7 +5,6 @@ HQ_DIR = File.expand_path "../..", __FILE__ \
 
 task :default do
 
-	system "cd #{HQ_DIR}/c++; make" \
-		or raise "Error building c++ parts"
+	system "cd #{HQ_DIR}/c++; make"
 
 end
