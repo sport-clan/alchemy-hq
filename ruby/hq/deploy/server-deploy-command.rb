@@ -8,6 +8,10 @@ class ServerDeployCommand
 
 		require "hq/deploy/slave"
 
+		# run in root dir
+
+		Dir.chdir "/"
+
 		# write hostname
 
 		hq.hostname = hostname
