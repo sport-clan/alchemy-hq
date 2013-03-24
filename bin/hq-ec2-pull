@@ -144,7 +144,7 @@ config_elem.find("ec2-pull-type").each do |type_elem|
 
 		puts "commit changes"
 		mandar.commit
-	
+
 	else
 		puts "no changes"
 	end

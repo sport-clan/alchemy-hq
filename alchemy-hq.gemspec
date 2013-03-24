@@ -50,9 +50,7 @@ Gem::Specification.new do
 
 	spec.test_files = []
 
-	spec.executables = [
-		"grapher-daemon",
-	]
+	spec.executables = Dir.new("bin").entries - [ ".", ".." ]
 
 	spec.require_paths = [ "ruby" ]
 
