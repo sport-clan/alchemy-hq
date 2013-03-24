@@ -59,9 +59,6 @@ class Controller
 
 			logger.debug message
 
-			projects_dir =
-				File.expand_path "..", config_dir
-
 			rsh_args = [
 				"ssh",
 				"-S", "#{work_dir}/ssh/#{host_name}.sock",
@@ -93,74 +90,53 @@ class Controller
 					include_elem.attributes["name"]
 
 				rsync_args += [
-					"--include=/#{deploy_dir}/.work/deploy/#{include_name}",
+					"--include=/.work/deploy/#{include_name}",
 				]
 
 			end
 
 			rsync_args += [
 
-				"--include=/alchemy-hq",
-				"--include=/alchemy-hq/alchemy-hq.gemspec",
-				"--include=/alchemy-hq/bin",
-				"--include=/alchemy-hq/etc",
-				"--exclude=/alchemy-hq/etc/build.properties",
-				"--include=/alchemy-hq/ruby",
-				"--exclude=/alchemy-hq/*",
-				"--include=/alchemy-hq",
+				"--exclude=/.work/deploy/*/*",
+				"--include=/.work/deploy/*",
+				"--include=/.work/deploy",
+				"--exclude=/.work/*",
+				"--include=/.work",
 
-				"--include=/devbox/Gemfile",
-				"--include=/devbox/Gemfile.lock",
-				"--include=/devbox/devbox.gemspec",
-				"--include=/devbox/lib",
-				"--exclude=/devbox/*",
-				"--include=/devbox",
+				"--include=/Gemfile",
+				"--include=/Gemfile.lock",
+				"--include=/*.gemspec",
 
-				"--include=/#{deploy_dir}/.dependencies",
+				"--exclude=/vendor/cache/archive-tar-minitar-*.gem",
+				"--exclude=/vendor/cache/builder-*.gem",
+				"--exclude=/vendor/cache/childprocess-*.gem",
+				"--exclude=/vendor/cache/cucumber-*.gem",
+				"--exclude=/vendor/cache/diff-lcs-*.gem",
+				"--exclude=/vendor/cache/erubis-*.gem",
+				"--exclude=/vendor/cache/gherkin-*.gem",
+				"--exclude=/vendor/cache/i18n-*.gem",
+				"--exclude=/vendor/cache/log4r-*.gem",
+				"--exclude=/vendor/cache/net-scp-*.gem",
+				"--exclude=/vendor/cache/net-ssh-*.gem",
+				"--exclude=/vendor/cache/rspec-*.gem",
+				"--exclude=/vendor/cache/ruby-graphviz-*.gem",
+				"--exclude=/vendor/cache/vagrant-*.gem",
+				"--include=/vendor/cache/*.gem",
+				"--include=/vendor/cache/alchemy-hq-*",
+				"--include=/vendor/cache/devbox-*",
+				"--exclude=/vendor/cache/*",
+				"--include=/vendor/cache",
+				"--exclude=/vendor/*",
+				"--include=/vendor",
 
-				"--exclude=/#{deploy_dir}/.work/deploy/*/*",
-				"--include=/#{deploy_dir}/.work/deploy/*",
-				"--include=/#{deploy_dir}/.work/deploy",
-				"--exclude=/#{deploy_dir}/.work/*",
-				"--include=/#{deploy_dir}/.work",
-
-				"--include=/#{deploy_dir}/Gemfile",
-				"--include=/#{deploy_dir}/Gemfile.lock",
-				"--include=/#{deploy_dir}/*.gemspec",
-
-				"--exclude=/#{deploy_dir}/vendor/cache/archive-tar-minitar-*.gem",
-				"--exclude=/#{deploy_dir}/vendor/cache/builder-*.gem",
-				"--exclude=/#{deploy_dir}/vendor/cache/childprocess-*.gem",
-				"--exclude=/#{deploy_dir}/vendor/cache/cucumber-*.gem",
-				"--exclude=/#{deploy_dir}/vendor/cache/diff-lcs-*.gem",
-				"--exclude=/#{deploy_dir}/vendor/cache/erubis-*.gem",
-				"--exclude=/#{deploy_dir}/vendor/cache/gherkin-*.gem",
-				"--exclude=/#{deploy_dir}/vendor/cache/i18n-*.gem",
-				"--exclude=/#{deploy_dir}/vendor/cache/log4r-*.gem",
-				"--exclude=/#{deploy_dir}/vendor/cache/net-scp-*.gem",
-				"--exclude=/#{deploy_dir}/vendor/cache/net-ssh-*.gem",
-				"--exclude=/#{deploy_dir}/vendor/cache/rspec-*.gem",
-				"--exclude=/#{deploy_dir}/vendor/cache/ruby-graphviz-*.gem",
-				"--exclude=/#{deploy_dir}/vendor/cache/vagrant-*.gem",
-				"--include=/#{deploy_dir}/vendor/cache/*.gem",
-				"--exclude=/#{deploy_dir}/vendor/cache/*",
-				"--include=/#{deploy_dir}/vendor/cache",
-				"--exclude=/#{deploy_dir}/vendor/*",
-				"--include=/#{deploy_dir}/vendor",
-
-				"--include=/#{deploy_dir}/bin",
-				"--include=/#{deploy_dir}/ruby",
-				"--include=/#{deploy_dir}/scripts",
-
-				"--exclude=/#{deploy_dir}/*",
-				"--include=/#{deploy_dir}",
+				"--include=/bin",
+				"--include=/ruby",
+				"--include=/scripts",
 
 				"--exclude=/*",
 
-				"--exclude=.*",
-
-				"#{projects_dir}/",
-				"root@#{host_hostname}:/",
+				"#{config_dir}/",
+				"root@#{host_hostname}:/zattikka-hq/",
 
 			]
 
@@ -213,10 +189,7 @@ class Controller
 				"-o", "BatchMode=yes",
 				"root@#{host_hostname}",
 				[
-					"chmod 0755 /",
 					"cd /zattikka-hq",
-					"mkdir -p .override",
-					"ln -sfd /zattikka-hq/alchemy-hq .override/alchemy-hq",
 					[
 						"bundle install",
 						"--path .gems",
