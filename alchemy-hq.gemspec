@@ -27,6 +27,7 @@ Gem::Specification.new do
 	spec.add_dependency "json_pure", ">= 1.7.7"
 	spec.add_dependency "libxml-ruby"
 	spec.add_dependency "multi_json"
+	spec.add_dependency "net-dns", ">= 0.7.1"
 	spec.add_dependency "rake", ">= 10.0.3"
 	spec.add_dependency "sys-filesystem" # TODO remove this
 
