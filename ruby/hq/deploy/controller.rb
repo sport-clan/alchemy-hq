@@ -75,12 +75,14 @@ class Controller
 
 				"--times",
 				"--delete",
+				"--delete-excluded",
 				"--executability",
 				"--links",
 				"--perms",
 				"--recursive",
 				"--rsh=#{rsh_cmd}",
 				"--timeout=30",
+				"--rsync-path=mkdir -p /#{deploy_dir} && rsync",
 
 			]
 
@@ -136,7 +138,7 @@ class Controller
 				"--exclude=/*",
 
 				"#{config_dir}/",
-				"root@#{host_hostname}:/zattikka-hq/",
+				"root@#{host_hostname}:/#{deploy_dir}/dist/",
 
 			]
 
@@ -189,11 +191,13 @@ class Controller
 				"-o", "BatchMode=yes",
 				"root@#{host_hostname}",
 				[
-					"cd /zattikka-hq",
+					"cd /zattikka-hq/dist",
+					"mkdir -p ../bundle",
+					"ln -s ../bundle .bundle",
 					[
 						"bundle install",
-						"--path .gems",
-						"--binstubs .stubs",
+						"--path /zattikka-hq/gems",
+						"--binstubs /zattikka-hq/stubs",
 						"--local",
 						"--without rrd development",
 						"--quiet",
@@ -294,7 +298,7 @@ class Controller
 		# build command
 
 		remote_args = [
-			"/#{deploy_dir}/.stubs/#{remote_command}",
+			"/#{deploy_dir}/stubs/#{remote_command}",
 			"--log", "trace:raw",
 			*args,
 		]
