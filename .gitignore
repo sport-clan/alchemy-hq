@@ -12,3 +12,4 @@
 /stubs
 /test-configs
 /vendor
+/*.gem
