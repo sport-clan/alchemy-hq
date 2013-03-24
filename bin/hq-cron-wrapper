@@ -10,7 +10,7 @@ child_pid =
 	fork do
 		$stdout.reopen temp
 		$stderr.reopen temp
-		Bundle.with_clean_env do
+		Bundler.with_clean_env do
 			exec *ARGV
 		end
 	end

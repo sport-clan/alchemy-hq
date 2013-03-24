@@ -38,6 +38,6 @@ ENV["HOME"] =
 
 # execute the command
 
-Bundle.with_clean_env do
+Bundler.with_clean_env do
 	exec *command
 end
