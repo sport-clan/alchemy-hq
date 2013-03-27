@@ -173,7 +173,7 @@ class Transformer
 
 			rescue => e
 				logger.error e.to_s
-				logger.detail e.backtrace
+				logger.detail e.backtrace.join("\n")
 				FileUtils.touch "#{work_dir}/error-flag"
 				raise "error compiling #{abstract[:path]}"
 			end
