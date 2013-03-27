@@ -8,7 +8,7 @@ class Logger
 class RawLogger < IoLogger
 
 	def valid_modes
-		[ :normal, :partial ]
+		[ :normal, :partial, :complete ]
 	end
 
 	def output_real content, stuff
