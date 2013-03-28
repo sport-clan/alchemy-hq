@@ -34,8 +34,8 @@ describe RawLogger do
 
 	context "#valid_modes" do
 
-		it "returns [ :normal, :partial ]" do
-			subject.valid_modes.should == [ :normal, :partial ]
+		it "returns [ :normal, :partial, :complete ]" do
+			subject.valid_modes.should == [ :normal, :partial, :complete ]
 		end
 
 	end
