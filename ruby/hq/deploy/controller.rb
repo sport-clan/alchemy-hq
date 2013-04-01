@@ -133,7 +133,7 @@ class Controller
 
 				"--include=/bin",
 				"--include=/ruby",
-				"--include=/scripts",
+				"--include=/files",
 
 				"--exclude=/*",
 
