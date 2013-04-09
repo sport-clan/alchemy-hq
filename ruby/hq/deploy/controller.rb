@@ -692,8 +692,12 @@ class Controller
 		end
 
 		ssh_key_elem =
-			engine.abstract["mandar-ssh-key"] \
-				.find_first("mandar-ssh-key [@name = #{esc_xp host_ssh_key_name}]")
+			engine.abstract["deploy-ssh-key"] \
+				.find_first("
+					deploy-ssh-key [
+						@name = #{esc_xp host_ssh_key_name}
+					]
+				")
 
 		ssh_key =
 			ssh_key_elem.find_first("private").content
@@ -707,7 +711,8 @@ class Controller
 
 		# write ssh key file
 
-		Tempfile.open "mandar-ssh-key-" do |ssh_key_file|
+		Tempfile.open "hq-ssh-key-" do
+			|ssh_key_file|
 
 			ssh_key_file.puts ssh_key
 			ssh_key_file.flush

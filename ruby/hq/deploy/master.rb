@@ -108,45 +108,52 @@ class Master
 
 			host_docs = {}
 
-			host_names.each do |host_name|
+			host_names.each do
+				|host_name|
+
 				doc = XML::Document.new
 				doc.root = XML::Node.new "tasks"
+
 				host_docs[host_name] = doc
+
 			end
 
 			class_docs = {}
 
-			class_names.each do |class_name|
+			class_names.each do
+				|class_name|
+
 				doc = XML::Document.new
 				doc.root = XML::Node.new "tasks"
+
 				class_docs[class_name] = doc
+
 			end
 
 			# sort tasks into appropriate hosts and classes
 
-			[ "task", "sub-task" ].each do |type|
+			[ "task", "sub-task" ].each do
+				|type|
 
 				next unless abstract_results[type]
 
 				abstract_results[type][:doc] \
-						.find("/*/#{type}") \
-						.each do |task_elem|
+					.find("/*/#{type}")
+					.each \
+				do
+					|task_elem|
 
-					host_name =
-						task_elem.attributes["host"]
+					case task_elem["target-type"]
 
-					class_name =
-						task_elem.attributes["class"]
+					when "host"
+						doc = host_docs[task_elem["target-name"]]
 
-					case
-						when host_name
-							doc = host_docs[host_name]
-						when class_name
-							doc = class_docs[class_name]
-						else
-							raise "<#{type} name=\"" +
-								task_elem.attributes["name"] +
-								"\"> has no host or class"
+					when "class"
+						doc = class_docs[task_elem["target-name"]]
+
+					else
+						raise "error"
+
 					end
 
 					next unless doc
@@ -159,7 +166,8 @@ class Master
 
 			# write out tasks
 
-			host_docs.each do |host_name, host_doc|
+			host_docs.each do
+				|host_name, host_doc|
 
 				host_doc.save \
 					"#{work_dir}/deploy/host/#{host_name}/tasks.xml"

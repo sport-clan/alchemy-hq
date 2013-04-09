@@ -4,14 +4,12 @@ class Engine
 
 	attr_accessor :main
 
+	attr_accessor :results
+
 	def config_dir() main.config_dir end
 	def couch() main.couch end
 	def logger() main.logger end
 	def work_dir() main.work_dir end
-
-	def results
-		transformer.results
-	end
 
 	def abstract
 
@@ -19,11 +17,12 @@ class Engine
 
 		abstract = {}
 
-		transformer.results.each do
+		results.each do
 			|result_name, result|
 
 			abstract[result_name] =
 				result[:doc].root
+
 		end
 
 		return @abstract = abstract
@@ -49,25 +48,6 @@ class Engine
 
 	end
 
-	def transformer
-
-		return @transformer if @transformer
-
-		require "hq/engine/transformer"
-
-		@transformer =
-			HQ::Engine::Transformer.new
-
-		@transformer.logger = logger
-		@transformer.xquery_client = xquery_client
-
-		@transformer.config_dir = config_dir
-		@transformer.work_dir = work_dir
-
-		return @transformer
-
-	end
-
 	def transform
 
 		return if warn_no_config
@@ -90,49 +70,126 @@ class Engine
 			logger.trace "writing schema.xml (empty)"
 
 			File.open schema_file, "w" do |f|
-				f.print "<schemas/>"
+				f.print "<schemas>\n"
+				f.print "\t<schema name=\"schema\">\n"
+				f.print "\t\t<id>\n"
+				f.print "\t\t\t<text name=\"name\"/>\n"
+				f.print "\t\t</id>\n"
+				f.print "\t\t<fields>\n"
+				f.print "\t\t</fields>\n"
+				f.print "\t\t<table>\n"
+				f.print "\t\t\t<col name=\"name\"/>\n"
+				f.print "\t\t</table>\n"
+				f.print "\t</schema>\n"
+				f.print "</schemas>\n"
 			end
 
 		end
 
 		old_schema_data = File.read(schema_file)
 
-		while true
+		loop do
 
-			data_ready
+			input_ready
+
+			# read schema
+
+			schema_doc =
+				XML::Document.string old_schema_data
+
+			schema_elems =
+				Hash[
+					schema_doc.find("*").map do
+						|schema_elem|
+						[
+							"%s/%s" % [
+								schema_elem.name,
+								schema_elem["name"],
+							],
+							schema_elem,
+						]
+					end
+				]
 
 			# process abstract config
 
-			transformer.rebuild @data_docs
+			require "hq/engine/transformer"
+
+			transformer = HQ::Engine::Transformer.new
+			transformer.parent = self
+
+			transformer.schema_elems = schema_elems
+			transformer.input_docs = @input_docs
+
+			transform_result = transformer.rebuild
 
 			# write new schema file
 
 			logger.trace "writing schema.xml"
-			Tempfile.open("alchemy-hq-schemas-xml-") do |f|
+
+			Tempfile.open("alchemy-hq-schemas-xml-") do
+				|temp_file|
+
 				doc = XML::Document.new
 				doc.root = XML::Node.new "schemas"
 
-				%W[ schema schema-option abstract-rule ].each do |elem_name|
+				[ "schema", "schema-option", "abstract-rule" ].each do
+					|elem_name|
+
 					schema_result = transformer.results[elem_name]
+
 					if schema_result
-						schema_result[:doc].root.find(elem_name).each do |schema_elem|
+						schema_result[:doc].root.find(elem_name).each do
+							|schema_elem|
 							doc.root << doc.import(schema_elem)
 						end
 					end
+
 				end
+
 				doc_str = doc.to_s
-				f.puts doc_str
-				f.flush
-				FileUtils.move f.path, schema_file
+				temp_file.puts doc_str
+				temp_file.flush
+				FileUtils.move temp_file.path, schema_file
+
 			end
+
 			@schemas_elem = nil
 
-			# if schema file hasn't changed then we're done, otherwise start again
+			# restart if schema changed
 
 			new_schema_data = File.read(schema_file)
-			break if new_schema_data == old_schema_data
-			old_schema_data = new_schema_data
-			logger.notice "restart due to schema changes"
+
+			if new_schema_data != old_schema_data
+				old_schema_data = new_schema_data
+				logger.notice "restart due to schema changes"
+				next
+			end
+
+			# error if the transform was not complete
+
+			unless transform_result[:success]
+
+				transform_result[:missing_types].each do
+					|type_name|
+					logger.warning "type missing: #{type_name}"
+				end
+
+
+				transform_result[:remaining_rules].each do
+					|rule_name|
+					logger.warning "rule could not be run: #{rule_name}"
+				end
+
+				logger.die "exiting due to failed transformation"
+
+			end
+
+			# we're done
+
+			@results = transformer.results
+
+			break
 
 		end
 
@@ -146,30 +203,30 @@ class Engine
 		return true
 	end
 
-	def data_ready
+	def input_ready
 		if $no_database
-			logger.warning "not dumping data due to --no-database option"
-			data_load
+			logger.warning "using previous input due to --no-database option"
+			input_load
 		else
-			data_dump
+			input_dump
 		end
 	end
 
-	def data_dump
+	def input_dump
 
-		logger.notice "dumping data"
+		logger.notice "loading input from database"
 
 		require "xml"
 
-		logger.time "dumping data" do
+		logger.time "loading input from database" do
 
-			@data_docs = {}
-			@data_strs = {}
+			@input_docs = {}
+			@input_strs = {}
 
-			FileUtils.remove_entry_secure "#{work_dir}/data" \
-				if File.directory? "#{work_dir}/data"
+			FileUtils.remove_entry_secure "#{work_dir}/input" \
+				if File.directory? "#{work_dir}/input"
 
-			FileUtils.mkdir_p "#{work_dir}/data", :mode => 0700
+			FileUtils.mkdir_p "#{work_dir}/input", :mode => 0700
 
 			rows = couch.view("root", "by_type")["rows"]
 			values_by_type = Hash.new
@@ -208,8 +265,8 @@ class Engine
 
 				values = values_by_type[schema_name] || Hash.new
 
-				data_doc = XML::Document.new
-				data_doc.root = XML::Node.new "data"
+				input_doc = XML::Document.new
+				input_doc.root = XML::Node.new "data"
 
 				if change
 					change["items"].each do |key, item|
@@ -227,33 +284,33 @@ class Engine
 
 				sorted_values = values.values.sort { |a,b| a["_id"] <=> b["_id"] }
 				sorted_values.each do |value|
-					data_doc.root << js_to_xml(schemas_elem, schema_elem, value)
+					input_doc.root << js_to_xml(schemas_elem, schema_elem, value)
 				end
 
-				data_str = data_doc.to_s
+				input_str = input_doc.to_s
 
-				File.open "#{work_dir}/data/#{schema_name}.xml", "w" do |f|
-					f.print data_str
+				File.open "#{work_dir}/input/#{schema_name}.xml", "w" do |f|
+					f.print input_str
 				end
 
-				@data_docs[schema_name] = data_doc
-				@data_strs[schema_name] = data_str
+				@input_docs[schema_name] = input_doc
+				@input_strs[schema_name] = input_str
 			end
 
 		end
 
 	end
 
-	def data_load
+	def input_load
 
-		logger.notice "loading data"
+		logger.notice "reading input from disk"
 
 		require "xml"
 
-		logger.time "loading data" do
+		logger.time "reading input from disk" do
 
-			@data_docs = {}
-			@data_strs = {}
+			@input_docs = {}
+			@input_strs = {}
 
 			schemas_elem.find("schema").each do
 				|schema_elem|
@@ -261,30 +318,30 @@ class Engine
 				schema_name =
 					schema_elem.attributes["name"]
 
-				data_path =
-					"#{work_dir}/data/#{schema_name}.xml"
+				input_path =
+					"#{work_dir}/input/#{schema_name}.xml"
 
-				if File.exist? data_path
+				if File.exist? input_path
 
-					data_doc =
+					input_doc =
 						XML::Document.file \
-							data_path,
+							input_path,
 							:options => XML::Parser::Options::NOBLANKS
 
-					data_str =
-						data_doc.to_s
+					input_str =
+						input_doc.to_s
 
 				else
 
-					data_doc =
+					input_doc =
 						XML::Document.string \
 							"<data/>",
 							:options => XML::Parser::Options::NOBLANKS
 
 				end
 
-				@data_docs[schema_name] = data_doc
-				@data_strs[schema_name] = data_str
+				@input_docs[schema_name] = input_doc
+				@input_strs[schema_name] = input_str
 
 			end
 
