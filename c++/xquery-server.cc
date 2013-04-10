@@ -18,6 +18,10 @@
 
 #include <xqilla/xqilla-simple.hpp>
 
+#include <xqilla/context/ExternalFunctionResolver.hpp>
+#include <xqilla/functions/ExternalFunction.hpp>
+#include <xqilla/update/PendingUpdateList.hpp>
+
 // xerces library
 
 #include <xercesc/framework/MemBufInputSource.hpp>
@@ -100,6 +104,55 @@ struct Session :
 	}
 };
 
+struct MyFunction :
+	public ExternalFunction {
+
+	MyFunction (XPath2MemoryManager * mm)
+		: ExternalFunction (X ("hq"), X ("test"), 0, mm) {
+	}
+
+	virtual Result execute (
+			const Arguments * args,
+			DynamicContext * context) const {
+
+		ItemFactory * itemFactory =
+			context->getItemFactory ();
+
+		return Result (
+			itemFactory->createString (
+				X ("hello world"),
+				context));
+
+	}
+
+};
+
+struct MyFunctionResolver :
+	public ExternalFunctionResolver {
+
+	virtual ExternalFunction * resolveExternalFunction (
+		const XMLCh * uri_xmlch,
+		const XMLCh * name_xmlch,
+		size_t numArgs,
+		const StaticContext * context) {
+
+		string uri = UTF8 (uri_xmlch);
+		string name = UTF8 (name_xmlch);
+
+		cerr << "RESOLVE " << uri << "/" << name << "/" << numArgs << "\n";
+
+		if (uri != "hq")
+			return NULL;
+
+		if (name == "test")
+			return new MyFunction (context->getMemoryManager ());
+
+		return NULL;
+
+	}
+
+};
+
 map <string, Session *> sessions;
 
 Session & get_session (string session_id) {
@@ -164,6 +217,21 @@ void compile_xquery (
 			static_context->getDocumentCache ();
 
 		documentCache->setXMLEntityResolver (& session);
+
+MyFunctionResolver myFuncResolver;
+
+static_context->setExternalFunctionResolver (& myFuncResolver);
+
+MyFunction myFunc (static_context->getMemoryManager ());
+static_context->addExternalFunction (& myFunc);
+
+//const ExternalFunctionResolver * temp1 =
+//	static_context->getExternalFunctionResolver ();
+//cerr << "it is " << (temp1 ? "yes" : "no") << "\n";
+
+//const ExternalFunction * temp =
+//	static_context->lookUpExternalFunction (X ("hq"), X ("test"), 0);
+//cerr << "it is " << (temp ? "yes" : "no") << "\n";
 
 		AutoDelete<XQQuery> query (
 			xqilla.parse (

@@ -56,6 +56,25 @@ Feature: XQuery server
       hello world 1, hello world 2
       """
 
+  Scenario: Call a function
+
+	When I compile the query:
+      """
+      declare namespace hq = "hq";
+      declare function hq:test () as xs:string external;
+      hq:test ()
+      """
+
+    And I run the query against:
+      """
+      <doc/>
+      """
+
+    Then the result should be:
+      """
+      hello world
+      """
+
   Scenario: Invalid xquery
 
     When I compile the query:
