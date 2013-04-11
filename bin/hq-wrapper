@@ -1,0 +1,36 @@
+#!/usr/bin/ruby
+
+require "fileutils"
+
+$dir = ARGV.shift
+
+# obtain lock (and delete on exit)
+
+lock_fp =
+	File.open "#{$dir}/lock", "w"
+
+lock_fp.flock File::LOCK_EX
+
+at_exit do
+	File.unlink "#{$dir}/lock"
+end
+
+# install new version
+
+if File.directory? "#{$dir}/new"
+
+	if File.directory? "#{$dir}/current"
+		FileUtils.remove_entry_secure "#{$dir}/current"
+	end
+
+	FileUtils.mv "#{$dir}/new", "#{$dir}/current"
+
+end
+
+# run the process
+
+system *ARGV
+
+# exit
+
+exit $?.exitstatus
