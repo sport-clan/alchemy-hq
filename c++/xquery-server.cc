@@ -105,15 +105,18 @@ struct Session :
 
 };
 
-struct GetByIdFunction :
+struct CallbackFunction :
 	public ExternalFunction {
 
-	GetByIdFunction (
-			XPath2MemoryManager * mm
-		) :
-			ExternalFunction (X ("hq"), X ("get"), 1, mm) {
-
+	CallbackFunction (const char * name, int args, XPath2MemoryManager * mm)
+		: ExternalFunction (X ("hq"), X (name), args, mm) {
 	}
+
+	virtual void setupFuncCall (
+			Json::Value & func_call,
+			const Arguments * args,
+			DynamicContext * context
+		) const = 0;
 
 	virtual Result execute (
 			const Arguments * args,
@@ -125,17 +128,8 @@ struct GetByIdFunction :
 
 		func_call["name"] = "function call";
 		func_call["arguments"] = Json::objectValue;
-		func_call["arguments"]["name"] = "get record by id";
-		func_call["arguments"]["arguments"] = Json::objectValue;
 
-		Result result =
-			args->getArgument (0, context);
-
-		Item::Ptr item =
-			result->next (context);
-
-		func_call["arguments"]["arguments"]["id"] =
-			UTF8 (item->asString (context));
+		setupFuncCall (func_call, args, context);
 
 		Json::FastWriter writer;
 		string func_call_str = writer.write (func_call);
@@ -187,10 +181,10 @@ struct GetByIdFunction :
 				context->parseDocument (
 					input_source);
 
-			result =
+			Result result =
 				value_document->dmChildren (context, NULL);
 
-			item =
+			Item::Ptr item =
 				result->next (context);
 
 			return_sequence.addItem (item);
@@ -198,6 +192,62 @@ struct GetByIdFunction :
 		}
 
 		return return_sequence;
+
+	}
+
+};
+
+struct GetByIdFunction :
+	public CallbackFunction {
+
+	GetByIdFunction (XPath2MemoryManager * mm)
+		: CallbackFunction ("get", 1, mm) {
+	}
+
+	void setupFuncCall (
+			Json::Value & func_call,
+			const Arguments * args,
+			DynamicContext * context) const {
+
+		func_call["arguments"]["name"] = "get record by id";
+		func_call["arguments"]["arguments"] = Json::objectValue;
+
+		Result result =
+			args->getArgument (0, context);
+
+		Item::Ptr item =
+			result->next (context);
+
+		func_call["arguments"]["arguments"]["id"] =
+			UTF8 (item->asString (context));
+
+	}
+
+};
+
+struct FindByTypeFunction :
+	public CallbackFunction {
+
+	FindByTypeFunction (XPath2MemoryManager * mm)
+		: CallbackFunction ("find", 1, mm) {
+	}
+
+	void setupFuncCall (
+			Json::Value & func_call,
+			const Arguments * args,
+			DynamicContext * context) const {
+
+		func_call["arguments"]["name"] = "search records";
+		func_call["arguments"]["arguments"] = Json::objectValue;
+
+		Result result =
+			args->getArgument (0, context);
+
+		Item::Ptr item =
+			result->next (context);
+
+		func_call["arguments"]["arguments"]["type"] =
+			UTF8 (item->asString (context));
 
 	}
 
@@ -224,6 +274,10 @@ public:
 
 		if (name == "get" && numArgs == 1) {
 			return new GetByIdFunction (mm);
+		}
+
+		if (name == "find" && numArgs == 1) {
+			return new FindByTypeFunction (mm);
 		}
 
 		return NULL;

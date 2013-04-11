@@ -56,27 +56,6 @@ Feature: XQuery server
       hello world 1, hello world 2
       """
 
-  Scenario: Call a function
-
-	When I compile the query:
-      """
-      declare namespace hq = "hq";
-      declare function hq:get (
-          $id as xs:string
-        ) as element () external;
-      hq:get ('a')
-      """
-
-    And I run the query against:
-      """
-      <doc/>
-      """
-
-    Then the result should be:
-      """
-      <get-element-by-id id="a"/>
-      """
-
   Scenario: Invalid xquery
 
     When I compile the query:

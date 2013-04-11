@@ -23,12 +23,28 @@ When /^I run the query$/ do
 			xquery_session.run_xquery @input_text \
 		do
 			|name, args|
-			record = XML::Node.new "get-element-by-id"
-			args.each do
-				|name, value|
-				record[name] = value
+
+			case name
+
+			when "get record by id"
+				record = XML::Node.new "get-record-by-id"
+				args.each do
+					|name, value|
+					record[name] = value
+				end
+				[ record.to_s ]
+
+			when "search records"
+				record = XML::Node.new "search-records"
+				record["type"] = args["type"]
+				[ record.to_s ]
+
+			else
+				puts "ERROR #{name}"
+				[]
+
 			end
-			[ record.to_s ]
+
 		end
 
 		@exception = nil
