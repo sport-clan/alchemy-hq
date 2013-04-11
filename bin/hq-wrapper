@@ -29,7 +29,9 @@ end
 
 # run the process
 
-system *ARGV
+Bundler.with_clean_env do
+	system *ARGV
+end
 
 # exit
 
