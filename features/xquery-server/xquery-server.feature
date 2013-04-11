@@ -61,8 +61,10 @@ Feature: XQuery server
 	When I compile the query:
       """
       declare namespace hq = "hq";
-      declare function hq:test () as xs:string external;
-      hq:test ()
+      declare function hq:get (
+          $id as xs:string
+        ) as element () external;
+      hq:get ('a')
       """
 
     And I run the query against:
@@ -72,7 +74,7 @@ Feature: XQuery server
 
     Then the result should be:
       """
-      hello world
+      <get-element-by-id id="a"/>
       """
 
   Scenario: Invalid xquery

@@ -41,7 +41,6 @@ struct Session :
 	XQQuery * query;
 
 	Session () {
-
 		query = NULL;
 	}
 
@@ -49,6 +48,7 @@ struct Session :
 
 		if (query)
 			delete query;
+
 	}
 
 	void set_query (XQQuery * query) {
@@ -102,26 +102,102 @@ struct Session :
 
 		cerr << "TRACE: " << UTF8 (label) << "\n";
 	}
+
 };
 
-struct MyFunction :
+struct GetByIdFunction :
 	public ExternalFunction {
 
-	MyFunction (XPath2MemoryManager * mm)
-		: ExternalFunction (X ("hq"), X ("test"), 0, mm) {
+	GetByIdFunction (
+			XPath2MemoryManager * mm
+		) :
+			ExternalFunction (X ("hq"), X ("get"), 1, mm) {
+
 	}
 
 	virtual Result execute (
 			const Arguments * args,
 			DynamicContext * context) const {
 
+		// send function call
+
+		Json::Value func_call (Json::objectValue);
+
+		func_call["name"] = "function call";
+		func_call["arguments"] = Json::objectValue;
+		func_call["arguments"]["name"] = "get record by id";
+		func_call["arguments"]["arguments"] = Json::objectValue;
+
+		Result result =
+			args->getArgument (0, context);
+
+		Item::Ptr item =
+			result->next (context);
+
+		func_call["arguments"]["arguments"]["id"] =
+			UTF8 (item->asString (context));
+
+		Json::FastWriter writer;
+		string func_call_str = writer.write (func_call);
+		cout << func_call_str.size () << "\n" << func_call_str;
+
 		ItemFactory * itemFactory =
 			context->getItemFactory ();
 
-		return Result (
-			itemFactory->createString (
-				X ("hello world"),
-				context));
+		// read function response
+
+		int func_return_len;
+		cin >> func_return_len;
+
+		char func_return_buf [func_return_len];
+		cin.read (func_return_buf, func_return_len);
+		string func_return_str (func_return_buf, func_return_len);
+
+		Json::Value func_return;
+		Json::Reader reader;
+
+		bool parsingSuccessful =
+			reader.parse (func_return_str, func_return);
+
+		if (! parsingSuccessful) {
+
+			cerr << "Failed to parse request\n"
+				<< reader.getFormattedErrorMessages ();
+
+			exit (1);
+		}
+
+		// return as sequence
+
+		Json::Value values =
+			func_return["arguments"]["values"];
+
+		Sequence return_sequence;
+
+		for (int i = 0; i < values.size (); i++) {
+
+			string value_str = values[i].asString ();
+
+			xercesc::MemBufInputSource input_source (
+				(XMLByte *) value_str.c_str (),
+				value_str.size (),
+				X ("value.xml"));
+
+			Node::Ptr value_document =
+				context->parseDocument (
+					input_source);
+
+			result =
+				value_document->dmChildren (context, NULL);
+
+			item =
+				result->next (context);
+
+			return_sequence.addItem (item);
+
+		}
+
+		return return_sequence;
 
 	}
 
@@ -129,6 +205,8 @@ struct MyFunction :
 
 struct MyFunctionResolver :
 	public ExternalFunctionResolver {
+
+public:
 
 	virtual ExternalFunction * resolveExternalFunction (
 		const XMLCh * uri_xmlch,
@@ -139,13 +217,14 @@ struct MyFunctionResolver :
 		string uri = UTF8 (uri_xmlch);
 		string name = UTF8 (name_xmlch);
 
-		cerr << "RESOLVE " << uri << "/" << name << "/" << numArgs << "\n";
-
 		if (uri != "hq")
 			return NULL;
 
-		if (name == "test")
-			return new MyFunction (context->getMemoryManager ());
+		XPath2MemoryManager * mm (context->getMemoryManager ());
+
+		if (name == "get" && numArgs == 1) {
+			return new GetByIdFunction (mm);
+		}
 
 		return NULL;
 
@@ -218,20 +297,15 @@ void compile_xquery (
 
 		documentCache->setXMLEntityResolver (& session);
 
-MyFunctionResolver myFuncResolver;
+		// set function resolver
 
-static_context->setExternalFunctionResolver (& myFuncResolver);
+		MyFunctionResolver * myFuncResolver =
+			new MyFunctionResolver;
 
-MyFunction myFunc (static_context->getMemoryManager ());
-static_context->addExternalFunction (& myFunc);
+		static_context->setExternalFunctionResolver (
+			myFuncResolver);
 
-//const ExternalFunctionResolver * temp1 =
-//	static_context->getExternalFunctionResolver ();
-//cerr << "it is " << (temp1 ? "yes" : "no") << "\n";
-
-//const ExternalFunction * temp =
-//	static_context->lookUpExternalFunction (X ("hq"), X ("test"), 0);
-//cerr << "it is " << (temp ? "yes" : "no") << "\n";
+		// parse query
 
 		AutoDelete<XQQuery> query (
 			xqilla.parse (

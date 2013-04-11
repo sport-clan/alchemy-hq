@@ -61,7 +61,7 @@ class Session
 		end
 	end
 
-	def run_xquery input_text
+	def run_xquery input_text, &callback
 
 		request = {
 			"name" => "run xquery",
@@ -71,7 +71,31 @@ class Session
 			}
 		}
 
-		reply = @client.perform request
+		# make call and process functions
+
+		reply = nil
+
+		loop do
+
+			reply = @client.perform request
+
+			break unless reply["name"] == "function call"
+
+			function_return_values =
+				callback.call \
+					reply["arguments"]["name"],
+					reply["arguments"]["arguments"]
+
+			request = {
+				"name" => "function return",
+				"arguments" => {
+					"values" => function_return_values,
+				},
+			}
+
+		end
+
+		# process response
 
 		case reply["name"]
 
@@ -90,6 +114,7 @@ class Session
 			else
 				raise "Unknown response: #{reply["name"]}"
 		end
+
 	end
 
 end

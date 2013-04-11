@@ -14,13 +14,32 @@ When /^I compile the query$/ do
 end
 
 When /^I run the query$/ do
+
+	require "xml"
+
 	begin
-		@result_text = xquery_session.run_xquery @input_text
+
+		@result_text =
+			xquery_session.run_xquery @input_text \
+		do
+			|name, args|
+			record = XML::Node.new "get-element-by-id"
+			args.each do
+				|name, value|
+				record[name] = value
+			end
+			[ record.to_s ]
+		end
+
 		@exception = nil
+
 	rescue => exception
+
 		@exception = exception
 		@result_text = nil
+
 	end
+
 end
 
 When /^I compile the query:$/ do |xquery_text|
