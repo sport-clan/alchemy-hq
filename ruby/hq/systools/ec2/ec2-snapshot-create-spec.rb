@@ -13,8 +13,7 @@ module HQ::SysTools::EC2
 
 				<ec2-snapshots-config
 					lock="lock-file"
-					state="state-file"
-					daily-hour="17">
+					state="state-file">
 
 					<aws-account
 						name="account-1"
@@ -66,7 +65,8 @@ module HQ::SysTools::EC2
 						availability-zone="zone-2"
 						volume-id="volume-2"
 						policy="medium"
-						frequency="daily"/>
+						frequency="daily"
+						daily-hour="17"/>
 
 					<volume
 						host="host-3"

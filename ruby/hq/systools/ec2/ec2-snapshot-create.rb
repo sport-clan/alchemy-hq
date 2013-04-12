@@ -134,7 +134,8 @@ class Ec2SnapshotCreateScript
 	end
 
 	def do_account_region \
-			hour, minute,
+			hour,
+			minute,
 			aws_account_name,
 			access_key_id,
 			secret_access_key,
@@ -173,29 +174,32 @@ class Ec2SnapshotCreateScript
 			]
 		"
 
-		daily_hour =
-			@config_elem.attributes["daily-hour"].to_i
-
 		@config_elem.find(volumes_xp).each do |volume_elem|
 
 			host =
-				volume_elem.attributes["host"]
+				volume_elem["host"]
 
 			volume_id =
-				volume_elem.attributes["volume-id"]
+				volume_elem["volume-id"]
 
 			volume_minute =
-				volume_elem.attributes["minute"]
+				volume_elem["minute"]
 
 			volume_frequency =
-				volume_elem.attributes["frequency"]
+				volume_elem["frequency"]
 
 			next \
 				unless volume_minute == minute.to_s
 
-			next \
-				if volume_frequency == "daily" \
-					&& hour != daily_hour
+			if volume_frequency == "daily"
+
+				daily_hour =
+					volume_elem["daily-hour"].to_i
+
+				next \
+					unless hour == daily_hour
+
+			end
 
 			do_volume \
 				aws_client,
