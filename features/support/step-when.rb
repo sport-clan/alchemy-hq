@@ -48,6 +48,13 @@ When /^I run the query$/ do
 			when "search records"
 				record = XML::Node.new "search-records"
 				record["type"] = args["type"]
+				(args["criteria"] || []).each do
+					|key, value|
+					criteria_elem = XML::Node.new "criteria"
+					criteria_elem["key"] = key
+					criteria_elem["value"] = value
+					record << criteria_elem
+				end
 				[ record.to_s ]
 
 			else

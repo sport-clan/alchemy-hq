@@ -302,6 +302,72 @@ struct FindByTypeFunction :
 
 };
 
+struct FindByTypeCriteriaFunction :
+	public CallbackFunction {
+
+	FindByTypeCriteriaFunction (XPath2MemoryManager * mm)
+		: CallbackFunction ("find", 2, mm) {
+	}
+
+	void setupFuncCall (
+			Json::Value & func_call,
+			const Arguments * args,
+			DynamicContext * context) const {
+
+		func_call["arguments"]["name"] = "search records";
+		func_call["arguments"]["arguments"] = Json::objectValue;
+
+		Result result =
+			args->getArgument (0, context);
+
+		Item::Ptr item =
+			result->next (context);
+
+		func_call["arguments"]["arguments"]["type"] =
+			UTF8 (item->asString (context));
+
+		// add criteria
+
+		Json::Value & criteria_json =
+			func_call["arguments"]["arguments"]["criteria"];
+
+		criteria_json =
+			Json::objectValue;
+
+		Result criteria_result =
+			args->getArgument (1, context);
+
+		while (
+			Item::Ptr criteria_item =
+				criteria_result->next (context)
+		) {
+
+			string criteria_str =
+				UTF8 (criteria_item->asString (context));
+
+			int pos =
+				criteria_str.find ('=');
+
+			if (pos == string::npos) {
+				cerr << "ERROR 64168123\n";
+				exit (1);
+			}
+
+			string criteria_key_str =
+				criteria_str.substr (0, pos);
+
+			string criteria_value_str =
+				criteria_str.substr (pos + 1);
+
+			criteria_json[criteria_key_str] =
+				criteria_value_str;
+
+		}
+
+	}
+
+};
+
 struct MyFunctionResolver :
 	public ExternalFunctionResolver {
 
@@ -334,8 +400,15 @@ public:
 		if (name == "get" && numArgs == 1)
 			return new GetByIdFunction (mm);
 
-		if (name == "find" && numArgs == 1)
-			return new FindByTypeFunction (mm);
+		if (name == "find") {
+
+			if (numArgs == 1)
+				return new FindByTypeFunction (mm);
+
+			if (numArgs == 2)
+				return new FindByTypeCriteriaFunction (mm);
+
+		}
 
 		return NULL;
 
