@@ -34,6 +34,17 @@ When /^I run the query$/ do
 				end
 				[ record.to_s ]
 
+			when "get record by id parts"
+				record = XML::Node.new "get-record-by-id-parts"
+				record["type"] = args["type"]
+				args["id parts"].each do
+					|arg_part|
+					part = XML::Node.new "part"
+					part["value"] = arg_part
+					record << part
+				end
+				[ record.to_s ]
+
 			when "search records"
 				record = XML::Node.new "search-records"
 				record["type"] = args["type"]

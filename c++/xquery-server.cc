@@ -225,6 +225,55 @@ struct GetByIdFunction :
 
 };
 
+struct GetByIdPartsFunction :
+	public CallbackFunction {
+
+	GetByIdPartsFunction (XPath2MemoryManager * mm)
+		: CallbackFunction ("get", 2, mm) {
+	}
+
+	void setupFuncCall (
+			Json::Value & func_call,
+			const Arguments * args,
+			DynamicContext * context) const {
+
+		func_call["arguments"]["name"] = "get record by id parts";
+		func_call["arguments"]["arguments"] = Json::objectValue;
+
+		Result result =
+			args->getArgument (0, context);
+
+		Item::Ptr item =
+			result->next (context);
+
+		func_call["arguments"]["arguments"]["type"] =
+			UTF8 (item->asString (context));
+
+		// add id parts
+
+		Json::Value & id_parts_json =
+			func_call["arguments"]["arguments"]["id parts"];
+
+		id_parts_json =
+			Json::arrayValue;
+
+		Result id_parts_result =
+			args->getArgument (1, context);
+
+		while (
+			Item::Ptr id_part_item =
+				id_parts_result->next (context)
+		) {
+
+			id_parts_json.append (
+				UTF8 (id_part_item->asString (context)));
+
+		}
+
+	}
+
+};
+
 struct FindByTypeFunction :
 	public CallbackFunction {
 
@@ -272,13 +321,21 @@ public:
 
 		XPath2MemoryManager * mm (context->getMemoryManager ());
 
-		if (name == "get" && numArgs == 1) {
-			return new GetByIdFunction (mm);
+		if (name == "get") {
+
+			if (numArgs == 1)
+				return new GetByIdFunction (mm);
+
+			if (numArgs == 2)
+				return new GetByIdPartsFunction (mm);
+
 		}
 
-		if (name == "find" && numArgs == 1) {
+		if (name == "get" && numArgs == 1)
+			return new GetByIdFunction (mm);
+
+		if (name == "find" && numArgs == 1)
 			return new FindByTypeFunction (mm);
-		}
 
 		return NULL;
 
