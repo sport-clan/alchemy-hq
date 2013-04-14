@@ -132,6 +132,8 @@ class Master
 
 			# sort tasks into appropriate hosts and classes
 
+			task_elems = {}
+
 			[ "task", "sub-task" ].each do
 				|type|
 
@@ -143,23 +145,45 @@ class Master
 				do
 					|task_elem|
 
-					case task_elem["target-type"]
+					target_key = [
+						task_elem["target-type"],
+						task_elem["target-name"],
+					].join "/"
 
-					when "host"
-						doc = host_docs[task_elem["target-name"]]
+					task_key = [
+						task_elem.name,
+						task_elem["name"],
+					].join "/"
 
-					when "class"
-						doc = class_docs[task_elem["target-name"]]
+					target_task_elems = task_elems[target_key] ||= {}
+					raise "Duplicate task" if target_task_elems[task_key]
+					target_task_elems[task_key] = task_elem
 
-					else
-						raise "error"
+				end
 
+			end
+
+			task_elems.each do
+				|target_key, target_task_elems|
+
+				target_type, target_name =
+					target_key.split "/"
+
+				doc =
+					case target_type
+						when "host"
+							host_docs[target_name]
+						when "class"
+							class_docs[target_name]
+						else
+							raise "error"
 					end
 
-					next unless doc
+				next unless doc
 
+				target_task_elems.sort.each do
+					|task_name, task_elem|
 					doc.root << doc.import(task_elem)
-
 				end
 
 			end
