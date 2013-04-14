@@ -36,7 +36,9 @@ struct Session :
 	public ModuleResolver,
 	public xercesc::XMLEntityResolver {
 
-	map<string,string> modules;
+	map <string, string> modules;
+	map <string, Sequence *> record_cache;
+	map <string, Sequence *> find_cache;
 
 	XQQuery * query;
 
@@ -78,13 +80,13 @@ struct Session :
 		if (! modules.count (system_id))
 			return NULL;
 
-		string module_text =
+		string & module_text =
 			modules [system_id];
 
 		return new xercesc::MemBufInputSource (
 			(XMLByte *) module_text.data (),
 			module_text.size (),
-			resource_id->getSystemId ());
+			X (system_id.c_str ()));
 	}
 
 	virtual void warning (
@@ -108,28 +110,37 @@ struct Session :
 struct CallbackFunction :
 	public ExternalFunction {
 
-	CallbackFunction (const char * name, int args, XPath2MemoryManager * mm)
-		: ExternalFunction (X ("hq"), X (name), args, mm) {
+	Session * session;
+
+	CallbackFunction (
+			const char * name,
+			int args,
+			Session * session,
+			XPath2MemoryManager * mm)
+
+		: ExternalFunction (
+			X ("hq"),
+			X (name),
+			args,
+			mm),
+
+		session (session) {
+
 	}
 
-	virtual void setupFuncCall (
-			Json::Value & func_call,
-			const Arguments * args,
-			DynamicContext * context
-		) const = 0;
+	Sequence * makeFuncCall (
+			DynamicContext * context,
+			const char * name,
+			Json::Value & arguments) const {
 
-	virtual Result execute (
-			const Arguments * args,
-			DynamicContext * context) const {
+		// send function request
 
-		// send function call
+		Json::Value func_call = Json::objectValue;
 
-		Json::Value func_call (Json::objectValue);
-
-		func_call["name"] = "function call";
-		func_call["arguments"] = Json::objectValue;
-
-		setupFuncCall (func_call, args, context);
+		func_call ["name"] = "function call";
+		func_call ["arguments"] = Json::objectValue;
+		func_call ["arguments"] ["name"] = name;
+		func_call ["arguments"] ["arguments"] = arguments;
 
 		Json::FastWriter writer;
 		string func_call_str = writer.write (func_call);
@@ -164,13 +175,15 @@ struct CallbackFunction :
 		// return as sequence
 
 		Json::Value values =
-			func_return["arguments"]["values"];
+			func_return ["arguments"] ["values"];
 
-		Sequence return_sequence;
+		Sequence * return_sequence =
+			new Sequence ();
 
 		for (int i = 0; i < values.size (); i++) {
 
-			string value_str = values[i].asString ();
+			string value_str =
+				values [i].asString ();
 
 			xercesc::MemBufInputSource input_source (
 				(XMLByte *) value_str.c_str (),
@@ -187,7 +200,7 @@ struct CallbackFunction :
 			Item::Ptr item =
 				result->next (context);
 
-			return_sequence.addItem (item);
+			return_sequence->addItem (item);
 
 		}
 
@@ -200,17 +213,22 @@ struct CallbackFunction :
 struct GetByIdFunction :
 	public CallbackFunction {
 
-	GetByIdFunction (XPath2MemoryManager * mm)
-		: CallbackFunction ("get", 1, mm) {
+	GetByIdFunction (
+			Session * session,
+			XPath2MemoryManager * mm)
+
+		: CallbackFunction (
+			"get",
+			1,
+			session,
+			mm) {
 	}
 
-	void setupFuncCall (
-			Json::Value & func_call,
+	Result execute (
 			const Arguments * args,
 			DynamicContext * context) const {
 
-		func_call["arguments"]["name"] = "get record by id";
-		func_call["arguments"]["arguments"] = Json::objectValue;
+		// determine id
 
 		Result result =
 			args->getArgument (0, context);
@@ -218,8 +236,33 @@ struct GetByIdFunction :
 		Item::Ptr item =
 			result->next (context);
 
-		func_call["arguments"]["arguments"]["id"] =
+		string id =
 			UTF8 (item->asString (context));
+
+		// check cache
+
+		if (session->record_cache.count (id))
+			return * session->record_cache [id];
+
+		// make call
+
+		Json::Value arguments = Json::objectValue;
+
+		arguments ["id"] = id;
+
+		Sequence * ret =
+			makeFuncCall (
+				context,
+				"get record by id",
+				arguments);
+
+		// store in cache
+
+		session->record_cache [id] = ret;
+
+		// and return
+
+		return * ret;
 
 	}
 
@@ -228,17 +271,22 @@ struct GetByIdFunction :
 struct GetByIdPartsFunction :
 	public CallbackFunction {
 
-	GetByIdPartsFunction (XPath2MemoryManager * mm)
-		: CallbackFunction ("get", 2, mm) {
+	GetByIdPartsFunction (
+			Session * session,
+			XPath2MemoryManager * mm)
+
+		: CallbackFunction (
+			"get",
+			2,
+			session,
+			mm) {
 	}
 
-	void setupFuncCall (
-			Json::Value & func_call,
+	Result execute (
 			const Arguments * args,
 			DynamicContext * context) const {
 
-		func_call["arguments"]["name"] = "get record by id parts";
-		func_call["arguments"]["arguments"] = Json::objectValue;
+		// determine id - start with type
 
 		Result result =
 			args->getArgument (0, context);
@@ -246,16 +294,10 @@ struct GetByIdPartsFunction :
 		Item::Ptr item =
 			result->next (context);
 
-		func_call["arguments"]["arguments"]["type"] =
+		string id =
 			UTF8 (item->asString (context));
 
-		// add id parts
-
-		Json::Value & id_parts_json =
-			func_call["arguments"]["arguments"]["id parts"];
-
-		id_parts_json =
-			Json::arrayValue;
+		// determine id - then id parts
 
 		Result id_parts_result =
 			args->getArgument (1, context);
@@ -265,10 +307,35 @@ struct GetByIdPartsFunction :
 				id_parts_result->next (context)
 		) {
 
-			id_parts_json.append (
-				UTF8 (id_part_item->asString (context)));
+			id.append ("/");
+			id.append (UTF8 (id_part_item->asString (context)));
 
 		}
+
+		// check cache
+
+		if (session->record_cache.count (id))
+			return * session->record_cache [id];
+
+		// make function call
+
+		Json::Value arguments = Json::objectValue;
+
+		arguments ["id"] = id;
+
+		Sequence * ret =
+			makeFuncCall (
+				context,
+				"get record by id",
+				arguments);
+
+		// update cache
+
+		session->record_cache [id] = ret;
+
+		// and return
+
+		return * ret;
 
 	}
 
@@ -277,17 +344,22 @@ struct GetByIdPartsFunction :
 struct FindByTypeFunction :
 	public CallbackFunction {
 
-	FindByTypeFunction (XPath2MemoryManager * mm)
-		: CallbackFunction ("find", 1, mm) {
+	FindByTypeFunction (
+			Session * session,
+			XPath2MemoryManager * mm)
+
+		: CallbackFunction (
+			"find",
+			1,
+			session,
+			mm) {
 	}
 
-	void setupFuncCall (
-			Json::Value & func_call,
+	Result execute (
 			const Arguments * args,
 			DynamicContext * context) const {
 
-		func_call["arguments"]["name"] = "search records";
-		func_call["arguments"]["arguments"] = Json::objectValue;
+		// determine type
 
 		Result result =
 			args->getArgument (0, context);
@@ -295,8 +367,34 @@ struct FindByTypeFunction :
 		Item::Ptr item =
 			result->next (context);
 
-		func_call["arguments"]["arguments"]["type"] =
+		string type =
 			UTF8 (item->asString (context));
+
+		// check cache
+
+		if (session->find_cache.count (type))
+			return * session->find_cache [type];
+
+		// make function call
+
+		Json::Value arguments = Json::objectValue;
+
+		arguments ["type"] =
+			type;
+
+		Sequence * ret =
+			makeFuncCall (
+				context,
+				"search records",
+				arguments);
+
+		// update cache
+
+		session->find_cache [type] = ret;
+
+		// return
+
+		return * ret;
 
 	}
 
@@ -305,17 +403,23 @@ struct FindByTypeFunction :
 struct FindByTypeCriteriaFunction :
 	public CallbackFunction {
 
-	FindByTypeCriteriaFunction (XPath2MemoryManager * mm)
-		: CallbackFunction ("find", 2, mm) {
+	FindByTypeCriteriaFunction (
+			Session * session,
+			XPath2MemoryManager * mm)
+
+		: CallbackFunction (
+			"find",
+			2,
+			session,
+			mm) {
+
 	}
 
-	void setupFuncCall (
-			Json::Value & func_call,
+	Result execute (
 			const Arguments * args,
 			DynamicContext * context) const {
 
-		func_call["arguments"]["name"] = "search records";
-		func_call["arguments"]["arguments"] = Json::objectValue;
+		Json::Value arguments = Json::objectValue;
 
 		Result result =
 			args->getArgument (0, context);
@@ -323,13 +427,13 @@ struct FindByTypeCriteriaFunction :
 		Item::Ptr item =
 			result->next (context);
 
-		func_call["arguments"]["arguments"]["type"] =
+		arguments ["type"] =
 			UTF8 (item->asString (context));
 
 		// add criteria
 
 		Json::Value & criteria_json =
-			func_call["arguments"]["arguments"]["criteria"];
+			arguments ["criteria"];
 
 		criteria_json =
 			Json::objectValue;
@@ -359,10 +463,18 @@ struct FindByTypeCriteriaFunction :
 			string criteria_value_str =
 				criteria_str.substr (pos + 1);
 
-			criteria_json[criteria_key_str] =
+			criteria_json [criteria_key_str] =
 				criteria_value_str;
 
 		}
+
+		Sequence * ret =
+			makeFuncCall (
+				context,
+				"search records",
+				arguments);
+
+		return * ret;
 
 	}
 
@@ -371,7 +483,7 @@ struct FindByTypeCriteriaFunction :
 struct MyFunctionResolver :
 	public ExternalFunctionResolver {
 
-public:
+	Session * session;
 
 	virtual ExternalFunction * resolveExternalFunction (
 		const XMLCh * uri_xmlch,
@@ -390,23 +502,23 @@ public:
 		if (name == "get") {
 
 			if (numArgs == 1)
-				return new GetByIdFunction (mm);
+				return new GetByIdFunction (session, mm);
 
 			if (numArgs == 2)
-				return new GetByIdPartsFunction (mm);
+				return new GetByIdPartsFunction (session, mm);
 
 		}
 
 		if (name == "get" && numArgs == 1)
-			return new GetByIdFunction (mm);
+			return new GetByIdFunction (session, mm);
 
 		if (name == "find") {
 
 			if (numArgs == 1)
-				return new FindByTypeFunction (mm);
+				return new FindByTypeFunction (session, mm);
 
 			if (numArgs == 2)
-				return new FindByTypeCriteriaFunction (mm);
+				return new FindByTypeCriteriaFunction (session, mm);
 
 		}
 
@@ -460,10 +572,14 @@ void set_error (
 void compile_xquery (
 		Json::Value & reply,
 		string session_id,
-		string xquery_text) {
+		string xquery_text,
+		string filename) {
 
 	Session & session =
 		get_session (session_id);
+
+	session.record_cache.clear ();
+	session.find_cache.clear ();
 
 	try {
 
@@ -486,21 +602,30 @@ void compile_xquery (
 		MyFunctionResolver * myFuncResolver =
 			new MyFunctionResolver;
 
+		myFuncResolver->session = & session;
+
 		static_context->setExternalFunctionResolver (
 			myFuncResolver);
+
+		// create input source
+
+		xercesc::MemBufInputSource input_source (
+			(XMLByte *) xquery_text.data (),
+			xquery_text.size (),
+			X (filename.c_str ()));
 
 		// parse query
 
 		AutoDelete<XQQuery> query (
 			xqilla.parse (
-				X (xquery_text.c_str ()),
+				input_source,
 				static_context.adopt ()));
 
 		session.set_query (query.adopt ());
 
 	} catch (XQException & error) {
 
-		cerr << UTF8 (error.getError ()) << "\n";
+		//cerr << UTF8 (error.getError ()) << "\n";
 
 		set_error (reply, error);
 
@@ -640,7 +765,8 @@ string handle_request (
 		compile_xquery (
 			reply,
 			request_arguments ["session id"].asString (),
-			request_arguments ["xquery text"].asString ());
+			request_arguments ["xquery text"].asString (),
+			request_arguments ["xquery filename"].asString ());
 
 	} else if (request_name == "run xquery") {
 

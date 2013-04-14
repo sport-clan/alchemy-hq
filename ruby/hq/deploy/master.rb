@@ -62,7 +62,8 @@ class Master
 
 			class_names = []
 
-			host_names.each do |host_name|
+			host_names.each do
+				|host_name|
 
 				FileUtils.mkdir "#{work_dir}/deploy/host/#{host_name}"
 

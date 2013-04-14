@@ -1,20 +1,30 @@
+require "hq/engine/libxmlruby-mixin"
+
 module HQ
 module Engine
 class Transformer
+
+	include LibXmlRubyMixin
 
 	attr_accessor :parent
 
 	def logger() parent.logger end
 	def xquery_client() parent.xquery_client end
 
-	def config_dir() parent.config_dir end
-	def work_dir() parent.work_dir end
+	attr_accessor :schema_file
+	attr_accessor :rules_dir
+	attr_accessor :include_dir
+	attr_accessor :input_dir
+	attr_accessor :output_dir
 
-	attr_accessor :input_docs
-	attr_accessor :schema_elems
+	attr_reader :data
 
-	attr_reader :results
-	attr_reader :rules
+	def load_schema
+
+		@schemas =
+			load_schema_file schema_file
+
+	end
 
 	def load_rules
 
@@ -22,11 +32,11 @@ class Transformer
 
 		@rules = {}
 
-		Dir.glob("#{config_dir}/rules/**/*").each do
+		Dir.glob("#{rules_dir}/**/*").each do
 			|filename|
 
 			next unless filename =~ /^
-				#{Regexp.quote "#{config_dir}/rules/"}
+				#{Regexp.quote "#{rules_dir}/"}
 				(
 					(.+)
 					\. (xquery)
@@ -36,6 +46,7 @@ class Transformer
 			rule = {}
 			rule[:name] = $2
 			rule[:type] = $3
+			rule[:filename] = "#{$2}.#{$3}"
 			rule[:path] = filename
 			rule[:source] = File.read rule[:path]
 			rule[:in] = []
@@ -54,43 +65,35 @@ class Transformer
 
 	end
 
-	def get_record_id_short record_elem
+	def init_xquery_session
 
-		schema_elem =
-			@schema_elems["schema/#{record_elem.name}"]
+		@xquery_session =
+			xquery_client.session
 
-		unless schema_elem
-			raise "No schema for #{record_elem.name}"
-		end
+		# add hq module
+		# TODO move this somewhere
 
-		id_parts =
-			schema_elem.find("id/*").to_a.map do
-				|id_elem|
+		@xquery_session.set_library_module \
+			"hq",
+			"
+				module namespace hq = \"hq\";
 
-				part =
-					record_elem[id_elem["name"]]
+				declare function hq:get (
+					$id as xs:string
+				) as element () ?
+				external;
 
-				unless part
-					raise "No #{id_elem["name"]} for #{record_elem.name}"
-				end
+				declare function hq:get (
+					$type as xs:string,
+					$id-parts as xs:string *
+				) as element () ?
+				external;
 
-				part
-
-			end
-
-		id =
-			id_parts.join "/"
-
-		return id
-
-	end
-
-	def get_record_id_long record_elem
-
-		return "%s/%s" % [
-			record_elem.name,
-			get_record_id_short(record_elem),
-		]
+				declare function hq:find (
+					$type as xs:string
+				) as element () *
+				external;
+			"
 
 	end
 
@@ -100,17 +103,16 @@ class Transformer
 
 		logger.time "performing transformation" do
 
-			load_rules
-
-			load_input_into_results
-			load_input_into_data
-
-			@xquery_session =
-				xquery_client.session
-
-			load_includes
-
 			remove_output
+
+			init_xquery_session
+
+			@data = {}
+
+			load_schema
+			load_rules
+			load_input
+			load_includes
 
 			@remaining_rules =
 				@rules.clone
@@ -151,36 +153,24 @@ class Transformer
 
 	end
 
-	def load_input_into_results
+	def load_input
 
-		@results = {}
+		logger.debug "reading input from disk"
 
-		@input_docs.each do
-			|name, input_doc|
+		logger.time "reading input from disk" do
 
-			@results[name] = {
-				:doc => input_doc,
-			}
+			Dir["#{input_dir}/*.xml"].each do
+				|filename|
 
-		end
+				input_data =
+					load_data_file filename
 
-	end
+				input_data.each do
+					|item_dom|
 
-	def load_input_into_data
+					store_data item_dom
 
-		@data = {}
-
-		@input_docs.each do
-			|name, input_doc|
-
-			input_doc.root.each_element do
-				|input_elem|
-
-				record_id =
-					get_record_id_long input_elem
-
-				@data[record_id] =
-					input_elem
+				end
 
 			end
 
@@ -189,9 +179,6 @@ class Transformer
 	end
 
 	def load_includes
-
-		include_dir =
-			"#{config_dir}/include"
 
 		Dir["#{include_dir}/*.xquery"].each do
 			|path|
@@ -209,11 +196,11 @@ class Transformer
 
 	def remove_output
 
-		if File.directory? "#{work_dir}/output"
-			FileUtils.remove_entry_secure "#{work_dir}/output"
+		if File.directory? output_dir
+			FileUtils.remove_entry_secure output_dir
 		end
 
-		FileUtils.mkdir "#{work_dir}/output"
+		FileUtils.mkdir output_dir
 
 	end
 
@@ -231,7 +218,7 @@ class Transformer
 
 		@schema_types =
 			Set.new(
-				@schema_elems.keys
+				@schemas.keys
 			)
 
 		rules_for_pass =
@@ -289,16 +276,30 @@ class Transformer
 				end
 			]
 
+		num_processed = 0
+
 		rules_for_pass.each do
 			|rule_name, rule|
 
-			@remaining_rules.delete rule_name
+			used_types =
+				rebuild_one rule
 
-			rebuild_one rule
+			missing_types =
+				used_types.select {
+					|type|
+					@incomplete_types.include? type
+				}
+
+			raise "Error" unless missing_types.empty?
+
+			if missing_types.empty?
+				@remaining_rules.delete rule_name
+				num_processed += 1
+			end
 
 		end
 
-		return rules_for_pass.size
+		return num_processed
 
 	end
 
@@ -310,182 +311,146 @@ class Transformer
 		logger.debug "rebuilding rule #{rule_name}"
 		logger.time "rebuilding rule #{rule_name}" do
 
-			# setup rule
-
-			doc = XML::Document.new
-			doc.root = XML::Node.new "data"
-
-			rule[:in].each do
-				|in_name|
-
-				result = @results[in_name]
-
-				unless result
-					logger.debug "No rule result for #{in_name}, " \
-						+ "requested by #{rule_name}"
-					next
-				end
-
-				result[:doc].root.each do
-					|elem|
-					doc.root << doc.import(elem)
-				end
-
-			end
-
-			@xquery_session.set_library_module \
-				"input.xml",
-				doc.to_s
-
 			# perform query
+
+			used_types = Set.new
+			result_str = nil
 
 			begin
 
 				@xquery_session.compile_xquery \
-					rule[:source]
+					rule[:source],
+					rule[:filename]
 
-				rule[:str] = \
+				result_str =
 					@xquery_session.run_xquery \
-						"<xml/>"
+						"<xml/>" \
+				do
+					|name, args|
 
-			rescue => e
-				logger.error e.to_s
-				logger.detail e.backtrace.join("\n")
+					case name
+
+					when "get record by id"
+						args["id"] =~ /^([^\/]+)\//
+						used_types << $1
+						record = @data[args["id"]]
+						record ? [ record ] : []
+
+					when "get record by id parts"
+						used_types << args["type"]
+						id = [ args["type"], *args["id parts"] ].join "/"
+						record = @data[id]
+						record ? [ record ] : []
+
+					when "search records"
+						used_types << args["type"]
+						regex = /^#{Regexp.escape args["type"]}\//
+						@data \
+							.select { |id, record| id =~ regex }
+							.sort
+							.map { |id, record| record }
+
+					else
+						raise "No such function #{name}"
+
+					end
+
+				end
+
+#puts "USED: #{used_types.to_a.join " "}"
+#puts "INCOMPLETE: #{@incomplete_types.to_a.join " "}"
+				missing_types = used_types & @incomplete_types
+puts "MISSING: #{missing_types.to_a.join " "}" unless missing_types.empty?
+				return missing_types unless missing_types.empty?
+
+			rescue XQuery::XQueryError => exception
+
+				logger.die "%s:%s:%s %s" % [
+					exception.file,
+					exception.line,
+					exception.column,
+					exception.message
+				]
+
+			rescue => exception
+				logger.error "%s: %s" % [
+					exception.class,
+					exception.to_s,
+				]
+				logger.detail exception.backtrace.join("\n")
 				FileUtils.touch "#{work_dir}/error-flag"
 				raise "error compiling #{rule[:path]}"
 			end
 
 			# process output
 
-			rule[:doc] =
-				XML::Document.string \
-					rule[:str],
-					:options => XML::Parser::Options::NOBLANKS
+			result_doms =
+				load_data_string result_str
 
-			rule[:result] = {}
+			result_doms.each do
+				|item_dom|
 
-			rule[:out].each do
-				|out|
-				rule[:result][out] = []
-			end
+				begin
 
-			rule[:doc].root.find("*").each do
-				|elem|
+					item_id =
+						get_record_id_long \
+							@schemas,
+							item_dom
 
-				unless rule[:out].include? elem.name
-					raise "rule %s created invalid output type %s" % [
+				rescue => e
+
+					logger.die "record id error for %s created by %s" % [
+						item_dom.name,
 						rule_name,
-						elem.name,
 					]
-				end
-
-				rule[:result][elem.name] << elem
-
-			end
-
-			# write output
-
-			FileUtils.mkdir_p "#{work_dir}/output/#{rule_name}"
-
-			rule[:result].each do
-				|result_name, elems|
-
-				doc = XML::Document.new
-				doc.root = XML::Node.new "data"
-				elems.each { |elem| doc.root << doc.import(elem) }
-				doc.save "#{work_dir}/output/#{rule_name}/#{result_name}.xml"
-
-			end
-
-			# add output to data
-
-			rule[:result].each do
-				|result_name, elems|
-
-				elems.each do
-					|elem|
-
-					begin
-
-						record_id =
-							get_record_id_long elem
-
-					rescue => e
-
-						logger.die "record id error for %s created by %s" % [
-							elem.name,
-							rule_name,
-						]
-
-					end
-
-					if @data[record_id]
-						raise "duplicate record id #{record_id}"
-					end
-
-					@data[record_id] =
-						elem
 
 				end
 
+				store_data item_dom
+
 			end
 
-			# add output to results
-
-			rule[:result].each do |result_name, elems|
-				set_result result_name, elems
-			end
+			return []
 
 		end
 
 	end
 
-	def set_result name, elems
+	def store_data item_dom
 
-		result = @results[name]
+		# determine id
 
-		unless result
+		item_id =
+			get_record_id_long \
+				@schemas,
+				item_dom
 
-			result = {}
-
-			result[:doc] = XML::Document.new
-			result[:doc].root = XML::Node.new "data"
-
-			@results[name] = result
-
+		if @data[item_id]
+			raise "duplicate record id #{item_id}"
 		end
 
-		doc = result[:doc]
+		# store in memory
 
-		elems.each do
-			|elem|
-			doc.root << doc.import(elem)
-		end
+		item_xml =
+			to_xml_string item_dom
 
-	end
+		@data[item_id] =
+			item_xml
 
-	def load_results
+		# store in filesystem
 
-		@results = {}
+		item_path =
+			"#{output_dir}/data/#{item_id}.xml"
 
-		Dir[
-			"#{work_dir}/output/**/*.xml",
-			"#{work_dir}/input/*.xml",
-		].each do
-			|path|
+		item_dir =
+			File.dirname item_path
 
-			result_name =
-				File.basename path, ".xml"
+		FileUtils.mkdir_p \
+			item_dir
 
-			result_doc =
-				XML::Document.file \
-					path,
-					:options => XML::Parser::Options::NOBLANKS
-
-			set_result \
-				result_name,
-				result_doc.root.find("*")
-
+		File.open item_path, "w" do
+			|file_io|
+			file_io.puts item_xml
 		end
 
 	end

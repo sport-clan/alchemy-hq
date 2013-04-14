@@ -4,9 +4,16 @@ Before do
 end
 
 When /^I compile the query$/ do
+
 	begin
-		@result_text = xquery_session.compile_xquery @xquery_text
+
+		@result_text =
+			xquery_session.compile_xquery \
+				@xquery_text,
+				"inline.xquery"
+
 		@exception = nil
+
 	rescue => exception
 		@exception = exception
 		@result_text = nil

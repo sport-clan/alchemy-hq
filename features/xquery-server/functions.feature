@@ -40,10 +40,7 @@ Feature: Callback functions
 
     Then the result should be:
       """
-      <get-record-by-id-parts type="a">
-        <part value="b"/>
-        <part value="c"/>
-      </get-record-by-id-parts>
+      <get-record-by-id id="a/b/c"/>
       """
 
   Scenario: Find all by type

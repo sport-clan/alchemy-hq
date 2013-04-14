@@ -1,6 +1,10 @@
+require "hq/engine/libxmlruby-mixin"
+
 module HQ
 module Engine
 class Engine
+
+	include LibXmlRubyMixin
 
 	attr_accessor :main
 
@@ -10,6 +14,8 @@ class Engine
 	def couch() main.couch end
 	def logger() main.logger end
 	def work_dir() main.work_dir end
+
+	def schema_file() "#{work_dir}/schema.xml" end
 
 	def abstract
 
@@ -48,11 +54,7 @@ class Engine
 
 	end
 
-	def transform
-
-		return if warn_no_config
-
-		# ensure work dir exists
+	def create_work_dir
 
 		if File.exist? "#{work_dir}/error-flag"
 			logger.warning "removing work directory due to previous error"
@@ -61,55 +63,45 @@ class Engine
 
 		FileUtils.mkdir_p work_dir
 
-		# ensure schema doc exists and remember it
+	end
 
-		schema_file = "#{work_dir}/schema.xml"
+	def create_default_schema
 
-		unless File.exists? schema_file
+		return if File.exists? schema_file
 
-			logger.trace "writing schema.xml (empty)"
+		logger.trace "writing schema.xml (empty)"
 
-			File.open schema_file, "w" do |f|
-				f.print "<schemas>\n"
-				f.print "\t<schema name=\"schema\">\n"
-				f.print "\t\t<id>\n"
-				f.print "\t\t\t<text name=\"name\"/>\n"
-				f.print "\t\t</id>\n"
-				f.print "\t\t<fields>\n"
-				f.print "\t\t</fields>\n"
-				f.print "\t\t<table>\n"
-				f.print "\t\t\t<col name=\"name\"/>\n"
-				f.print "\t\t</table>\n"
-				f.print "\t</schema>\n"
-				f.print "</schemas>\n"
-			end
-
+		File.open schema_file, "w" do |f|
+			f.print "<data>\n"
+			f.print "\t<schema name=\"schema\">\n"
+			f.print "\t\t<id>\n"
+			f.print "\t\t\t<text name=\"name\"/>\n"
+			f.print "\t\t</id>\n"
+			f.print "\t\t<fields>\n"
+			f.print "\t\t</fields>\n"
+			f.print "\t\t<table>\n"
+			f.print "\t\t\t<col name=\"name\"/>\n"
+			f.print "\t\t</table>\n"
+			f.print "\t</schema>\n"
+			f.print "</data>\n"
 		end
 
-		old_schema_data = File.read(schema_file)
+	end
+
+	def transform
+
+		return if warn_no_config
+
+		create_work_dir
+
+		create_default_schema
+
+		old_schemas_str =
+			File.read schema_file
 
 		loop do
 
 			input_ready
-
-			# read schema
-
-			schema_doc =
-				XML::Document.string old_schema_data
-
-			schema_elems =
-				Hash[
-					schema_doc.find("*").map do
-						|schema_elem|
-						[
-							"%s/%s" % [
-								schema_elem.name,
-								schema_elem["name"],
-							],
-							schema_elem,
-						]
-					end
-				]
 
 			# process abstract config
 
@@ -118,52 +110,49 @@ class Engine
 			transformer = HQ::Engine::Transformer.new
 			transformer.parent = self
 
-			transformer.schema_elems = schema_elems
-			transformer.input_docs = @input_docs
+			transformer.schema_file = schema_file
 
-			transform_result = transformer.rebuild
+			transformer.rules_dir = "#{config_dir}/rules"
+			transformer.include_dir = "#{config_dir}/include"
+
+			transformer.input_dir = "#{work_dir}/input"
+			transformer.output_dir = "#{work_dir}/output"
+
+			transform_result =
+				transformer.rebuild
 
 			# write new schema file
 
 			logger.trace "writing schema.xml"
 
-			Tempfile.open("alchemy-hq-schemas-xml-") do
-				|temp_file|
+			new_schemas =
+				transformer.data.select {
+					|item_id, item_xml|
+					item_id =~ /^(schema|schema-option|abstract-rule)\//
+				}
+				.map {
+					|item_id, item_xml|
+					item_doc = XML::Document.string item_xml
+					item_doc.root
+				}
 
-				doc = XML::Document.new
-				doc.root = XML::Node.new "schemas"
 
-				[ "schema", "schema-option", "abstract-rule" ].each do
-					|elem_name|
-
-					schema_result = transformer.results[elem_name]
-
-					if schema_result
-						schema_result[:doc].root.find(elem_name).each do
-							|schema_elem|
-							doc.root << doc.import(schema_elem)
-						end
-					end
-
-				end
-
-				doc_str = doc.to_s
-				temp_file.puts doc_str
-				temp_file.flush
-				FileUtils.move temp_file.path, schema_file
-
-			end
-
-			@schemas_elem = nil
+			write_data_file schema_file, new_schemas
 
 			# restart if schema changed
 
-			new_schema_data = File.read(schema_file)
+			new_schemas_str =
+				File.read schema_file
 
-			if new_schema_data != old_schema_data
-				old_schema_data = new_schema_data
+			if new_schemas_str != old_schemas_str
+
+				old_schemas_str = new_schemas_str
+				new_schemas_str = nil
+
 				logger.notice "restart due to schema changes"
+
 				next
+
 			end
 
 			# error if the transform was not complete
@@ -174,7 +163,6 @@ class Engine
 					|type_name|
 					logger.warning "type missing: #{type_name}"
 				end
-
 
 				transform_result[:remaining_rules].each do
 					|rule_name|
@@ -187,9 +175,9 @@ class Engine
 
 			# we're done
 
-			@results = transformer.results
+			load_results
 
-			break
+			return
 
 		end
 
@@ -206,7 +194,6 @@ class Engine
 	def input_ready
 		if $no_database
 			logger.warning "using previous input due to --no-database option"
-			input_load
 		else
 			input_dump
 		end
@@ -260,10 +247,13 @@ class Engine
 			change =
 				staged_change
 
-			schemas_elem.find("schema").each do |schema_elem|
-				schema_name = schema_elem.attributes["name"]
+			schema =
+				load_schema_file "#{work_dir}/schema.xml"
 
-				values = values_by_type[schema_name] || Hash.new
+			values_by_type.each do
+				|type, values|
+
+				next unless schema["schema/#{type}"]
 
 				input_doc = XML::Document.new
 				input_doc.root = XML::Node.new "data"
@@ -282,316 +272,26 @@ class Engine
 					end
 				end
 
-				sorted_values = values.values.sort { |a,b| a["_id"] <=> b["_id"] }
-				sorted_values.each do |value|
-					input_doc.root << js_to_xml(schemas_elem, schema_elem, value)
-				end
+				sorted_values =
+					values.values.sort {
+						|a,b|
+						a["_id"] <=> b["_id"]
+					}
 
-				input_str = input_doc.to_s
+				xml_values =
+					sorted_values.map {
+						|value|
+						js_to_xml schema, type, value
+					}
 
-				File.open "#{work_dir}/input/#{schema_name}.xml", "w" do |f|
-					f.print input_str
-				end
-
-				@input_docs[schema_name] = input_doc
-				@input_strs[schema_name] = input_str
-			end
-
-		end
-
-	end
-
-	def input_load
-
-		logger.notice "reading input from disk"
-
-		require "xml"
-
-		logger.time "reading input from disk" do
-
-			@input_docs = {}
-			@input_strs = {}
-
-			schemas_elem.find("schema").each do
-				|schema_elem|
-
-				schema_name =
-					schema_elem.attributes["name"]
-
-				input_path =
-					"#{work_dir}/input/#{schema_name}.xml"
-
-				if File.exist? input_path
-
-					input_doc =
-						XML::Document.file \
-							input_path,
-							:options => XML::Parser::Options::NOBLANKS
-
-					input_str =
-						input_doc.to_s
-
-				else
-
-					input_doc =
-						XML::Document.string \
-							"<data/>",
-							:options => XML::Parser::Options::NOBLANKS
-
-				end
-
-				@input_docs[schema_name] = input_doc
-				@input_strs[schema_name] = input_str
+				write_data_file \
+					"#{work_dir}/input/#{type}.xml",
+					xml_values
 
 			end
 
 		end
 
-	end
-
-	def schemas_elem
-
-		return @schemas_elem \
-			if @schemas_elem
-
-		schemas_doc =
-			XML::Document.file \
-				"#{work_dir}/schema.xml",
-				:options => XML::Parser::Options::NOBLANKS
-
-		@schemas_elem =
-			schemas_doc.root
-
-		return @schemas_elem
-
-	end
-
-	def field_to_xml schemas_elem, fields_elem, value, elem
-
-		value = {} unless value.is_a? Hash
-		fields_elem.find("* [name() != 'option']").each do |field_elem|
-			field_name = field_elem.attributes["name"]
-			case field_elem.name
-			when "text", "int", "ts-update", "enum"
-				elem.attributes[field_name] = value[field_name].to_s
-			when "bigtext"
-				prop = XML::Node.new field_name
-				prop << value[field_name]
-				elem << prop
-			when "bool"
-				elem.attributes[field_name] = "yes" if value[field_name]
-
-			when "list"
-				items = value[field_name]
-				if items.is_a? Array
-					items.each do |item|
-						prop = XML::Node.new field_name
-						field_to_xml schemas_elem, field_elem, item, prop
-						elem << prop
-					end
-				end
-
-			when "struct"
-				prop = XML::Node.new field_name
-				field_to_xml schemas_elem, field_elem, value[field_name], prop
-				elem << prop if prop.attributes.length + prop.children.size > 0
-			when "xml"
-				prop = XML::Node.new field_name
-				temp_doc = XML::Document.string "<xml>#{value[field_name]}</xml>", :options =>XML::Parser::Options::NOBLANKS
-				temp_doc.root.each { |temp_elem| prop << temp_elem.copy(true) }
-				elem << prop
-			else
-				raise "unexpected element #{field_elem.name} found in field "
-					"list for schema #{schema_elem.attributes["name"]}"
-			end
-		end
-		if value["content"].is_a? Array
-			value["content"].each do |item|
-				item_type = item["type"]
-				item_value = item["value"]
-				option_elem = fields_elem.find_first("option [@name = '#{item_type}']")
-				next unless option_elem
-				option_ref = option_elem.attributes["ref"]
-				schema_option_elem = schemas_elem.find_first("schema-option [@name = '#{option_ref}']")
-				next unless schema_option_elem
-				schema_option_props_elem = schema_option_elem.find_first("props")
-				prop = XML::Node.new item_type
-				field_to_xml schemas_elem, schema_option_props_elem, item_value, prop
-				elem << prop
-			end
-		end
-	end
-
-	def field_to_json schemas_elem, schema_elem, fields_elem, elem, value
-
-		fields_elem.find("* [name() != 'option']").each do |field_elem|
-
-			field_name = field_elem.attributes["name"]
-
-			case field_elem.name
-
-				when "text"
-
-					value[field_name] = elem.attributes[field_name]
-
-				when "int", "ts-update"
-
-					temp = elem.attributes[field_name]
-
-					value[field_name] = temp.empty? ? nil : temp.to_i
-
-				when "list"
-
-					value[field_name] = []
-
-					elem.find("* [ name () = #{xp field_name} ]") \
-						.each do |child_elem|
-
-						prop = {}
-
-						field_to_json \
-							schemas_elem,
-							schema_elem,
-							field_elem,
-							child_elem,
-							prop
-
-						value[field_name] << prop
-					end
-
-				when "struct"
-
-					prop = {}
-
-					child_elem =
-						elem.find_first \
-							"* [ name () = #{xp field_name} ]"
-
-					if child_elem
-						field_to_json \
-							schemas_elem,
-							schema_elem,
-							field_elem,
-							child_elem,
-							prop
-					end
-
-					value[field_name] = prop unless prop.empty?
-
-				when "xml"
-
-					value[field_name] = ""
-
-					elem.find("* [ name () = #{xp field_name} ] / *") \
-						.each do |prop|
-
-						value[field_name] += prop.to_s
-					end
-
-				when "bool"
-
-					value[field_name] = \
-						elem.attributes[field_name] == "yes"
-
-				when "bigtext"
-
-					value[field_name] =
-						elem.find_first("* [ name () = #{xp field_name} ]") \
-							.content
-
-				else
-
-					raise "unexpected element #{field_elem.name} found in " \
-						"field list for schema " \
-						"#{schema_elem.attributes["name"]}"
-
-			end
-		end
-
-		content = []
-
-		elem.find("*").each do |child_elem|
-
-			option_elem =
-				fields_elem.find_first \
-					"option [ @name = #{xp child_elem.name} ]"
-
-			next unless option_elem
-
-			option_ref =
-				option_elem.attributes["ref"]
-
-			schema_option_elem =
-				schemas_elem.find_first \
-					"schema-option [@name = '#{option_ref}']"
-
-			raise "Error" \
-				unless schema_option_elem
-
-			schema_option_props_elem =
-				schema_option_elem.find_first "props"
-
-			prop = {}
-
-			field_to_json \
-				schemas_elem,
-				schema_elem,
-				schema_option_props_elem,
-				child_elem,
-				prop
-
-			content << {
-				"type" => child_elem.name,
-				"value" => prop,
-			}
-
-		end
-
-		value["content"] = content \
-			unless content.empty?
-
-	end
-
-	def js_to_xml schemas_elem, schema_elem, value
-
-		elem =
-			XML::Node.new schema_elem.attributes["name"]
-
-		field_to_xml \
-			schemas_elem,
-			schema_elem.find_first("id"),
-			value,
-			elem
-
-		field_to_xml \
-			schemas_elem,
-			schema_elem.find_first("fields"),
-			value,
-			elem
-
-		return elem
-
-	end
-
-	def xml_to_json schemas_elem, schema_elem, elem
-
-		value = {}
-
-		field_to_json \
-			schemas_elem,
-			schema_elem,
-			schema_elem.find_first("id"),
-			elem,
-			value
-
-		field_to_json \
-			schemas_elem,
-			schema_elem,
-			schema_elem.find_first("fields"),
-			elem,
-			value
-
-		return value
 	end
 
 	def staged_change
@@ -614,6 +314,51 @@ class Engine
 		return change
 
 	end
+
+	def load_results
+
+a = Time.now
+		@results = {}
+
+		item_path_regex =
+			/^#{Regexp.escape work_dir}\/output\/data\/(.+)\.xml$/
+
+		Dir["#{work_dir}/output/data/**/*.xml"].each do
+			|item_path|
+
+			item_path =~ item_path_regex
+			item_id = $1
+
+			item_doc =
+				XML::Document.file \
+					item_path,
+					:options => XML::Parser::Options::NOBLANKS
+
+			item_dom = item_doc.root
+			item_type = item_dom.name
+
+			result = @results[item_type]
+
+			unless result
+
+				result = {}
+
+				result[:doc] = XML::Document.new
+				result[:doc].root = XML::Node.new "data"
+
+				@results[item_type] = result
+
+			end
+
+			doc = result[:doc]
+			doc.root << doc.import(item_dom)
+
+		end
+b = Time.now
+puts(b.to_f - a.to_f)
+
+	end
+
 
 end
 end
