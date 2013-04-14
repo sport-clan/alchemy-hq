@@ -262,7 +262,7 @@ class Engine
 					change["items"].each do |key, item|
 						case item["action"]
 						when "create", "update"
-							next unless key =~ /^#{Regexp.quote schema_name}\//
+							next unless key =~ /^#{Regexp.quote type}\//
 							values[key] = item["record"]
 						when "delete"
 							values.delete key
