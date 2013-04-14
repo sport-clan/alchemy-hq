@@ -104,32 +104,6 @@ class Master
 
 			end
 
-			# create output documents for each host
-
-			host_docs = {}
-
-			host_names.each do
-				|host_name|
-
-				doc = XML::Document.new
-				doc.root = XML::Node.new "tasks"
-
-				host_docs[host_name] = doc
-
-			end
-
-			class_docs = {}
-
-			class_names.each do
-				|class_name|
-
-				doc = XML::Document.new
-				doc.root = XML::Node.new "tasks"
-
-				class_docs[class_name] = doc
-
-			end
-
 			# sort tasks into appropriate hosts and classes
 
 			task_elems = {}
@@ -163,48 +137,33 @@ class Master
 
 			end
 
-			task_elems.each do
+			# write out tasks
+
+			task_elems.sort.each do
 				|target_key, target_task_elems|
 
 				target_type, target_name =
 					target_key.split "/"
 
-				doc =
-					case target_type
-						when "host"
-							host_docs[target_name]
-						when "class"
-							class_docs[target_name]
-						else
-							raise "error"
-					end
-
-				next unless doc
+				doc = XML::Document.new
+				doc.root = XML::Node.new "tasks"
 
 				target_task_elems.sort.each do
 					|task_name, task_elem|
 					doc.root << doc.import(task_elem)
 				end
 
-			end
+				tasks_path =
+					"%s/deploy/%s/%s/tasks.xml" % [
+						work_dir,
+						target_type,
+						target_name,
+					]
 
-			# write out tasks
+				FileUtils.mkdir_p \
+					File.dirname(tasks_path)
 
-			host_docs.each do
-				|host_name, host_doc|
-
-				host_doc.save \
-					"#{work_dir}/deploy/host/#{host_name}/tasks.xml"
-
-			end
-
-			class_docs.each do |class_name, class_doc|
-
-				FileUtils.mkdir \
-					"#{work_dir}/deploy/class/#{class_name}"
-
-				class_doc.save \
-					"#{work_dir}/deploy/class/#{class_name}/tasks.xml"
+				doc.save tasks_path
 
 			end
 
