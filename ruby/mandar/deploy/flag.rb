@@ -176,9 +176,16 @@ private
 		# and on disk, unless mock is enabled
 
 		unless $mock
-			File.open "#{FLAG_DIR}/#{name}", "w" do |f|
-				f.print "#{value}\n"
+
+			flag_path = "#{FLAG_DIR}/#{name}"
+
+			FileUtils.mkdir_p File.dirname(flag_path)
+
+			File.open flag_path, "w" do
+				|flag_io|
+				flag_io.print "#{value}\n"
 			end
+
 		end
 
 	end
@@ -194,8 +201,11 @@ private
 		# and on disk, unless mock is enabled
 
 		unless $mock
-			FileUtils.remove_entry_secure "#{FLAG_DIR}/#{name}" \
-				if File.exists? "#{FLAG_DIR}/#{name}"
+
+			if File.exists? "#{FLAG_DIR}/#{name}"
+				FileUtils.remove_entry_secure "#{FLAG_DIR}/#{name}"
+			end
+
 		end
 
 	end
@@ -221,15 +231,28 @@ private
 	end
 
 	def self.flags
+
 		return @flags if @flags
+
 		flags = {}
+
 		FileUtils.mkdir_p FLAG_DIR
-		Dir.new("#{FLAG_DIR}").each do |name|
-			path = "#{FLAG_DIR}/#{name}"
+
+		Dir["#{FLAG_DIR}/**/*"].each do
+			|path|
+
 			next unless File.file? path
-			flags[name] = File.read(path).chomp
+
+			path =~ /^#{Regexp.escape FLAG_DIR}\/(.+)$/
+			name = $1
+
+			flags[name] =
+				File.read(path).chomp
+
 		end
+
 		return @flags = flags
+
 	end
 
 end
