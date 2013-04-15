@@ -250,10 +250,21 @@ class Engine
 			schema =
 				load_schema_file "#{work_dir}/schema.xml"
 
-			values_by_type.each do
-				|type, values|
+			schema_types =
+				schema
+				.keys
+				.map {
+					|name|
+					name =~ /^schema\/(.+)$/ ? $1 : nil
+				}
+				.compact
+				.sort
+				.uniq
 
-				next unless schema["schema/#{type}"]
+			schema_types.each do
+				|type|
+
+				values = values_by_type[type] ||= {}
 
 				input_doc = XML::Document.new
 				input_doc.root = XML::Node.new "data"
