@@ -317,7 +317,6 @@ class Engine
 
 	def load_results
 
-a = Time.now
 		@results = {}
 
 		item_path_regex =
@@ -354,8 +353,6 @@ a = Time.now
 			doc.root << doc.import(item_dom)
 
 		end
-b = Time.now
-puts(b.to_f - a.to_f)
 
 	end
 
