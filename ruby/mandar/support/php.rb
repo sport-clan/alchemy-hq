@@ -4,12 +4,12 @@ module Mandar::Support::PHP
 	Mandar::Deploy::Formats.register self, :php_ini
 
 	def self.check_constant(name)
-		return if name =~ /^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/
+		return if name =~ /^[a-zA-Z_\u007f-\uffff][a-zA-Z0-9_\u007f-\uffff]*$/
 		raise "Invalid constant name: #{name}"
 	end
 
 	def self.check_variable(name)
-		return if name =~ /^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/
+		return if name =~ /^[a-zA-Z_\u007f-\uffff][a-zA-Z0-9_\u007f-\uffff]*$/
 		raise "Invalid variable name: #{name}"
 	end
 
