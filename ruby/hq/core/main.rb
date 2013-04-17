@@ -19,6 +19,27 @@ class Main
 		@commands = {}
 	end
 
+	def rule_provider &block
+
+		if block
+
+			# set rule provider proc
+
+			@rule_provider_proc = block
+
+		else
+
+			# return new or existing rule provider
+
+			return @rule_provider if @rule_provider
+
+			@rule_provider = @rule_provider_proc.call
+
+			return @rule_provider
+
+		end
+	end
+
 	def main all_args
 
 		command_args =

@@ -791,7 +791,7 @@ module Mandar::Support::Core
 		shell_if_cmd =
 			shell_if_elem.attributes["cmd"]
 
-		return if $mock
+		#return if $mock
 
 		system shell_if_cmd or return
 
