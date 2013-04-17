@@ -33,9 +33,7 @@ RSpec::Core::RakeTask.new :spec do
 end
 
 desc "Run features"
-Cucumber::Rake::Task.new \
-	:features => :compile_cxx \
-do
+Cucumber::Rake::Task.new :features do
 	|task|
 
 	task.cucumber_opts = [
@@ -51,9 +49,4 @@ do
 
 	].join " "
 
-end
-
-desc "Compile C++"
-task :compile_cxx do
-	system "cd #{HQ_DIR}/c++; make"
 end
