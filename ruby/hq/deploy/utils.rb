@@ -83,7 +83,8 @@ module Utils
 		abstract =
 			engine.abstract
 
-		return hosts.select do |host|
+		return hosts.sort.select do
+			|host|
 
 			host_xp =
 				esc_xp host
