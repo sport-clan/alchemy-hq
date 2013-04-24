@@ -83,23 +83,43 @@ module Mandar::Debian
 
 		Mandar.detail "updating package cache"
 
+		apt_update_args = [
+			"apt-get",
+			"-q2",
+			"update",
+		]
+
+		apt_update_cmd =
+			Mandar.shell_quote apt_update_args
+
 		unless $mock
-			system "apt-get -q2 update" \
-				or raise "Error"
+
+			Mandar::Support::Core.shell apt_update_cmd \
+				or raise "Error executing #{apt_update_cmd}"
+
 		end
 
-		Mandar.notice "remove #{names_to_remove_str}"
+		Mandar.notice "removing #{names_to_remove_str}"
 
-		apt_cmd =
-			Mandar.shell_quote \
-				%W[ apt-get -y purge ] + names_to_remove
+		apt_purge_args = [
+			"apt-get",
+			"-y",
+			"purge",
+			*names_to_remove,
+		]
+
+		apt_purge_cmd =
+			Mandar.shell_quote apt_purge_args
 
 		unless $mock
-			system "#{apt_cmd}" \
-				or raise "Error"
+
+			Mandar::Support::Core.shell apt_purge_cmd \
+				or raise "Error executing #{apt_purge_cmd}"
+
 		end
 
 		@ready = false
+
 	end
 
 	def self.debconf_set_selections *entries
