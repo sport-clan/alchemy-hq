@@ -195,7 +195,7 @@ class DeployProgressHandler
 
 		# create logger
 
-		@html_logger = HQ::Tools::Logger::HtmlLogger.new
+		@html_logger = HQ::Logger::HtmlLogger.new
 		@html_logger.level = data["level"].to_sym
 
 		# monitor deploy progress

@@ -3,7 +3,7 @@ module Core
 class Main
 
 	require "hq/tools/escape"
-	include HQ::Tools::Escape
+	include Tools::Escape
 
 	attr_accessor :config_dir
 	attr_accessor :work_dir
@@ -81,7 +81,7 @@ class Main
 		require "hq/logger"
 
 		@logger =
-			HQ::Tools::Logger.new
+			Logger.new
 
 		@logger.hostname =
 			hostname
@@ -97,7 +97,7 @@ class Main
 		require "hq/engine/engine"
 
 		@engine =
-			HQ::Engine::Engine.new
+			Engine::Engine.new
 
 		@engine.main = self
 
@@ -112,7 +112,7 @@ class Main
 		require "hq/couchdb/couchdb-server"
 
 		couch_server =
-			HQ::CouchDB::Server.new \
+			CouchDB::Server.new \
 				profile["database-host"],
 				profile["database-port"]
 
@@ -137,7 +137,7 @@ class Main
 		require "hq/core/event-machine-fibre-wrapper"
 
 		@em_wrapper =
-			HQ::Core::EventMachineFibreWrapper.new
+			EventMachineFibreWrapper.new
 
 		@em_wrapper.start
 
@@ -152,7 +152,7 @@ class Main
 		require "hq/mq/mq-wrapper"
 
 		@mq_wrapper =
-			HQ::MQ::MqWrapper.new
+			MQ::MqWrapper.new
 
 		@mq_wrapper.em_wrapper = em_wrapper
 

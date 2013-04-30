@@ -1,5 +1,6 @@
 module HQ
 module MQ
+
 class MqLogger
 
 	attr_accessor :em_wrapper
@@ -14,7 +15,7 @@ class MqLogger
 	def output content, stuff = {}, prefix = ""
 
 		return \
-			unless Tools::Logger.level_includes \
+			unless Logger.level_includes \
 				:debug,
 				content["level"]
 
@@ -117,5 +118,6 @@ private
 	end
 
 end
+
 end
 end
