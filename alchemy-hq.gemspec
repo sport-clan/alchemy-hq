@@ -29,6 +29,8 @@ Gem::Specification.new do
 	spec.add_dependency "rake", ">= 10.0.3"
 	spec.add_dependency "sys-filesystem" # TODO remove this
 
+	spec.add_dependency "hq-logger", ">= 0.0.1"
+
 	spec.add_development_dependency "cucumber", ">= 1.2.1"
 	spec.add_development_dependency "rspec", ">= 2.12.0"
 	spec.add_development_dependency "rspec_junit_formatter"

@@ -12,7 +12,7 @@ class DeployProgressHandler
 	def mq_wrapper() app_ctx[:mq_wrapper] end
 
 	def initialize
-		require "hq/tools/logger/html-logger"
+		require "hq/logger/html-logger"
 		require "hq/tools/random"
 		@token = HQ::Tools::Random.lower_case
 		@buffer = {}

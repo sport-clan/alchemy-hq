@@ -1,4 +1,4 @@
-require "hq/tools/logger"
+require "hq/logger"
 
 module Mandar
 

@@ -78,7 +78,7 @@ class Main
 
 		return @logger if @logger
 
-		require "hq/tools/logger"
+		require "hq/logger"
 
 		@logger =
 			HQ::Tools::Logger.new
