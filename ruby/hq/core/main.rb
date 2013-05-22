@@ -96,10 +96,13 @@ class Main
 
 		require "hq/engine/engine"
 
-		@engine =
-			Engine::Engine.new
+		@engine = Engine::Engine.new
 
-		@engine.main = self
+		@engine.logger = logger
+		@engine.transform_backend = rule_provider
+
+		@engine.config_dir = config_dir
+		@engine.work_dir = work_dir
 
 		return @engine
 
@@ -651,3 +654,5 @@ class Main
 end
 end
 end
+
+# ex:set ts=4 noet:

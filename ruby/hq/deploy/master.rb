@@ -1,5 +1,7 @@
 require "hq/tools/escape"
 
+require "yaml"
+
 module HQ
 module Deploy
 class Master
@@ -401,6 +403,106 @@ class Master
 		controller.deploy hosts
 	end
 
+	def transform
+		dump_db
+		engine.transform
+	end
+
+	def dump_db
+
+		logger.notice "loading input from database"
+
+		logger.time "loading input from database" do
+
+			change = staged_change
+
+			# add existing records
+
+			rows =
+				couch.view("root", "by_type")["rows"].map {
+					|view_row|
+
+					id = view_row["id"][8..-1]
+					type = view_row["value"]["type"]
+					value = view_row["value"]["value"]
+
+					# handle updates and deletes
+
+					if change && change_item = change["items"][id]
+						next if change_item["action"] == "delete"
+						raise "Error" unless change_item["action"] == "update"
+						value = change_item["record"]
+					end
+
+					{
+						"id" => id,
+						"type" => type,
+						"value" => value,
+					}
+
+				}.compact
+
+			# handle creates
+
+			if change
+
+				change["items"].values.each do
+					|change_item|
+
+					next unless change_item["action"] == "create"
+
+					value = change_item["record"]
+					id = value["_id"]
+					type = value["mandar_type"]
+
+					value.delete "_id"
+					value.delete "mandar_type"
+					value.delete "_rev"
+
+					rows << {
+						"id" => id,
+						"type" => type,
+						"value" => value,
+					}
+
+				end
+
+			end
+
+			FileUtils.mkdir_p work_dir
+
+			File.open "#{work_dir}/input.yaml", "w" do
+				|file_io|
+				file_io.write YAML.dump rows
+			end
+
+		end
+
+	end
+
+	def staged_change
+
+		return nil \
+			unless $deploy_mode == :staged
+
+		locks =
+			couch.get "mandar-locks"
+
+		return nil \
+			unless locks
+
+		change =
+			locks["changes"][$deploy_role]
+
+		return nil \
+			unless change
+
+		return change
+
+	end
+
 end
 end
 end
+
+# ex:set ts=4 noet:

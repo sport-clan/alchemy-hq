@@ -26,7 +26,7 @@ class ConfigCommand
 
 			# rebuild config
 
-			engine.transform
+			deploy_master.transform
 
 			# determine list of hosts to deploy to
 
