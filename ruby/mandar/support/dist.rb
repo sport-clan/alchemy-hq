@@ -131,8 +131,8 @@ module Mandar::Support::Dist
 		rsync_elem.find("arg").each do
 			|arg_elem|
 
-			args += arg_elem["name"]
-			args += arg_elem["value"]
+			args << arg_elem["name"]
+			args << arg_elem["value"]
 
 		end
 
