@@ -56,6 +56,9 @@ class HQ::Deploy::Slave
 			full_path =
 				"#{work_dir}/deploy/#{file_name}"
 
+			next \
+				unless File.exist? full_path
+
 			tasks_doc = \
 				XML::Document.string \
 					File.read(full_path),
