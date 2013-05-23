@@ -128,8 +128,16 @@ module Mandar::Support::Dist
 			"#{rsync_elem["to"]}/",
 		]
 
+		rsync_elem.find("arg").each do
+			|arg_elem|
+
+			args += arg_elem["name"]
+			args += arg_elem["value"]
+
+		end
+
 		Mandar::Support::Core.shell \
-			Mandar.shell_quote(args)
+			Mandar.shell_quote(args.compact)
 
 	end
 
