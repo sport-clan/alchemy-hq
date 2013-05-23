@@ -171,9 +171,16 @@ class Server
 
 			catch :mandar_abort_request do
 
-				req.path =~ /^#{Regexp.escape config.attributes["path-prefix"]}(.*)$/ \
+				regexp =
+					/^#{Regexp.escape config.attributes["path-prefix"]}(.*)$/
+
+				match_data =
+					regexp.match req.path
+
+				match_data \
 					or not_found
-				path = $1
+
+				path = match_data[1]
 
 				console_handler.handle path
 
