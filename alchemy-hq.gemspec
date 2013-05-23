@@ -21,17 +21,15 @@ Gem::Specification.new do
 
 	spec.rubyforge_project = "alchemy-hq"
 
-	spec.add_dependency "amqp", ">= 0.9.8"
 	spec.add_dependency "json_pure", ">= 1.7.7"
-	spec.add_dependency "libxml-ruby"
-	spec.add_dependency "multi_json"
-	spec.add_dependency "net-dns", ">= 0.7.1"
-	spec.add_dependency "rake", ">= 10.0.3"
-	spec.add_dependency "sys-filesystem" # TODO remove this
+	spec.add_dependency "libxml-ruby", ">= 2.6.0"
+	spec.add_dependency "multi_json", ">= 1.7.3"
 
-	spec.add_dependency "hq-logger", ">= 0.0.1"
+	spec.add_dependency "hq-engine", ">= 0.0.0"
+	spec.add_dependency "hq-logger"
 
 	spec.add_development_dependency "cucumber", ">= 1.2.1"
+	spec.add_development_dependency "rake", ">= 10.0.3"
 	spec.add_development_dependency "rspec", ">= 2.12.0"
 	spec.add_development_dependency "rspec_junit_formatter"
 	spec.add_development_dependency "simplecov"
